@@ -88,7 +88,7 @@ window._i18n.hu = {
   'nav.recall':       'Napló',
   'nav.bgTasks':      'Háttér',
   'nav.skills':       'Skillek',
-  'nav.connectors':   'MCP',
+  'nav.connectors':   'Integrációk',
   'nav.migrate':      'Költöztetés',
   'nav.docs':         'Dokumentáció',
   'nav.research':     'Kutatás',
@@ -780,7 +780,7 @@ window._i18n.hu = {
 
   // --- Connectors (MCP) ---
   'connectors.page_title':       'MCP összekötők',
-  'connectors.page_subtitle':    'MCP szerverek kezelése',
+  'connectors.page_subtitle':    'AutoWebinar és külső kapcsolatok kezelése',
   'connectors.catalog_loading':  'Katalógus betöltése...',
   'connectors.catalog_error':    'Hiba a katalógus betöltésekor',
   'connectors.catalog_empty':    'Nincs találat ebben a kategóriában',
