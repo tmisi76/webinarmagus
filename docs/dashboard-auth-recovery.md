@@ -55,7 +55,7 @@ appot az eszközön, vagy zárd le a szerveren az eszköz élő SSH-kapcsolatát
 Ha az SSH-sor törlése hibára fut, a felület külön figyelmeztetést mutat --
 ilyenkor a sort kézzel töröld: a Marveent futtató user
 `~/.ssh/authorized_keys` fájljából vedd ki az eszköz
-`marveen-remote:<install-id>` kommentű sorát. Az eszköz ettől nem "kizárt
+`webinar-magus-remote:<install-id>` kommentű sorát. Az eszköz ettől nem "kizárt
 felhasználó": újra-párosítással (új kulcs-sor beillesztése) bármikor
 visszahozható. A `security:reset` a
 párosított kulcsokat is visszavonja, de az SSH-sorokat nem bántja -- azok a

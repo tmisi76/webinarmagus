@@ -232,7 +232,7 @@ Success response: `{ "ok": true, "key": "KANBAN_WIP_WARN_PCT", "value": 75, "req
 
 Error response: `{ "error": "..." }` (400 validation error, 403 secret key, 404 unknown key)
 
-**Hot-reload:** after a successful POST, the `/api/marveen` `kanbanWip` block immediately reflects the new value with no restart needed (for keys where `requiresRestart: false`).
+**Hot-reload:** after a successful POST, the `/api/webinar-magus` `kanbanWip` block immediately reflects the new value with no restart needed (for keys where `requiresRestart: false`).
 
 **Change log:** every successful POST appends an audit row to the `config_change_log` SQLite table (key, old value, new value, actor, timestamp). For secret keys the value is stored as `null`. There is no UI for this table; query it directly:
 
@@ -285,7 +285,7 @@ Every sub-agent's directory is gitignored (`agents/` folder), keeping secrets sa
   "profileId": "developer-senior",
   "team": {
     "role": "member",
-    "reportsTo": "marveen",
+    "reportsTo": "webinar-magus",
     "delegatesTo": [],
     "autoDelegation": false,
     "trustFrom": []
@@ -343,7 +343,7 @@ Each task lives in its own folder with two files. Detailed description: [schedul
 
 ## .mcp.json -- MCP Servers
 
-MCP configurations are scoped: agent `agents/<name>/.mcp.json` files contain only the servers relevant to that agent. The `.mcp.json` at the project root applies to the main agent (marveen/Jarvis).
+MCP configurations are scoped: agent `agents/<name>/.mcp.json` files contain only the servers relevant to that agent. The `.mcp.json` at the project root applies to the main agent (webinar-magus/Jarvis).
 
 ```json
 {
@@ -370,7 +370,7 @@ MCP configurations are scoped: agent `agents/<name>/.mcp.json` files contain onl
 
 ## Environment Variables (.env / launchd plist)
 
-Key configuration variables live in the launchd plist (`~/Library/LaunchAgents/com.marveen.dashboard.plist`) or `.env` file.
+Key configuration variables live in the launchd plist (`~/Library/LaunchAgents/com.webinar-magus.dashboard.plist`) or `.env` file.
 
 | Variable | Description |
 |----------|-------------|
@@ -381,7 +381,7 @@ Key configuration variables live in the launchd plist (`~/Library/LaunchAgents/c
 | `SLACK_CHANNEL_ID` | Slack channel ID |
 | `WEB_PORT` | Dashboard port (default: 3420). Can be set at install time via the `--port <N>` CLI flag (`./install-linux.sh --port 3421`) or as an env variable (`WEB_PORT=3421 ./install.sh`). |
 | `ANTHROPIC_API_KEY` | Claude API key |
-| `OWNER_NAME` | Owner name (e.g. "Jónás Gergő") |
+| `OWNER_NAME` | Owner name (e.g. "Minta Felhasználó") |
 | `BOT_NAME` | Main agent name (e.g. "Jarvis") |
 
 ---
