@@ -88,7 +88,7 @@ window._i18n.en = {
   'nav.recall':       'Diary',
   'nav.bgTasks':      'Background',
   'nav.skills':       'Skills',
-  'nav.connectors':   'MCP',
+  'nav.connectors':   'Integrations',
   'nav.migrate':      'Migrate',
   'nav.docs':         'Documentation',
   'nav.research':     'Research',
