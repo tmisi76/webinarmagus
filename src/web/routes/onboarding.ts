@@ -11,7 +11,7 @@ import { sessionExistsOnHost } from '../agent-process.js'
 import { MAIN_CHANNELS_SESSION } from '../main-agent.js'
 import { getClaudePidForSession, hasChannelPluginAlive } from '../../channel-coordinator/liveness.js'
 import {
-  hardRestartMarveenChannels,
+  hardRestartWebinarMagusChannels,
   mainChannelsSessionExists,
   createMainChannelsSession,
 } from '../channel-monitor.js'
@@ -254,7 +254,7 @@ export async function tryHandleOnboarding(ctx: RouteContext): Promise<boolean> {
       : null
     const sudoCommand = managedSettingsReady === false ? getManagedSettingsSudoCommand() : null
     // WIZFLOW809: measured channel liveness for the wizard's step-3 wait.
-    // hardRestartMarveenChannels() answers `restarted: true` when the restart
+    // hardRestartWebinarMagusChannels() answers `restarted: true` when the restart
     // COMMAND was dispatched, not when the channel is up -- and the cold path
     // is a ~minutes start. The wizard used to advance after a fixed 4s and
     // opened the pairing step against a still-booting session (three field
@@ -271,7 +271,7 @@ export async function tryHandleOnboarding(ctx: RouteContext): Promise<boolean> {
     }
     json(res, {
       identityConfirmed: identityConfirmed(),
-      currentAgentName: readEnvValue('BRAND_NAME') || readEnvValue('BOT_NAME') || 'Marveen',
+      currentAgentName: readEnvValue('BRAND_NAME') || readEnvValue('BOT_NAME') || 'WebinarMagus',
       currentOwnerName: readEnvValue('OWNER_NAME') || '',
       claudeAuthPresent: claude,
       agentsRunning: running,
@@ -322,7 +322,7 @@ export async function tryHandleOnboarding(ctx: RouteContext): Promise<boolean> {
     // NOT the IDENTITY_CONFIRMED flag -- a pre-wizard-era install lacks that
     // flag while its running session is a live working agent (#758 review).
     const freshSetup = !claudeAuthPresent() || !channelConfigured() || !paired()
-    const prevAgentName = readEnvValue('BOT_NAME') || 'Marveen'
+    const prevAgentName = readEnvValue('BOT_NAME') || 'WebinarMagus'
     const prevOwnerName = readEnvValue('OWNER_NAME') || ''
     const nameChanged = agentName !== prevAgentName
     try {
@@ -358,7 +358,7 @@ export async function tryHandleOnboarding(ctx: RouteContext): Promise<boolean> {
     const plan = identitySavePlan(servicesUp, freshSetup, nameChanged)
     const restartNeeded = plan.restartNeeded
     if (plan.restart) {
-      const r = hardRestartMarveenChannels()
+      const r = hardRestartWebinarMagusChannels()
       restarted = r.ok
       if (!r.ok) restartError = r.error || 'restart failed'
       if (r.ok) logger.info('onboarding: channels restarted so the new identity is picked up')
@@ -439,7 +439,7 @@ export async function tryHandleOnboarding(ctx: RouteContext): Promise<boolean> {
     let restarted = false
     let restartError: string | null = null
     if (!hadAuthBefore && agentsRunning()) {
-      const r = hardRestartMarveenChannels()
+      const r = hardRestartWebinarMagusChannels()
       restarted = r.ok
       if (!r.ok) restartError = r.error || 'restart failed'
       if (r.ok) logger.info('onboarding: channels restarted so the fresh auth is picked up')
@@ -455,7 +455,7 @@ export async function tryHandleOnboarding(ctx: RouteContext): Promise<boolean> {
     if (agentsRunning()) { json(res, { ok: true, alreadyRunning: true }); return true }
     if (!claudeAuthPresent()) { json(res, { error: 'Eloszor allitsd be a Claude-autentikaciot.', reason: 'no-auth' }, 409); return true }
     // ONBTMUX1: on a fresh install the channels session does NOT exist yet, and
-    // `tmux respawn-pane` (what hardRestartMarveenChannels does on Linux) cannot
+    // `tmux respawn-pane` (what hardRestartWebinarMagusChannels does on Linux) cannot
     // bring back a session that was never there -- it fails with "respawn-pane
     // failed" and the wizard's step 2 dead-ends. When the session is ABSENT the
     // correct action is to CREATE it via channels.sh (createMainChannelsSession),
@@ -481,7 +481,7 @@ export async function tryHandleOnboarding(ctx: RouteContext): Promise<boolean> {
       json(res, { ok: true, starting: true })
       return true
     }
-    const r = hardRestartMarveenChannels()
+    const r = hardRestartWebinarMagusChannels()
     if (!r.ok) { json(res, { error: r.error || 'Nem sikerult eletre kelteni az agenteket.', reason: 'launch-failed' }, 500); return true }
     logger.info('onboarding: fleet launched (channels session)')
     json(res, { ok: true, started: true })
