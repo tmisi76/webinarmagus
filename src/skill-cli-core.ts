@@ -1,11 +1,11 @@
 /**
- * MIOCLISKILL831 -- a `marveen skill` parancs TISZTA magja: kanonikus JSON,
+ * MIOCLISKILL831 -- a `webinar-magus skill` parancs TISZTA magja: kanonikus JSON,
  * HMAC-alairas, attesztacio-osszeallitas. Se halozat, se fajlrendszer, se
  * process.env -- igy tesztelheto anelkul, hogy barmit telepitenenk vagy
  * hivnank. A mellekhatasok a skill-cli-fs.ts-ben ulnek, a parancs-vaz a
  * scripts/skill.ts-ben (ugyanaz a harmas, mint a remote-enroll-nel).
  *
- * A KONTRAKT NEM ITT SZULETIK: a mio-attestation v1 alakot a marveen-io
+ * A KONTRAKT NEM ITT SZULETIK: a mio-attestation v1 alakot a webinar-magus-skill-service
  * upload-api/attestation.ts hatarozza meg, es a kanonikalizalas a mio-upload
  * kliens PONTOS python-hivasa: json.dumps(sort_keys=True,
  * separators=(",",":"), ensure_ascii=False) a hmac mezo NELKUL.
