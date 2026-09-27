@@ -1,5 +1,5 @@
 #!/bin/bash
-# Marveen - AI Team Setup
+# Webinár Mágus - AI Team Setup
 # Interactive installer for Linux (Ubuntu/Debian)
 
 set -e
@@ -33,7 +33,7 @@ offer_claude_fallback() {
   fi
   echo ""
   echo -e "${ORANGE}Claude Code elerheto a gepen.${NC}"
-  local prompt="Marveen installer failed at step \"${step}\". Error: ${err_msg}. Script: install-linux.sh${line_info}. Repo: https://github.com/Szotasz/marveen. OS: $(lsb_release -ds 2>/dev/null || cat /etc/os-release 2>/dev/null | head -1 || echo Linux). Node: $(node -v 2>/dev/null || echo missing). Dir: ${INSTALL_DIR}. Your task: diagnose this Marveen installer failure. The install scripts are install.sh (macOS) and install-linux.sh. Read the relevant section, check for missing dependencies or permission issues, and suggest concrete shell commands to fix."
+  local prompt="Webinár Mágus installer failed at step \"${step}\". Error: ${err_msg}. Script: install-linux.sh${line_info}. Repo: https://github.com/tmisi76/webinar-magus. OS: $(lsb_release -ds 2>/dev/null || cat /etc/os-release 2>/dev/null | head -1 || echo Linux). Node: $(node -v 2>/dev/null || echo missing). Dir: ${INSTALL_DIR}. Your task: diagnose this Webinár Mágus installer failure. The install scripts are install.sh (macOS) and install-linux.sh. Read the relevant section, check for missing dependencies or permission issues, and suggest concrete shell commands to fix."
   if [ -t 0 ]; then
     read -rp "$(_t prompt_open_claude)" OPEN_CLAUDE
     OPEN_CLAUDE=${OPEN_CLAUDE:-n}
@@ -132,7 +132,7 @@ WEB_PORT="${WEB_PORT:-3420}"
 
 clear
 echo ""
-echo -e "${BOLD}  ▐▛███▜▌   Marveen${NC}"
+echo -e "${BOLD}  ▐▛███▜▌   Webinár Mágus${NC}"
 if [[ "${MARVEEN_LANG:-hu}" == "en" ]]; then
   echo -e "${BOLD} ▝▜█████▛▘  Your AI team, running while you sleep.${NC}"
 else
@@ -156,7 +156,7 @@ case "$INSTALL_DIR" in
     echo -e "  A /mnt/ alatti mappakon a git es az npm jogosultsag-muveletei nem mukodnek (WSL/drvfs) -- a telepites itt elhalna."
     echo -e "  ${DIM}Kiut: klonozd a Linux home-ba, es onnan futtasd (masold az alabbi sorokat):${NC}"
     echo "    cd ~"
-    echo "    git clone --branch main https://github.com/Szotasz/marveen.git"
+    echo "    git clone --branch main https://github.com/tmisi76/webinar-magus.git"
     echo "    cd marveen && ./install.sh"
     exit 1
     ;;
@@ -201,7 +201,7 @@ APT_OPTS="-o DPkg::Lock::Timeout=180"
 # 2026-08-02, eles gepen merve: az elso VALODI elso-telepitesnel a
 #   sudo apt-get install -y nodejs
 # elakadt egy whiptail ablakon ("Pending kernel upgrade"), amit a needrestart
-# apt-hookja nyitott (apt-pinvoke -m u). A telepito a Marveen appbol fut, ahol
+# apt-hookja nyitott (apt-pinvoke -m u). A telepito a Webinár Mágus appbol fut, ahol
 # nincs terminal es nincs stdin -- a dialogus tehat nem elnyomhato, a telepites
 # ott all, amig valaki kezzel ki nem lovi. A naplo elso jele: "dpkg-preconfigure:
 # unable to re-open stdin". Eddig azert nem jott elo, mert a teszt-gepeken a node
@@ -470,7 +470,7 @@ ok "zstd $(zstd --version | grep -oE 'v[0-9]+\.[0-9]+\.[0-9]+' | head -1)"
 # git itt mar garantaltan telepitve van (lasd fentebb a [1/7] lepest).
 if [ ! -f "$INSTALL_DIR/package.json" ]; then
   warn "A telepito a repon kivulrol fut (nincs package.json itt: $INSTALL_DIR)."
-  TARGET_DIR="$HOME/marveen"
+  TARGET_DIR="$HOME/webinar-magus"
   if [ -f "$TARGET_DIR/package.json" ]; then
     ok "Meglevo checkout: $TARGET_DIR -- frissites..."
     git -C "$TARGET_DIR" pull --ff-only 2>/dev/null || warn "git pull kihagyva (helyi valtozasok lehetnek)."
@@ -478,8 +478,8 @@ if [ ! -f "$INSTALL_DIR/package.json" ]; then
     echo -e "  Repo klonozasa -> ${TARGET_DIR} ..."
     # A repo default branch-e a develop, de a publikus telepito main-rol fut
     # (a Windows/WSL wrapper is main-rol fetcheli a scriptet) -> pineljuk a main-t.
-    git clone --depth 1 --branch main https://github.com/Szotasz/marveen.git "$TARGET_DIR" \
-      || fail "git clone sikertelen: https://github.com/Szotasz/marveen.git (main branch)"
+    git clone --depth 1 --branch main https://github.com/tmisi76/webinar-magus.git "$TARGET_DIR" \
+      || fail "git clone sikertelen: https://github.com/tmisi76/webinar-magus.git (main branch)"
     ok "Repo klonozva: $TARGET_DIR"
   fi
   echo -e "  Telepito ujrainditasa a checkoutbol..."
@@ -873,7 +873,7 @@ probe_telegram_token() {
   _ptt_wh="$(curl -s --max-time 8 "https://api.telegram.org/bot${_ptt_t}/getWebhookInfo" 2>/dev/null)" || return 0
   case "$_ptt_wh" in
     *'"url":"http'*)
-      warn "A bot token ervenyes, de a bot WEBHOOKRA van kotve -- a Marveen poller igy nem tud ra csatlakozni."
+      warn "A bot token ervenyes, de a bot WEBHOOKRA van kotve -- a Webinár Mágus poller igy nem tud ra csatlakozni."
       echo -e "    ${DIM}Teendo: nyisd meg bongeszoben: https://api.telegram.org/bot<A-TOKENED>/deleteWebhook${NC}"
       echo -e "    ${DIM}vagy keszits uj botot a @BotFather-nel, es futtasd ujra a telepitot azzal.${NC}"
       return 0 ;;
@@ -938,7 +938,7 @@ else
 fi
 
 read -rp "$(_t prompt_bot_name)" BOT_NAME
-BOT_NAME=${BOT_NAME:-"Marveen"}
+BOT_NAME=${BOT_NAME:-"Webinár Mágus"}
 
 # Derive the ASCII slug the backend uses everywhere (tmux sessions, systemd
 # unit labels, DB agent_id, API routing). NFKD + ASCII + lowercase dashes,
@@ -997,6 +997,12 @@ if ! npm run build --loglevel warn; then
   fail "TypeScript forditas sikertelen. Ellenorizd a hibauzeneteket fentebb."
 fi
 ok "TypeScript leforditva"
+
+# Webinár Mágus: AutoWebinar MCP alapkapcsolat seedelése.
+# Idempotens: meglévő autowebinar beállítást és más MCP-ket nem ír felül.
+if ! node "$INSTALL_DIR/scripts/seed-autowebinar-mcp.mjs"; then
+  warn "AutoWebinar MCP automatikus beállítása kimaradt; később a Beállításokból pótolható."
+fi
 
 # Stamp the build-marker after a successful fresh-install build, mirroring the
 # update.sh self-heal (dist/.built-commit records the commit dist was built

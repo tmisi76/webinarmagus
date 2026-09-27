@@ -1,5 +1,5 @@
 #!/bin/bash
-# Marveen - AI Team Setup
+# Webinár Mágus - AI Team Setup
 # Interactive installer for macOS
 
 set -e
@@ -65,7 +65,7 @@ offer_claude_fallback() {
   fi
   echo ""
   echo -e "${ORANGE}$(_t macos.claude_available)${NC}"
-  local prompt="Marveen installer failed at step \"${step}\". Error: ${err_msg}. Script: install.sh${line_info}. Repo: https://github.com/Szotasz/marveen. OS: macOS $(sw_vers -productVersion 2>/dev/null || echo unknown). Node: $(node -v 2>/dev/null || echo missing). Dir: ${INSTALL_DIR}. Your task: diagnose this Marveen installer failure. The install scripts are install.sh (macOS) and install-linux.sh. Read the relevant section, check for missing dependencies or permission issues, and suggest concrete shell commands to fix."
+  local prompt="Webinár Mágus installer failed at step \"${step}\". Error: ${err_msg}. Script: install.sh${line_info}. Repo: https://github.com/tmisi76/webinar-magus. OS: macOS $(sw_vers -productVersion 2>/dev/null || echo unknown). Node: $(node -v 2>/dev/null || echo missing). Dir: ${INSTALL_DIR}. Your task: diagnose this Webinár Mágus installer failure. The install scripts are install.sh (macOS) and install-linux.sh. Read the relevant section, check for missing dependencies or permission issues, and suggest concrete shell commands to fix."
   if [ -t 0 ]; then
     read -rp "$(_t prompt_open_claude)" OPEN_CLAUDE
     OPEN_CLAUDE=${OPEN_CLAUDE:-n}
@@ -99,7 +99,7 @@ trap 'on_error $LINENO' ERR
 
 clear
 echo ""
-echo -e "${BOLD}  ▐▛███▜▌   Marveen${NC}"
+echo -e "${BOLD}  ▐▛███▜▌   Webinár Mágus${NC}"
 if [[ "${MARVEEN_LANG:-hu}" == "en" ]]; then
   echo -e "${BOLD} ▝▜█████▛▘  Your AI team, running while you sleep.${NC}"
 else
@@ -448,7 +448,7 @@ probe_telegram_token() {
   _ptt_wh="$(curl -s --max-time 8 "https://api.telegram.org/bot${_ptt_t}/getWebhookInfo" 2>/dev/null)" || return 0
   case "$_ptt_wh" in
     *'"url":"http'*)
-      warn "A bot token ervenyes, de a bot WEBHOOKRA van kotve -- a Marveen poller igy nem tud ra csatlakozni."
+      warn "A bot token ervenyes, de a bot WEBHOOKRA van kotve -- a Webinár Mágus poller igy nem tud ra csatlakozni."
       echo -e "    ${DIM}Teendo: nyisd meg bongeszoben: https://api.telegram.org/bot<A-TOKENED>/deleteWebhook${NC}"
       echo -e "    ${DIM}vagy keszits uj botot a @BotFather-nel, es futtasd ujra a telepitot azzal.${NC}"
       return 0 ;;
@@ -698,7 +698,7 @@ if [ -f "$INSTALL_DIR/scripts/ensure-managed-channels-enabled.sh" ]; then
 fi
 
 read -rp "$(_t prompt_bot_name)" BOT_NAME
-BOT_NAME=${BOT_NAME:-"Marveen"}
+BOT_NAME=${BOT_NAME:-"Webinár Mágus"}
 
 # Derive the ASCII slug the backend uses everywhere (tmux sessions, plist
 # labels, DB agent_id, API routing). NFKD + ASCII + lowercase dashes, empty
@@ -790,6 +790,12 @@ if ! npm run build --loglevel warn; then
   fail "TypeScript forditas sikertelen. Ellenorizd a hibauzeneteket fentebb."
 fi
 ok "$(_t macos.ts_built)"
+
+# Webinár Mágus: AutoWebinar MCP alapkapcsolat seedelése.
+# Idempotens: meglévő autowebinar beállítást és más MCP-ket nem ír felül.
+if ! node "$INSTALL_DIR/scripts/seed-autowebinar-mcp.mjs"; then
+  warn "AutoWebinar MCP automatikus beállítása kimaradt; később a Beállításokból pótolható."
+fi
 
 # Stamp the build-marker after a successful fresh-install build, mirroring the
 # update.sh self-heal (dist/.built-commit records the commit dist was built

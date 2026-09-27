@@ -21,7 +21,7 @@ function avatarBust() { return _avatarEpoch ? `?t=${_avatarEpoch}` : '' }
   // name, {agentId} = canonical slug) are filled from /api/marveen once it
   // resolves (see initSidebarBrand). Until then these defaults keep a stock
   // install byte-identical. Explicit params passed to t() still win over them.
-  window._brandTokens = window._brandTokens || { brand: 'Marveen', bot: 'Marveen', agentId: 'marveen' }
+  window._brandTokens = window._brandTokens || { brand: 'Webinár Mágus', bot: 'Webinár Mágus', agentId: 'marveen' }
 
   window.t = function t(key, params = {}) {
     const lang = window._lang || 'hu'
@@ -2271,8 +2271,8 @@ async function showCardDetail(card) {
 
   // Author select for new comment. Default to the bot assignee resolved by
   // type (never a hard-coded display name -- BOT_NAME differs per deployment),
-  // falling back to the first assignee. The old literal 'Marveen' never matched
-  // on non-Marveen installs, so the select stayed on "-- Nincs --" and the
+  // falling back to the first assignee. The old literal 'Webinár Mágus' never matched
+  // on non-Webinár Mágus installs, so the select stayed on "-- Nincs --" and the
   // comment submit silently no-opped (addCommentBtn returns when !author).
   // (Resolution of the #254/#241 overlap: keep #241's type-resolved default
   // over #254's hard-coded "Gábor" -- same deployment-agnostic reasoning.)
@@ -3292,17 +3292,17 @@ async function showIdleFlushScheduleWarning(agent) {
   } catch { /* the hint is best-effort; never break the pane over it */ }
 }
 
-async function openMarveenDetail() {
+async function openWebinár MágusDetail() {
   const m = window._marveen
   if (!m) return
 
-  // Reuse the agent detail modal for Marveen
+  // Reuse the agent detail modal for Webinár Mágus
   currentAgent = { ...m, name: mainAgentId(), claudeMd: '', soulMd: '', mcpJson: '', skills: [] }
   setupAutoRestartUI(currentAgent)
   setupContextGuardUI(agentApiName())
   setupIdleFlushUI(currentAgent)
 
-  const displayName = m.name || 'Marveen'
+  const displayName = m.name || 'Webinár Mágus'
   document.getElementById('agentDetailTitle').textContent = displayName
   const avatar = document.getElementById('agentDetailAvatar')
   avatar.className = 'detail-avatar gradient-1'
@@ -3317,13 +3317,13 @@ async function openMarveenDetail() {
   // called, so the main agent's Skills tab always looked empty.
   loadSkills(agentApiName())
 
-  // Process control for Marveen - always running, no start/stop
+  // Process control for Webinár Mágus - always running, no start/stop
   document.getElementById('processDot').className = 'process-dot running'
   document.getElementById('processLabel').textContent = t('agents.status.running')
   document.getElementById('processUptime').textContent = `tmux: ${m.tmuxSession || '-'}`
   document.getElementById('agentStartBtn').hidden = true
   document.getElementById('agentStopBtn').hidden = true
-  // Sync the settings tab model select with Marveen's actual model so it
+  // Sync the settings tab model select with Webinár Mágus's actual model so it
   // doesn't carry over the previously opened sub-agent's selection.
   const marveenModelSelect = document.getElementById('editAgentModel')
   if (marveenModelSelect) {
@@ -3355,7 +3355,7 @@ async function openMarveenDetail() {
   // Editing the main agent's identity files via the dashboard is intentionally
   // not allowed: a leaked dashboard token would otherwise let a remote user
   // rewrite the live agent's instructions. Edit via filesystem or by asking
-  // Marveen on Telegram instead.
+  // Webinár Mágus on Telegram instead.
   let mFull = m
   try {
     const claudeRes = await fetch('/api/marveen')
@@ -3366,7 +3366,7 @@ async function openMarveenDetail() {
       document.getElementById('editMcpJson').value = mFull.mcpJson || ''
     }
   } catch {}
-  applyMarveenReadonlyMode(true)
+  applyWebinár MágusReadonlyMode(true)
 
   // Telegram tab -- without this the tab stays in the default "not connected"
   // view even though the bot is running and receiving messages.
@@ -3379,7 +3379,7 @@ async function openMarveenDetail() {
     running: true,
   })
 
-  // Delete button - hide for Marveen
+  // Delete button - hide for Webinár Mágus
   document.getElementById('deleteAgentBtn').style.display = 'none'
 
   document.getElementById('detailAvatarGallery').hidden = true
@@ -3388,11 +3388,11 @@ async function openMarveenDetail() {
 }
 
 // `readOnly` is really "this modal is showing the MAIN agent" -- it is called
-// with true from openMarveenDetail and false from openAgentDetail, which makes
+// with true from openWebinár MágusDetail and false from openAgentDetail, which makes
 // it the one hook both open-paths share. Anything that must differ for the main
 // agent belongs here; putting it in openAgentDetail alone silently no-ops for
 // the main agent, whose panel never runs that function.
-function applyMarveenReadonlyMode(readOnly) {
+function applyWebinár MágusReadonlyMode(readOnly) {
   // The Team tab describes a SUB-agent's place in the hierarchy: role
   // (leader | member), who it reports to, who it delegates to. None of it
   // applies to the main agent, which has no team record and cannot have one.
@@ -3406,7 +3406,7 @@ function applyMarveenReadonlyMode(readOnly) {
   const teamTabBtn = document.querySelector('#agentTabNav .tab-btn[data-tab="team"]')
   if (teamTabBtn) teamTabBtn.hidden = readOnly
   const textareaIds = ['editClaudeMd', 'editSoulMd', 'editMcpJson']
-  // saveModelBtn stays VISIBLE but disabled for Marveen, so the settings tab
+  // saveModelBtn stays VISIBLE but disabled for Webinár Mágus, so the settings tab
   // doesn't look like the row is missing -- the other save buttons (tied to
   // readonly textareas) are hidden because the textareas are also hidden by
   // the readonly note flow.
@@ -3495,10 +3495,10 @@ function attachTmuxCopyButtons(card, agent) {
 function renderAgents() {
   agentsGrid.querySelectorAll('.agent-card:not(.add-card)').forEach((el) => el.remove())
 
-  // Marveen card (always first)
+  // Webinár Mágus card (always first)
   if (window._marveen) {
     const m = window._marveen
-    const displayName = m.name || 'Marveen'
+    const displayName = m.name || 'Webinár Mágus'
     // The model is no longer hardcoded: /api/marveen reports the configured
     // model (readActiveModelFromProjectDir). Mirror the sub-agent card, which
     // uses the model value as both the badge label and class. Fall back to
@@ -3539,12 +3539,12 @@ function renderAgents() {
     mCard.querySelector('.agent-conversation-btn')?.addEventListener('click', (e) => {
       e.stopPropagation(); openConversationModal(mainAgentId(), t('agents.marveen_boss'))
     })
-    mCard.addEventListener('click', () => onAgentCardClick(mainAgentId(), openMarveenDetail))
+    mCard.addEventListener('click', () => onAgentCardClick(mainAgentId(), openWebinár MágusDetail))
     agentsGrid.insertBefore(mCard, addBtn)
   }
 
   for (const agent of agents) {
-    // Skip the main agent — it is already rendered as the dedicated Marveen
+    // Skip the main agent — it is already rendered as the dedicated Webinár Mágus
     // card above (window._marveen block). Without this guard a second card
     // appears once the agents/atlas/ config directory is created.
     if (agent.name === mainAgentId()) continue
@@ -3631,7 +3631,7 @@ function renderAgents() {
 // same working/idle state derived from the tmux pane) to turn an agent card's
 // Terminal button green while that agent is actively working, and clear it when
 // it goes idle or stops. No new backend -- just a second consumer of the same
-// endpoint. The main (Marveen) card matches on mainAgentId(); sub-agent cards
+// endpoint. The main (Webinár Mágus) card matches on mainAgentId(); sub-agent cards
 // match on their data-name.
 let agentsBusyTimer = null
 // Last known 'working' ids from the poll below. Shared with the org chart so a
@@ -3757,7 +3757,7 @@ function openFederatedThread(qualifiedId) {
 // === Agent Detail ===
 async function openAgentDetail(agentName) {
   if (agentName === mainAgentId()) {
-    return openMarveenDetail()
+    return openWebinár MágusDetail()
   }
 
   try {
@@ -3847,11 +3847,11 @@ async function openAgentDetail(agentName) {
   // Process control
   updateProcessControl(currentAgent)
 
-  // Channels restart button is Marveen-only -- hide on normal agents.
+  // Channels restart button is Webinár Mágus-only -- hide on normal agents.
   document.getElementById('marveenRestartBtn').hidden = true
 
-  // Restore editable Settings (Marveen detail flips this to read-only).
-  applyMarveenReadonlyMode(false)
+  // Restore editable Settings (Webinár Mágus detail flips this to read-only).
+  applyWebinár MágusReadonlyMode(false)
 
   // Delete button (restore visibility for normal agents)
   document.getElementById('deleteAgentBtn').style.display = ''
@@ -3948,8 +3948,8 @@ document.getElementById('avatarChangeBtn').addEventListener('click', () => {
   const gallery = document.getElementById('detailAvatarGallery')
   gallery.hidden = !gallery.hidden
   if (!gallery.hidden) {
-    const isMarveen = currentAgent && currentAgent.role === 'main'
-    const avatarEndpoint = isMarveen ? '/api/marveen/avatar' : `/api/agents/${encodeURIComponent(currentAgent.name)}/avatar`
+    const isWebinár Mágus = currentAgent && currentAgent.role === 'main'
+    const avatarEndpoint = isWebinár Mágus ? '/api/marveen/avatar' : `/api/agents/${encodeURIComponent(currentAgent.name)}/avatar`
 
     const grid = document.getElementById('detailAvatarGrid')
     grid.innerHTML = ''
@@ -3967,7 +3967,7 @@ document.getElementById('avatarChangeBtn').addEventListener('click', () => {
           if (!res.ok) throw new Error()
           showToast(t('agents.toast.avatar_updated'))
           bumpAvatarEpoch()
-          const imgUrl = isMarveen ? `/api/marveen/avatar${avatarBust()}` : `/api/agents/${encodeURIComponent(currentAgent.name)}/avatar${avatarBust()}`
+          const imgUrl = isWebinár Mágus ? `/api/marveen/avatar${avatarBust()}` : `/api/agents/${encodeURIComponent(currentAgent.name)}/avatar${avatarBust()}`
           document.getElementById('agentDetailAvatar').innerHTML = `<img src="${imgUrl}" alt="">`
           gallery.hidden = true
           loadAgents()
@@ -4033,8 +4033,8 @@ document.getElementById('avatarChangeBtn').addEventListener('click', () => {
 
   async function uploadAvatarFile(file) {
     if (!currentAgent) return
-    const isMarveen = currentAgent.role === 'main'
-    const endpoint = isMarveen ? '/api/marveen/avatar' : `/api/agents/${encodeURIComponent(currentAgent.name)}/avatar`
+    const isWebinár Mágus = currentAgent.role === 'main'
+    const endpoint = isWebinár Mágus ? '/api/marveen/avatar' : `/api/agents/${encodeURIComponent(currentAgent.name)}/avatar`
     const form = new FormData()
     form.append('avatar', file, file.name)
     try {
@@ -4042,7 +4042,7 @@ document.getElementById('avatarChangeBtn').addEventListener('click', () => {
       if (!res.ok) throw new Error()
       showToast(t('agents.toast.avatar_uploaded'))
       bumpAvatarEpoch()
-      const imgUrl = isMarveen ? `/api/marveen/avatar${avatarBust()}` : `/api/agents/${encodeURIComponent(currentAgent.name)}/avatar${avatarBust()}`
+      const imgUrl = isWebinár Mágus ? `/api/marveen/avatar${avatarBust()}` : `/api/agents/${encodeURIComponent(currentAgent.name)}/avatar${avatarBust()}`
       document.getElementById('agentDetailAvatar').innerHTML = `<img src="${imgUrl}" alt="">`
       document.getElementById('detailAvatarGallery').hidden = true
       resetAvatarUpload()
@@ -5203,7 +5203,7 @@ document.getElementById('saveMcpJsonBtn').addEventListener('click', async () => 
 
 // === Channel tab ===
 // Provider-aware "connected" check: a sub-agent record carries hasTelegram /
-// hasDiscord / hasSlack flags from the backend, Marveen carries the same
+// hasDiscord / hasSlack flags from the backend, Webinár Mágus carries the same
 // shape from /api/marveen. Falls back to hasTelegram for legacy callers.
 function agentIsConnected(agent) {
   if (!agent) return false
@@ -11536,7 +11536,7 @@ function chatAvatarHtml(agentName, size = 32) {
 // -- composing to it creates a phantom "marveen" thread that sits pending
 // forever and shows up as a duplicate of the true main agent (whatever id this
 // install actually uses). Resolve _marveen before rendering any chat target.
-async function ensureMarveenLoaded() {
+async function ensureWebinár MágusLoaded() {
   if (window._marveen?.agentId) return
   try {
     const r = await fetch('/api/marveen')
@@ -11545,7 +11545,7 @@ async function ensureMarveenLoaded() {
 }
 
 async function loadMessagesPage() {
-  await ensureMarveenLoaded()
+  await ensureWebinár MágusLoaded()
   await loadChatAgentList()
 }
 
@@ -12156,8 +12156,8 @@ async function initSidebarBrand() {
       // renders the configured names, then re-apply the static i18n so any
       // label painted before this fetch resolved picks up the real brand.
       window._brandTokens = {
-        brand: brand || 'Marveen',
-        bot: m.name || brand || 'Marveen',
+        brand: brand || 'Webinár Mágus',
+        bot: m.name || brand || 'Webinár Mágus',
         agentId: m.agentId || 'marveen',
       }
       if (typeof renderStaticI18n === 'function') renderStaticI18n()
@@ -12817,13 +12817,13 @@ function wireOnboarding(step) {
     const loadPending = async () => {
       try {
         // Same boot race the Messages page already guards against (see
-        // ensureMarveenLoaded): until /api/marveen resolves window._marveen,
+        // ensureWebinár MágusLoaded): until /api/marveen resolves window._marveen,
         // mainAgentId() returns the literal 'marveen' fallback. On a renamed
         // install that is not the main agent, so the backend takes the
         // sub-agent branch, finds no such agent dir and answers 404 -- and the
         // wizard rendered that as "no pending pairing" while the Channel view,
         // which uses the selected agent, listed the very same request.
-        await ensureMarveenLoaded()
+        await ensureWebinár MágusLoaded()
         const res = await fetch(`/api/agents/${encodeURIComponent(onboardingAgentId || mainAgentId())}/channels/${onboardingChannelProvider}/pending`)
         // Surface the failure instead of rendering it as an empty list. This is
         // a separate defect from the id race: without it a 404 or an auth error
@@ -16316,7 +16316,7 @@ document.getElementById('terminalInputToggle')?.addEventListener('change', (e) =
 // Renders the agent's Claude Code transcript as a chat-style timeline: inbound
 // Telegram messages, the agent's replies, and (optionally) its notes/actions.
 // Solves what the raw terminal can't: a readable, searchable review of what
-// actually happened -- also the support view for customer-hosted Marveens.
+// actually happened -- also the support view for customer-hosted Webinár Máguss.
 const CONVERSATION_PAGE_SIZE = 400
 let conversationEntries = []
 let conversationAgentName = null
