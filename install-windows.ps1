@@ -155,8 +155,8 @@ Write-Host "  ✓ Függőségek telepítve" -ForegroundColor Green
 Write-Host ""
 Write-Host "[4/5] Webinár Mágus telepítése WSL-ben..." -ForegroundColor White
 
-$installPath = Read-Host "  Telepítési útvonal WSL-ben [~/marveen]"
-if ([string]::IsNullOrEmpty($installPath)) { $installPath = "~/marveen" }
+$installPath = Read-Host "  Telepítési útvonal WSL-ben [~/webinar-magus]"
+if ([string]::IsNullOrEmpty($installPath)) { $installPath = "~/webinar-magus" }
 
 wsl bash -c @"
 set -e
@@ -180,6 +180,9 @@ echo '  ✓ npm csomagok telepítve'
 # Build
 npm run build --silent
 echo '  ✓ TypeScript lefordítva'
+
+# AutoWebinar MCP alapkapcsolat seedelése
+node scripts/seed-autowebinar-mcp.mjs || echo '  ! AutoWebinar MCP automatikus beállítása kimaradt'
 
 # Ollama models
 if command -v ollama &>/dev/null; then
