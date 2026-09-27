@@ -45,7 +45,7 @@ verdikt egy `COMMENTED` review-komment, aminek az elso sora a harom allapot egyi
 A `FIX-THEN-GO` azt jelenti, hogy erdemben nincs blokkolo: a kommentben MEGNEVEZETT javitasoknak be
 kell menniuk, a szerzo pedig a PR-en olvassa vissza oket -- uj review-kor nem kell, de a merge megvarja
 azt a visszaolvasast.
-Reszletek: [CONTRIBUTING.md](https://github.com/Szotasz/marveen/blob/develop/CONTRIBUTING.md).
+Reszletek: [CONTRIBUTING.md](https://github.com/tmisi76/webinar-magus/blob/develop/CONTRIBUTING.md).
 
 An outside contributor's PR is approved the normal way (green "Approved"). A PR written by the fleet
 cannot carry that state, because every agent writes through the same GitHub account, so the verdict
