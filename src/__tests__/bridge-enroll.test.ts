@@ -24,7 +24,7 @@ import type { RouteContext } from '../web/routes/types.js'
 
 const TOKEN = 'a'.repeat(64)
 
-/** Build a VALID `ssh-ed25519 <base64> marveen-remote:<uuid>` line: the blob
+/** Build a VALID `ssh-ed25519 <base64> webinar-magus-remote:<uuid>` line: the blob
  *  is the real OpenSSH wire format around 32 random key bytes. */
 function makeKeyLine(installId = randomUUID()): { line: string; installId: string } {
   const type = Buffer.from('ssh-ed25519', 'utf8')
@@ -33,7 +33,7 @@ function makeKeyLine(installId = randomUUID()): { line: string; installId: strin
     Buffer.from([0, 0, 0, type.length]), type,
     Buffer.from([0, 0, 0, 32]), key,
   ])
-  return { line: `ssh-ed25519 ${blob.toString('base64')} marveen-remote:${installId}`, installId }
+  return { line: `ssh-ed25519 ${blob.toString('base64')} webinar-magus-remote:${installId}`, installId }
 }
 
 const HOST_KEY_B64 = Buffer.concat([
@@ -48,7 +48,7 @@ let sshDir: string
 // of deleting the variable: a bare `delete` dropped the suite-wide default for
 // every later test in the worker, which would have re-opened the ENROLL813 hole
 // one test after the setup file closed it.
-const SUITE_DEFAULT_SSH_DIR = process.env.MARVEEN_SSH_DIR
+const SUITE_DEFAULT_SSH_DIR = process.env.WEBINAR_MAGUS_SSH_DIR
 
 function testDeps(overrides: Partial<BridgeEnrollDeps> = {}): BridgeEnrollDeps {
   return {
@@ -76,7 +76,7 @@ beforeEach(() => {
   // and so resolve the ssh dir themselves -- previously homedir()/.ssh, i.e.
   // the operator's real authorized_keys. Individual tests used to set this
   // AFTER the first such case had already run.
-  process.env.MARVEEN_SSH_DIR = sshDir
+  process.env.WEBINAR_MAGUS_SSH_DIR = sshDir
   _clearDeviceKeyCacheForTest()
   getDb().prepare('DELETE FROM device_keys').run()
   getDb().prepare('DELETE FROM config_change_log').run()
@@ -84,8 +84,8 @@ beforeEach(() => {
 
 afterEach(() => {
   rmSync(sshDir, { recursive: true, force: true })
-  if (SUITE_DEFAULT_SSH_DIR === undefined) delete process.env.MARVEEN_SSH_DIR
-  else process.env.MARVEEN_SSH_DIR = SUITE_DEFAULT_SSH_DIR
+  if (SUITE_DEFAULT_SSH_DIR === undefined) delete process.env.WEBINAR_MAGUS_SSH_DIR
+  else process.env.WEBINAR_MAGUS_SSH_DIR = SUITE_DEFAULT_SSH_DIR
 })
 
 describe('bridgeEnroll', () => {
@@ -175,7 +175,7 @@ describe('removeAuthorizedKey (pure) + removeBridgeSshAccess', () => {
   it('pure removal keeps other lines untouched', () => {
     const { installId } = makeKeyLine()
     const keep = 'ssh-ed25519 AAAAkeep other@host'
-    const drop = `${RESTRICT_OPTIONS} ssh-ed25519 AAAAdrop marveen-remote:${installId}`
+    const drop = `${RESTRICT_OPTIONS} ssh-ed25519 AAAAdrop webinar-magus-remote:${installId}`
     const r = removeAuthorizedKey(`${keep}\n${drop}\n`, installId)
     expect(r.removed).toBe(true)
     expect(r.content).toBe(`${keep}\n`)
@@ -271,7 +271,7 @@ describe('POST /api/security/bridge-enroll (HTTP)', () => {
     if (ok.statusCode === 201) {
       // Past host validation and enrolled -- into the seam directory, which is
       // the point: the line exists HERE and not in anyone's real home.
-      expect(authKeysContent()).toContain('marveen-remote:')
+      expect(authKeysContent()).toContain('webinar-magus-remote:')
     } else {
       // The only other outcome a host may legitimately produce is the documented
       // hard fail when no ssh-ed25519 host key can be obtained (the same branch
@@ -282,8 +282,8 @@ describe('POST /api/security/bridge-enroll (HTTP)', () => {
     }
   })
 
-  it('enrolls end-to-end over the route (MARVEEN_SSH_DIR seam) and audits', async () => {
-    process.env.MARVEEN_SSH_DIR = sshDir
+  it('enrolls end-to-end over the route (WEBINAR_MAGUS_SSH_DIR seam) and audits', async () => {
+    process.env.WEBINAR_MAGUS_SSH_DIR = sshDir
     // The route uses default deps; loopback keyscan may fail in CI, so give it
     // a host-key file candidate instead: point readFile via a real file the
     // resolver checks -- not injectable here, so accept either outcome:
@@ -299,7 +299,7 @@ describe('POST /api/security/bridge-enroll (HTTP)', () => {
     expect(findDeviceKeyByInstallId(installId)).not.toBeNull()
     const audit = getDb().prepare("SELECT new_value FROM config_change_log WHERE key='security.bridge_enroll'").all() as { new_value: string }[]
     expect(audit).toHaveLength(1)
-    // The active MARVEEN_SSH_DIR override must be visible in the audit row.
+    // The active WEBINAR_MAGUS_SSH_DIR override must be visible in the audit row.
     expect(audit[0]!.new_value).toContain('sshdir_override=1')
   })
 })
@@ -311,7 +311,7 @@ describe('DELETE /api/auth/device-keys/:id for a paired key', () => {
     // Simulate the fs failure the UI must warn about: the line is already gone
     // (file deleted out-of-band), so removal cannot succeed.
     rmSync(join(sshDir, 'authorized_keys'), { force: true })
-    process.env.MARVEEN_SSH_DIR = sshDir
+    process.env.WEBINAR_MAGUS_SSH_DIR = sshDir
     const r = await call(tryHandleAuth, 'DELETE', `/api/auth/device-keys/${outcome.deviceKeyId}`, { auth: { kind: 'token' } })
     expect(r.statusCode).toBe(200)
     // The key itself is revoked (dead) even though the ssh half failed...
@@ -326,7 +326,7 @@ describe('DELETE /api/auth/device-keys/:id for a paired key', () => {
   it('drops the authorized_keys line together with the key', async () => {
     const { line, installId } = makeKeyLine()
     const outcome = await bridgeEnroll({ keyLine: line, name: 'Pair' }, testDeps())
-    process.env.MARVEEN_SSH_DIR = sshDir
+    process.env.WEBINAR_MAGUS_SSH_DIR = sshDir
     const r = await call(tryHandleAuth, 'DELETE', `/api/auth/device-keys/${outcome.deviceKeyId}`, { auth: { kind: 'token' } })
     expect(r.statusCode).toBe(200)
     expect(r.json().ssh_removed).toBe(true)
