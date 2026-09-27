@@ -41,6 +41,7 @@ jobs:
           echo "claude CI stub: tests must not execute this binary" >&2
           exit 1
           EOF
+      - run: bash scripts/check-brand-hygiene.sh
       - run: npm run typecheck
       - run: npm run syntax-check
       - run: npm test
