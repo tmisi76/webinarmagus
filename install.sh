@@ -1,5 +1,5 @@
 #!/bin/bash
-# Marveen - OS-detect wrapper
+# Webinár Mágus - OS-detect wrapper
 # Detects the operating system and launches the appropriate installer.
 
 # ── Language selection ────────────────────────────────────────────────────────
