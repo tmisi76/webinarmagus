@@ -7,7 +7,7 @@ import { PROJECT_ROOT } from './config.js'
 const TYPING_REFRESH_MS = 4000
 import { logger } from './logger.js'
 
-const AGENT_TIMEOUT_MS = Number(process.env.MARVEEN_AGENT_TIMEOUT_MS) || 20 * 60 * 1000
+const AGENT_TIMEOUT_MS = Number(process.env.WEBINAR_MAGUS_AGENT_TIMEOUT_MS) || 20 * 60 * 1000
 
 // When runAgent is called for pure text generation (CLAUDE.md / SOUL.md /
 // skill-md / prompt expansion / memory categorization), the model must not
@@ -115,9 +115,9 @@ function resolveClaudeCodeBin(): string | undefined {
 // Backend selector (jun.15 subscription migration). 'worker' (default) routes
 // to a persistent INTERACTIVE Claude Code session in tmux (subscription login);
 // 'sdk' keeps the legacy Agent SDK `query` path (API billing) as an emergency
-// rollback via MARVEEN_AGENT_BACKEND=sdk.
+// rollback via WEBINAR_MAGUS_AGENT_BACKEND=sdk.
 function agentBackend(): 'worker' | 'sdk' {
-  return (process.env.MARVEEN_AGENT_BACKEND || 'worker').toLowerCase() === 'sdk' ? 'sdk' : 'worker'
+  return (process.env.WEBINAR_MAGUS_AGENT_BACKEND || 'worker').toLowerCase() === 'sdk' ? 'sdk' : 'worker'
 }
 
 export interface RunAgentOpts {
@@ -159,7 +159,7 @@ export async function runAgent(
     if (!authFailed) return { text, error }
     logger.error('runAgent: worker auth unrecoverable, falling back to SDK backend for this call (API billing)')
   }
-  // --- legacy SDK path (rollback: MARVEEN_AGENT_BACKEND=sdk; API billing) ---
+  // --- legacy SDK path (rollback: WEBINAR_MAGUS_AGENT_BACKEND=sdk; API billing) ---
   let newSessionId: string | undefined
   let resultText: string | null = null
   let blockedReason: string | undefined
