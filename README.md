@@ -1,6 +1,6 @@
 # Webinár Mágus
 
-![Webinár Mágus](webinar-magus-banner.png)
+![Webinár Mágus](banner.png)
 
 **Önálló AI marketingcsapat webináriumhoz, ügyfélszerzéshez, értékesítéshez és automatizáláshoz.**
 
