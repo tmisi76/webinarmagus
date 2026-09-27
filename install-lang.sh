@@ -56,8 +56,8 @@ _t() {
     hu:prompt_discord_channel_id) echo "  Discord channel ID: " ;;
     en:prompt_discord_user_id) echo "  Your Discord user ID (operator): " ;;
     hu:prompt_discord_user_id) echo "  A Te Discord user ID-d (operator): " ;;
-    en:prompt_bot_name) echo "  What should your bot be named? [Marveen]: " ;;
-    hu:prompt_bot_name) echo "  Mi legyen a botod neve? [Marveen]: " ;;
+    en:prompt_bot_name) echo "  What should your bot be named? [Webinár Mágus]: " ;;
+    hu:prompt_bot_name) echo "  Mi legyen a botod neve? [Webinár Mágus]: " ;;
     en:prompt_pair_code) echo "  Pairing code (or leave empty, do it later): " ;;
     hu:prompt_pair_code) echo "  Párosító kód (vagy hagyd üresen, ha később csinálod): " ;;
     en:prompt_migrate) echo "  Would you like to run the migration now? (y/n) [n]: " ;;
@@ -73,8 +73,8 @@ _t() {
     # ── Key messages ─────────────────────────────────────────────────
     en:warn_pair_missing) echo "  WARNING: Telegram pairing was not completed!" ;;
     hu:warn_pair_missing) echo "  FIGYELEM: Telegram párosítás nem történt meg!" ;;
-    en:success_installed) echo "  ✓ Marveen successfully installed!" ;;
-    hu:success_installed) echo "  ✓ Marveen sikeresen telepítve!" ;;
+    en:success_installed) echo "  ✓ Webinár Mágus successfully installed!" ;;
+    hu:success_installed) echo "  ✓ Webinár Mágus sikeresen telepítve!" ;;
     # ── Tagline / wizard ─────────────────────────────────────────────
     en:tagline) echo "Your AI team, running while you sleep." ;;
     hu:tagline) echo "AI csapatod, ami fut amíg te alszol." ;;
@@ -310,8 +310,8 @@ _t() {
     en:stop.stopped) echo "stopped" ;;
     hu:stop.stopped) echo "leallitva" ;;
     # ── scripts/migrate.sh ────────────────────────────────────────────
-    en:migrate.title) echo "Marveen - System Migration" ;;
-    hu:migrate.title) echo "Marveen - Rendszer költöztetés" ;;
+    en:migrate.title) echo "Webinár Mágus - System Migration" ;;
+    hu:migrate.title) echo "Webinár Mágus - Rendszer költöztetés" ;;
     en:migrate.subtitle) echo "Migrating previous AI assistant" ;;
     hu:migrate.subtitle) echo "Korábbi AI asszisztens átmigrálása" ;;
     en:migrate.section_1) echo "[1/4] Source selection" ;;
