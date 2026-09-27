@@ -42,12 +42,12 @@ const PATH = '/api/bridge/service-ports'
 /** Same shared resolver as the enroll path (ENROLL813). This function used to be
  * a byte-identical COPY of the one in bridge-enroll.ts -- which is how two
  * resolvers and a seam-less CLI could drift apart unnoticed. Test-run with no
- * MARVEEN_SSH_DIR throws rather than silently returning the real ~/.ssh, so a
+ * WEBINAR_MAGUS_SSH_DIR throws rather than silently returning the real ~/.ssh, so a
  * future route-level test here cannot rewrite or delete the operator's keys the
  * way the enroll route's test added them. */
 function resolveSshDir(): string {
   return resolveSshDirShared((sshDir) => {
-    logger.warn({ sshDir }, 'MARVEEN_SSH_DIR override active for service-port update (test seam; must be unset in production)')
+    logger.warn({ sshDir }, 'WEBINAR_MAGUS_SSH_DIR override active for service-port update (test seam; must be unset in production)')
   })
 }
 
