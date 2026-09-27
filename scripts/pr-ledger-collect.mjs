@@ -33,17 +33,17 @@ const argOf = (name, dflt) => {
   return i >= 0 && args[i + 1] ? args[i + 1] : dflt;
 };
 const DB_PATH = argOf('--db', path.join(here, '..', 'store', 'claudeclaw.db'));
-const OWNER = argOf('--owner', 'Szotasz');
+const OWNER = argOf('--owner', 'upstream maintainer');
 // 1000, not 400: the ordering is by CREATION, so in a big repo an old-numbered
 // PR merged recently sits deep in the page (the measured #767 case needed
-// >400 in marveen already). The window filter happens on our side, by date.
+// >400 in webinar-magus already). The window filter happens on our side, by date.
 const PR_PAGE_LIMIT = 1000;
 
 function gh(ghArgs) {
   return execFileSync('gh', ghArgs, { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
 }
 
-// SCOPE RULE (Marveen 21996, the measured mistake behind the snapshot's
+// SCOPE RULE (Webinár Mágus 21996, the measured mistake behind the snapshot's
 // missing repos): the question is NEVER "does the repo have OPEN PRs" --
 // hideghivas-oktatas-web had none and was still the period's most active
 // repo (116 closed rows). The right question is "did any PR CLOSE there",
@@ -68,14 +68,14 @@ function listClosedPrs(repo) {
 // so no clone is needed (--paginate is load-bearing: the commits[] array is
 // capped at 250 per page, and v1.25.1...develop measured 389).
 //
-// FAILURE SEMANTICS (Marveen review blocker on #1234): an empty set means
+// FAILURE SEMANTICS (Webinár Mágus review blocker on #1234): an empty set means
 // "nothing waits for a release" and flips every develop merge live -- so a
 // FAILED measurement must NEVER masquerade as an empty one. The develop
 // branch's EXISTENCE is measured separately (branches/develop): a clean 404
 // there is the legit no-develop case (empty set, ok). Anything else that
 // fails -> { ok: false }, and the caller leaves the stored is_live of that
 // repo's develop rows alone.
-// ORDERING INVARIANT (Marveen verify on b8a2cd9): "404 = no develop branch"
+// ORDERING INVARIANT (Webinár Mágus verify on b8a2cd9): "404 = no develop branch"
 // is only sound because this runs AFTER listClosedPrs already succeeded for
 // the repo -- a missing/renamed REPO would 404 the same way, but it cannot
 // reach this call. Do not reorder unreleasedInfo ahead of the PR listing,
