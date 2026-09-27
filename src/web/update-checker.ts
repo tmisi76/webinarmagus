@@ -53,7 +53,7 @@ let updateStatusCache: UpdateStatus = {
   latest: '',
   behind: 0,
   commits: [],
-  remote: 'Szotasz/marveen',
+  remote: 'tmisi76/webinar-magus',
   lastChecked: 0,
 }
 
@@ -178,7 +178,7 @@ export async function branchOnRemote(
     // `origin` pointed at the original author and pushes to a second remote
     // (`fork`) inverts it, and then the local branch name is exactly the thing
     // the author's repo has never heard of. Measured here 2026-09-04: the
-    // check asked Szotasz/marveen for `fix/email-gate-mcp-matcher`, GitHub
+    // check asked tmisi76/webinar-magus for `fix/email-gate-mcp-matcher`, GitHub
     // answered 422, the error was swallowed into `behind: 0`, and the install
     // reported itself up to date for nine days while 66 commits piled up.
     // Verify before trusting the convention; a branch nobody has ever pushed
@@ -202,7 +202,7 @@ export function parseGitHubRemote(root: string = PROJECT_ROOT): string {
       if (m) return m[1]
     } catch { /* try the next remote */ }
   }
-  return 'Szotasz/marveen'
+  return 'tmisi76/webinar-magus'
 }
 
 type GhCompare = {
@@ -210,7 +210,7 @@ type GhCompare = {
   commits?: { sha: string; commit: { message: string; author: { name: string; date: string } } }[]
 }
 
-const GH_HEADERS = { 'Accept': 'application/vnd.github+json', 'User-Agent': 'marveen-update-check' }
+const GH_HEADERS = { 'Accept': 'application/vnd.github+json', 'User-Agent': 'webinar-magus-update-check' }
 
 // Fetch the GitHub compare of base...head. Returns the parsed body, the
 // sentinel { notFound: true } on a 404 (base or head not on the remote), or
@@ -343,7 +343,7 @@ export async function refreshUpdateStatus(): Promise<UpdateStatus> {
     // 1) find HEAD of the branch to compare against on THAT remote
     const branch = await branchOnRemote(remote)
     const latestRes = await fetch(`https://api.github.com/repos/${remote}/commits/${encodeURIComponent(branch)}`, {
-      headers: { 'Accept': 'application/vnd.github+json', 'User-Agent': 'marveen-update-check' },
+      headers: { 'Accept': 'application/vnd.github+json', 'User-Agent': 'webinar-magus-update-check' },
       signal: AbortSignal.timeout(TOOL_TIMEOUTS['github']),
     })
     if (!latestRes.ok) throw new Error(`GitHub /commits/${branch} -> ${latestRes.status}`)
