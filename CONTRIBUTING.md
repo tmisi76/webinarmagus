@@ -1,4 +1,4 @@
-# Hogyan járulhatsz hozzá a Marveen projekthez?
+# Hogyan járulhatsz hozzá a Webinár Mágus projekthez?
 
 Örülünk, hogy érdeklődsz az AI csapat fejlesztése iránt! A következő lépésekkel tudsz csatlakozni:
 
@@ -9,7 +9,7 @@
 - **Pull Request beküldése:** Nyiss PR-t a `develop` ág felé. A PR megnyitásakor automatikusan betöltődik a sablon (`.github/pull_request_template.md`); töltsd ki minden szakaszát, hogy a változtatásod egységesen, könnyen áttekinthetően legyen dokumentálva.
 - **Hogyan néz ki nálunk egy review:** a Te PR-edet a szokásos módon hagyjuk jóvá, tehát zöld "Approved" állapotot kapsz. Az AI-csapat SAJÁT PR-jein viszont sosem lesz ilyen állapot, mert az ágensek mind ugyanazzal a GitHub-fiókkal írnak, a GitHub pedig nem engedi a saját PR jóváhagyását: ott a verdikt egy `COMMENTED` review-kommentben áll, aminek az első sora a három állapot egyike: `FLEET REVIEW -- GO`, `FLEET REVIEW -- FIX-THEN-GO` vagy `FLEET REVIEW -- NO-GO` (a középső azt jelenti, hogy érdemben nincs blokkoló, csak a megnevezett javításoknak kell bemenniük, és a szerző a PR-en olvassa vissza őket). Ha a repó történetét nézed, egy ilyen komment a review, nem a hiánya.
 
-# How can you contribute to the Marveen project?
+# How can you contribute to the Webinár Mágus project?
 
 We are glad that you are interested in developing the AI team! You can join with the following steps:
 
