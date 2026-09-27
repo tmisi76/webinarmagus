@@ -1,4 +1,4 @@
-﻿# Marveen - Windows telepítő (WSL alapú)
+﻿# Webinár Mágus - Windows telepítő (WSL alapú)
 # Futtatás: PowerShell-ben: .\install-windows.ps1
 
 # NOTE: wsl.exe emits its output as UTF-16LE, so PowerShell captures each char
@@ -11,7 +11,7 @@
 # on Windows PowerShell 5.1; the targeted null-strip is side-effect-free.
 
 Write-Host ""
-Write-Host "  ▐▛███▜▌   Marveen" -ForegroundColor Cyan
+Write-Host "  ▐▛███▜▌   Webinár Mágus" -ForegroundColor Cyan
 Write-Host " ▝▜█████▛▘  AI csapatod, ami fut amíg te alszol." -ForegroundColor Cyan
 Write-Host "   ▘▘ ▝▝" -ForegroundColor DarkCyan
 Write-Host ""
@@ -33,7 +33,7 @@ try {
 if (-not $wslInstalled) {
     Write-Host "  ✗ WSL nem található" -ForegroundColor Red
     Write-Host ""
-    Write-Host "  A Marveen WSL-ben fut (Windows Subsystem for Linux)." -ForegroundColor Yellow
+    Write-Host "  A Webinár Mágus WSL-ben fut (Windows Subsystem for Linux)." -ForegroundColor Yellow
     Write-Host "  Telepítéshez futtasd rendszergazdaként:" -ForegroundColor Yellow
     Write-Host ""
     Write-Host "    wsl --install" -ForegroundColor Cyan
@@ -79,7 +79,7 @@ if ($distros -match "Ubuntu") {
         wsl -d Ubuntu -- bash -c "curl -fsSL https://raw.githubusercontent.com/Szotasz/marveen/main/install-linux.sh -o /tmp/marveen-install.sh && bash /tmp/marveen-install.sh"
         if ($LASTEXITCODE -eq 0) {
             Write-Host ""
-            Write-Host "  ✓ Marveen telepítve az Ubuntu-ban (install-linux.sh)." -ForegroundColor Green
+            Write-Host "  ✓ Webinár Mágus telepítve az Ubuntu-ban (install-linux.sh)." -ForegroundColor Green
             exit 0
         }
         Write-Host "  Az automatikus folytatás nem sikerült (lehet hogy újraindítás kell az Ubuntu-hoz)." -ForegroundColor Yellow
@@ -151,9 +151,9 @@ echo '  ✓ Bun'
 
 Write-Host "  ✓ Függőségek telepítve" -ForegroundColor Green
 
-# Step 4: Clone and setup Marveen
+# Step 4: Clone and setup Webinár Mágus
 Write-Host ""
-Write-Host "[4/5] Marveen telepítése WSL-ben..." -ForegroundColor White
+Write-Host "[4/5] Webinár Mágus telepítése WSL-ben..." -ForegroundColor White
 
 $installPath = Read-Host "  Telepítési útvonal WSL-ben [~/marveen]"
 if ([string]::IsNullOrEmpty($installPath)) { $installPath = "~/marveen" }
@@ -165,10 +165,10 @@ INSTALL_DIR="$installPath"
 
 # Clone repo
 if [ ! -d "\$INSTALL_DIR" ]; then
-    git clone --branch main https://github.com/Szotasz/marveen.git "\$INSTALL_DIR"
+    git clone --branch main https://github.com/tmisi76/webinar-magus.git "\$INSTALL_DIR"
     echo '  ✓ Repó klónozva'
 else
-    echo '  ✓ Marveen mappa már létezik'
+    echo '  ✓ Webinár Mágus mappa már létezik'
 fi
 
 cd "\$INSTALL_DIR"
@@ -198,7 +198,7 @@ if command -v ollama &>/dev/null; then
 fi
 "@
 
-Write-Host "  ✓ Marveen telepítve" -ForegroundColor Green
+Write-Host "  ✓ Webinár Mágus telepítve" -ForegroundColor Green
 
 # Step 5: Configuration
 Write-Host ""
@@ -313,7 +313,7 @@ try {
 Write-Host ""
 Write-Host "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" -ForegroundColor Green
 Write-Host ""
-Write-Host "  ✓ Marveen sikeresen telepítve!" -ForegroundColor Green -BackgroundColor Black
+Write-Host "  ✓ Webinár Mágus sikeresen telepítve!" -ForegroundColor Green -BackgroundColor Black
 Write-Host ""
 Write-Host "  Indítás:" -ForegroundColor White
 Write-Host "    wsl bash -c 'cd $installPath && node dist/index.js &'" -ForegroundColor Cyan
