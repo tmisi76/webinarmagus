@@ -77,7 +77,7 @@ const DONE = join(ROOT, 'done')
 // file dropped straight into pending/ carries neither, and would arrive looking
 // exactly like a routed one.
 //
-// PR #1099 review (Szotasz, 2026-09-03), condition 1: mark such an item
+// PR #1099 review (upstream maintainer, 2026-09-03), condition 1: mark such an item
 // untrusted AT THE READER. This grants nobody new rights -- whoever can write
 // this directory already runs as the user -- what it protects is the frame: in
 // this fleet provenance has to be VISIBLE, and an unframed item silently
