@@ -61,7 +61,7 @@ describe('generateClaudeMd: the inviolable rules survive refactors', () => {
     expect(src).toContain('fleet-hygiene')
   })
 
-  // Review finding (Szotasz, 2026-09-03, PR #1061): the first shape of this
+  // Review finding (upstream maintainer, 2026-09-03, PR #1061): the first shape of this
   // split moved three rules OUT of the always-present prompt and into an
   // on-demand skill, leaving only a parenthetical pointer behind. Two of the
   // three are inviolable (credential escalation, another principal's data),
