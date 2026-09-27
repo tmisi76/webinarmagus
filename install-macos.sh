@@ -40,7 +40,7 @@ source "$(dirname "$0")/install-lang.sh"
 # Error-translation layer (NPMPERM1 kor): minden stderr egy log-fajlba is
 # megy, hogy hibanal a trap ne csak sorszamot mondjon, hanem le tudja
 # forditani az upstream hibat (explain_install_error, install-lang.sh).
-INSTALL_ERRLOG=$(mktemp "${TMPDIR:-/tmp}/marveen-install-stderr.XXXXXX")
+INSTALL_ERRLOG=$(mktemp "${TMPDIR:-/tmp}/webinar-magus-install-stderr.XXXXXX")
 exec 2> >(tee -a "$INSTALL_ERRLOG" >&2)
 
 ok() { echo -e "  ${GREEN}✓${NC} $*"; }
@@ -100,14 +100,14 @@ trap 'on_error $LINENO' ERR
 clear
 echo ""
 echo -e "${BOLD}  ▐▛███▜▌   Webinár Mágus${NC}"
-if [[ "${MARVEEN_LANG:-hu}" == "en" ]]; then
+if [[ "${WEBINAR_MAGUS_LANG:-hu}" == "en" ]]; then
   echo -e "${BOLD} ▝▜█████▛▘  Your AI team, running while you sleep.${NC}"
 else
   echo -e "${BOLD} ▝▜█████▛▘  $(_t tagline)${NC}"
 fi
 echo -e "${DIM}   ▘▘ ▝▝${NC}"
 echo ""
-if [[ "${MARVEEN_LANG:-hu}" == "en" ]]; then
+if [[ "${WEBINAR_MAGUS_LANG:-hu}" == "en" ]]; then
   echo -e "${DIM}  Setup wizard - macOS${NC}"
 else
   echo -e "${DIM}$(_t macos.wizard_title)${NC}"
@@ -571,9 +571,9 @@ else
   # Managed settings: Claude Code requires allowedChannelPlugins at system level
   MANAGED_DIR="/Library/Application Support/ClaudeCode"
   MANAGED_FILE="$MANAGED_DIR/managed-settings.json"
-  SLACK_ENTRY='{"plugin":"slack-channel","marketplace":"marveen-marketplace"}'
+  SLACK_ENTRY='{"plugin":"slack-channel","marketplace":"webinar-magus-marketplace"}'
   TELEGRAM_ENTRY='{"plugin":"telegram","marketplace":"claude-plugins-official"}'
-  TEAMS_ENTRY='{"plugin":"teams","marketplace":"marveen-marketplace"}'
+  TEAMS_ENTRY='{"plugin":"teams","marketplace":"webinar-magus-marketplace"}'
   DISCORD_ENTRY='{"plugin":"discord","marketplace":"claude-plugins-official"}'
   REQUIRED_JSON="{\"allowedChannelPlugins\":[$SLACK_ENTRY,$TELEGRAM_ENTRY,$TEAMS_ENTRY,$DISCORD_ENTRY]}"
 
@@ -585,7 +585,7 @@ else
     # at install time, so no manual managed-settings edit is needed later.
     HAS_ALL=$(sudo python3 -c "
 import json, sys
-required = [('slack-channel','marveen-marketplace'),('telegram','claude-plugins-official'),('teams','marveen-marketplace'),('discord','claude-plugins-official')]
+required = [('slack-channel','webinar-magus-marketplace'),('telegram','claude-plugins-official'),('teams','webinar-magus-marketplace'),('discord','claude-plugins-official')]
 try:
   d = json.load(open('$MANAGED_FILE'))
   plugins = d.get('allowedChannelPlugins', [])
@@ -607,9 +607,9 @@ except: sys.exit(1)
 import json, os, shutil, sys
 p = sys.argv[1]
 required = [
-    {'plugin': 'slack-channel', 'marketplace': 'marveen-marketplace'},
+    {'plugin': 'slack-channel', 'marketplace': 'webinar-magus-marketplace'},
     {'plugin': 'telegram', 'marketplace': 'claude-plugins-official'},
-    {'plugin': 'teams', 'marketplace': 'marveen-marketplace'},
+    {'plugin': 'teams', 'marketplace': 'webinar-magus-marketplace'},
     {'plugin': 'discord', 'marketplace': 'claude-plugins-official'},
 ]
 try:
@@ -651,9 +651,9 @@ SLACKMERGEPY
 import json, os, sys
 p = sys.argv[1]
 required = [
-    {'plugin': 'slack-channel', 'marketplace': 'marveen-marketplace'},
+    {'plugin': 'slack-channel', 'marketplace': 'webinar-magus-marketplace'},
     {'plugin': 'telegram', 'marketplace': 'claude-plugins-official'},
-    {'plugin': 'teams', 'marketplace': 'marveen-marketplace'},
+    {'plugin': 'teams', 'marketplace': 'webinar-magus-marketplace'},
     {'plugin': 'discord', 'marketplace': 'claude-plugins-official'},
 ]
 tmp = p + '.tmp'
@@ -685,14 +685,14 @@ if [ -f "$INSTALL_DIR/scripts/ensure-managed-channels-enabled.sh" ]; then
   echo -e "  Managed-settings channel-kapu ellenorzese..."
   # ORGGATESILENT806: the gate script must never fail the install (exit 0 on
   # every path -- a personal org is a legitimate no-op), but its OUTCOME must
-  # not vanish either: it prints a MARVEEN_CHANNELS_GATE=ok|manual verdict
+  # not vanish either: it prints a WEBINAR_MAGUS_CHANNELS_GATE=ok|manual verdict
   # line, and the final summary below repeats it -- with the exact root
   # command when manual. Silent skipping was the bug, not skipping.
   CHANNELS_GATE_OUT="$(bash "$INSTALL_DIR/scripts/ensure-managed-channels-enabled.sh" 2>&1 || true)"
   # The verdict line is machine-facing; the customer sees only the human lines.
-  echo "$CHANNELS_GATE_OUT" | grep -v "MARVEEN_CHANNELS_GATE=" || true
+  echo "$CHANNELS_GATE_OUT" | grep -v "WEBINAR_MAGUS_CHANNELS_GATE=" || true
   case "$CHANNELS_GATE_OUT" in
-    *MARVEEN_CHANNELS_GATE=ok*) CHANNELS_GATE_STATE="ok" ;;
+    *WEBINAR_MAGUS_CHANNELS_GATE=ok*) CHANNELS_GATE_STATE="ok" ;;
     *) CHANNELS_GATE_STATE="manual" ;;
   esac
 fi
@@ -702,16 +702,16 @@ BOT_NAME=${BOT_NAME:-"Webinár Mágus"}
 
 # Derive the ASCII slug the backend uses everywhere (tmux sessions, plist
 # labels, DB agent_id, API routing). NFKD + ASCII + lowercase dashes, empty
-# fallback to "marveen" so we never end up with a blank identifier.
+# fallback to "webinarMagus" so we never end up with a blank identifier.
 MAIN_AGENT_ID=$(python3 - "$BOT_NAME" <<'PYEOF'
 import sys, unicodedata, re
 s = sys.argv[1].strip()
 s = unicodedata.normalize('NFKD', s).encode('ASCII', 'ignore').decode()
 s = re.sub(r'[^a-zA-Z0-9]+', '-', s).strip('-').lower()
-print(s or 'marveen')
+print(s or 'webinarMagus')
 PYEOF
 )
-if [ "$MAIN_AGENT_ID" != "marveen" ]; then
+if [ "$MAIN_AGENT_ID" != "webinarMagus" ]; then
   echo -e "  ${DIM}$(_t macos.agent_id_info)${MAIN_AGENT_ID}${NC}"
 fi
 
@@ -894,7 +894,7 @@ if [ -n "${MACOS_OAUTH_TOKEN_INPUT:-}" ]; then
     # Keychain OAuth session -- which periodically expires and 401s the bot
     # into a parked TUI that the router reads as busy, so the channel goes
     # silent with no error (the confirmed root cause of the 2026-07-23
-    # marveen-channels outage). The setting existed but nothing ever turned
+    # webinar-magus-channels outage). The setting existed but nothing ever turned
     # it on, so every default install was wired to that failure mode.
     #
     # Only in THIS branch, i.e. only when the installer just captured the
@@ -926,7 +926,7 @@ else
   # Probe the way a SERVICE runs: isolated config dir (so the Keychain and the
   # operator's shell cannot make a broken install look healthy) carrying ONLY
   # the credential the launchd units will get.
-  _probe_cfg="$(mktemp -d 2>/dev/null || echo /tmp/marveen-authprobe.$$)"
+  _probe_cfg="$(mktemp -d 2>/dev/null || echo /tmp/webinar-magus-authprobe.$$)"
   # A 401 here is the VERDICT this gate exists to report, not an installer
   # error. Unguarded, the capture reached the ERR trap and on_error() exited 1 --
   # blaming the enclosing `fi` -- so the BROKEN branch below (and its
@@ -997,7 +997,7 @@ fi
 
 # Scaffold default scheduled tasks into ~/.claude/scheduled-tasks/. Templates
 # carry {{MAIN_AGENT_ID}} placeholders so tasks target the user's chosen agent
-# slug rather than hardcoded "marveen". Skip task dirs that already exist --
+# slug rather than hardcoded "webinarMagus". Skip task dirs that already exist --
 # never overwrite user customizations.
 SCHED_TPL_DIR="$INSTALL_DIR/templates/scheduled-tasks"
 SCHED_TARGET_DIR="$HOME/.claude/scheduled-tasks"
@@ -1084,8 +1084,8 @@ elif [ "$CHANNEL_PROVIDER" = "discord" ]; then
   PLUGIN_ID="discord@claude-plugins-official"
   PLUGIN_SHORT="discord"
 else
-  PLUGIN_MARKETPLACE="Szotasz/marveen-marketplace"
-  PLUGIN_ID="slack-channel@marveen-marketplace"
+  PLUGIN_MARKETPLACE="tmisi76/webinar-magus-marketplace"
+  PLUGIN_ID="slack-channel@webinar-magus-marketplace"
   PLUGIN_SHORT="slack-channel"
 fi
 
@@ -1108,7 +1108,7 @@ fi
 
 # Enable plugin at project scope so --channels can boot-time activate it
 cd "$INSTALL_DIR"
-if claude plugin enable "$PLUGIN_SHORT@marveen-marketplace" --scope project 2>/dev/null || \
+if claude plugin enable "$PLUGIN_SHORT@webinar-magus-marketplace" --scope project 2>/dev/null || \
    claude plugin enable "$PLUGIN_ID" --scope project 2>/dev/null; then
   ok "${CHANNEL_PROVIDER} plugin project-scope-ban engedelyezve"
 else
