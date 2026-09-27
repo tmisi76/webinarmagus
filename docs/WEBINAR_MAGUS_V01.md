@@ -237,12 +237,17 @@ Az eredeti MIT licencek és copyright notice-ok megmaradnak a `LICENSE` / attrib
 
 ### M3 — AI csapat
 
-- [ ] Webinár Mágus specialist
-- [ ] Hirdetés Mágus specialist
-- [ ] Email Mágus specialist
-- [ ] Funnel Mágus specialist
-- [ ] Sales Mágus specialist
-- [ ] Főmágus routing/delegation szabályok
+Kanonikus persona-források: `templates/webinar-magus-agents/`.
+
+- [x] Webinár Mágus persona
+- [x] Hirdetés Mágus persona
+- [x] Email Mágus persona
+- [x] Funnel Mágus persona
+- [x] Sales Mágus persona
+- [x] Főmágus routing/delegation alapelvek
+- [ ] specialisták automatikus seedelése friss telepítéskor
+- [ ] specialisták idempotens frissítési/migrációs szabálya
+- [ ] specialisták indítási és health-check folyamata
 
 ### M4 — Mission Control
 
