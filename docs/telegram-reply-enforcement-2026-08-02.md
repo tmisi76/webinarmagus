@@ -66,7 +66,7 @@ allow; stale → allow; max-block backstop → allow; no-inbound (heartbeat-only
 
 ## Re-sync regression check (upstream)
 
-This fix is being submitted upstream (Szotasz/marveen). When a later update
+This fix is being submitted upstream (tmisi76/webinar-magus). When a later update
 re-syncs it back, verify it did not break:
 
 1. `python3 scripts/__tests__/telegram-reply-guard.test.py` still exits 0.
@@ -75,7 +75,7 @@ re-syncs it back, verify it did not break:
 3. Live check: send a Telegram message, answer as plain text on purpose, confirm
    the Stop hook blocks and forces the reply tool.
 
-Tracked on the kanban board (project `marveen`) so the upstream-sync flow revisits
+Tracked on the kanban board (project `webinar-magus`) so the upstream-sync flow revisits
 it on merge-back.
 
 ## Activation note
