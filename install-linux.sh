@@ -470,7 +470,7 @@ ok "zstd $(zstd --version | grep -oE 'v[0-9]+\.[0-9]+\.[0-9]+' | head -1)"
 # git itt mar garantaltan telepitve van (lasd fentebb a [1/7] lepest).
 if [ ! -f "$INSTALL_DIR/package.json" ]; then
   warn "A telepito a repon kivulrol fut (nincs package.json itt: $INSTALL_DIR)."
-  TARGET_DIR="$HOME/marveen"
+  TARGET_DIR="$HOME/webinar-magus"
   if [ -f "$TARGET_DIR/package.json" ]; then
     ok "Meglevo checkout: $TARGET_DIR -- frissites..."
     git -C "$TARGET_DIR" pull --ff-only 2>/dev/null || warn "git pull kihagyva (helyi valtozasok lehetnek)."
@@ -997,6 +997,12 @@ if ! npm run build --loglevel warn; then
   fail "TypeScript forditas sikertelen. Ellenorizd a hibauzeneteket fentebb."
 fi
 ok "TypeScript leforditva"
+
+# Webinár Mágus: AutoWebinar MCP alapkapcsolat seedelése.
+# Idempotens: meglévő autowebinar beállítást és más MCP-ket nem ír felül.
+if ! node "$INSTALL_DIR/scripts/seed-autowebinar-mcp.mjs"; then
+  warn "AutoWebinar MCP automatikus beállítása kimaradt; később a Beállításokból pótolható."
+fi
 
 # Stamp the build-marker after a successful fresh-install build, mirroring the
 # update.sh self-heal (dist/.built-commit records the commit dist was built
