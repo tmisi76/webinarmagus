@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Scheduler preCheck for the marveen-io-kozosseg-orszem task (ORSICTX912).
+# Scheduler preCheck for the webinar-magus-skill-service-kozosseg-orszem task (ORSICTX912).
 #
 # runPreCheck contract: exit 0 + stdout "SKIP" = no model turn this tick;
 # exit 0 + other stdout = run the task with stdout as a context prefix;
@@ -68,7 +68,7 @@ PURCHASE_AT="$(echo "$THRESHOLDS" | sed -n 4p)"
 
 # The token goes into the environment only -- never stdout (the sentinel's own
 # 2026-09-14 lesson, inherited here).
-SUPABASE_ACCESS_TOKEN="$(echo 'X=MARVEEN-CONNECTORS-PAT' | "$NODE" "$VAULT_RESOLVE" | cut -d= -f2-)" || fail_open "vault resolve failed"
+SUPABASE_ACCESS_TOKEN="$(echo 'X=WEBINAR_MAGUS-CONNECTORS-PAT' | "$NODE" "$VAULT_RESOLVE" | cut -d= -f2-)" || fail_open "vault resolve failed"
 [ -n "$SUPABASE_ACCESS_TOKEN" ] || fail_open "vault returned an empty PAT"
 export SUPABASE_ACCESS_TOKEN
 
