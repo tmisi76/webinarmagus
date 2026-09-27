@@ -26,7 +26,7 @@ describe('costops API (route smoke)', () => {
     // seed a current-month token_usage row -> proves volume is reported but NOT priced
     const now = Math.floor(Date.now() / 1000)
     const w = monthWindow(now)
-    getDb().prepare("INSERT INTO token_usage (agent,session_id,timestamp,input_tokens,output_tokens,cache_read_tokens,cache_creation_tokens) VALUES ('marveen','s',?,1234,5678,0,0)").run(w.start + 100)
+    getDb().prepare("INSERT INTO token_usage (agent,session_id,timestamp,input_tokens,output_tokens,cache_read_tokens,cache_creation_tokens) VALUES ('webinarMagus','s',?,1234,5678,0,0)").run(w.start + 100)
 
     const { ctx, out } = fakeCtx('/api/costs/summary')
     const handled = await tryHandleCosts(ctx)
@@ -63,7 +63,7 @@ describe('costops API (route smoke)', () => {
     expect(await tryHandleCosts(ctx)).toBe(false)
   })
 
-  // Review blocker (Szotasz, PR #524): "the GET endpoint performs writes". Proven with a
+  // Review blocker (upstream, PR #524): "the GET endpoint performs writes". Proven with a
   // REAL fixed cost configured (not the empty default), so there is something a buggy
   // sync-on-GET would actually have inserted -- an empty-config test wouldn't distinguish
   // "no write call" from "nothing to write".
