@@ -42,6 +42,7 @@ jobs:
           exit 1
           EOF
       - run: npm run typecheck
+      - run: npm run syntax-check
       - run: npm test
       # Shell-test wiring (SEEDREFRESH826 fold-in, from the #1066 verify): a
       # regression guard that only runs manually rots exactly like a one-shot
