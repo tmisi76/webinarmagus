@@ -791,6 +791,12 @@ if ! npm run build --loglevel warn; then
 fi
 ok "$(_t macos.ts_built)"
 
+# Webinár Mágus: AutoWebinar MCP alapkapcsolat seedelése.
+# Idempotens: meglévő autowebinar beállítást és más MCP-ket nem ír felül.
+if ! node "$INSTALL_DIR/scripts/seed-autowebinar-mcp.mjs"; then
+  warn "AutoWebinar MCP automatikus beállítása kimaradt; később a Beállításokból pótolható."
+fi
+
 # Stamp the build-marker after a successful fresh-install build, mirroring the
 # update.sh self-heal (dist/.built-commit records the commit dist was built
 # from). On a build abort, fail()/the ERR-trap exit 1 BEFORE this line, so the
