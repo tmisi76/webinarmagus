@@ -2,7 +2,7 @@ import { statSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { logger } from '../logger.js'
 import { MAIN_AGENT_ID, PROJECT_ROOT } from '../config.js'
-import { hardRestartMarveenChannels, lastMainRespawnAt, MARVEEN_POST_RESPAWN_GRACE_MS, markAgentRestartPending } from './channel-monitor.js'
+import { hardRestartWebinarMagusChannels, lastMainRespawnAt, WEBINAR_MAGUS_POST_RESPAWN_GRACE_MS, markAgentRestartPending } from './channel-monitor.js'
 import { shouldDeferForRecentRespawn } from './stuck-tool-call-watcher.js'
 import { listAgentNames, listAllAgentNames, agentDir, readAgentModel, readAgentRemoteHost } from './agent-config.js'
 import { configDirFor } from './main-transcript-root.js'
@@ -313,12 +313,12 @@ async function performRestart(name: string): Promise<void> {
     // four times and failed every time, and main was unreachable for ~2h until
     // a hand restart.
     //
-    // hardRestartMarveenChannels() is the existing helper the channel-monitor
+    // hardRestartWebinarMagusChannels() is the existing helper the channel-monitor
     // down-cascade already uses: it keeps the launchd path for macOS installs
     // (and warns + falls back to a pane respawn if the plist is absent), uses
     // respawn-pane-FRESH on Linux -- fresh is exactly what the guard wants --
     // and writes the shared respawn stamp so the other respawners defer to us.
-    const res = hardRestartMarveenChannels()
+    const res = hardRestartWebinarMagusChannels()
     if (!res.ok) throw new Error(res.error ?? 'main channels hard restart failed')
   } else {
     // DANICTXHUROK906: claim the reconcile grace window BEFORE the stop, so
@@ -497,7 +497,7 @@ async function checkAgent(name: string, nowMs: number): Promise<void> {
   // may have just restarted main for its own reasons.
   //
   // Same mechanism every other respawner already shares -- lastMainRespawnAt()
-  // plus MARVEEN_POST_RESPAWN_GRACE_MS -- so there is no new tunable and no new
+  // plus WEBINAR_MAGUS_POST_RESPAWN_GRACE_MS -- so there is no new tunable and no new
   // number; see the identical gate in stuck-tool-call-watcher.ts. Main only: the
   // stamp describes the main channels session, and a sub-agent restart is
   // cheap and independently coordinated.
@@ -513,7 +513,7 @@ async function checkAgent(name: string, nowMs: number): Promise<void> {
     const lastRespawn = lastMainRespawnAt()
     if (shouldDeferForRecentRespawn(lastRespawn, nowMs)) {
       logger.info(
-        { name, sinceRespawnMs: lastRespawn ? nowMs - lastRespawn : null, graceMs: MARVEEN_POST_RESPAWN_GRACE_MS },
+        { name, sinceRespawnMs: lastRespawn ? nowMs - lastRespawn : null, graceMs: WEBINAR_MAGUS_POST_RESPAWN_GRACE_MS },
         'context-guard: recent main respawn within grace, deferring restart (avoid restart loop / boot churn)',
       )
       guardStates.set(name, state)
