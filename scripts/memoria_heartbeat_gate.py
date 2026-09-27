@@ -65,7 +65,7 @@ delivered INTO an already-running turn never reaches conversation_log at all,
 so there is nothing for the conservative watermark to keep in front of:
 
   - the inbound writer is scripts/hooks/ledger-capture.py, bound to
-    UserPromptSubmit (marveen/.claude/settings.json). No prompt is submitted
+    UserPromptSubmit (webinar-magus/.claude/settings.json). No prompt is submitted
     mid-turn, so the hook never fires for that message.
   - the outbound writer (ledger-outbound.py) is bound to PostToolUse, which
     DOES fire mid-turn. Hence the asymmetry in the evidence.
@@ -138,10 +138,10 @@ import urllib.error
 import urllib.request
 from pathlib import Path
 
-MARVEEN_DIR = Path(__file__).resolve().parents[1]
-DB_PATH = MARVEEN_DIR / "store" / "claudeclaw.db"
-TOKEN_FILE = MARVEEN_DIR / "store" / ".dashboard-token"
-MARKER_FILE = MARVEEN_DIR / "store" / "memoria-heartbeat-gate-last.txt"
+WEBINAR_MAGUS_DIR = Path(__file__).resolve().parents[1]
+DB_PATH = WEBINAR_MAGUS_DIR / "store" / "claudeclaw.db"
+TOKEN_FILE = WEBINAR_MAGUS_DIR / "store" / ".dashboard-token"
+MARKER_FILE = WEBINAR_MAGUS_DIR / "store" / "memoria-heartbeat-gate-last.txt"
 MESSAGES_URL = "http://localhost:3420/api/messages"
 
 AGENT = "picard"
@@ -180,7 +180,7 @@ WAKE_MESSAGE = (
     "NE oraban merd az ablakot -- a jelolo szabja meg, nem az eltelt ido. Ha a "
     "legutobbi fordulo elszallt vagy kimaradt, ez az ablak tobb orat is atfoghat.\n\n"
     "AZ UTOLSO LEPESED, a fordulo vegen, KOTELEZOEN, PONTOSAN igy:\n"
-    f"  python3 {MARVEEN_DIR}/scripts/memoria_heartbeat_gate.py "
+    f"  python3 {WEBINAR_MAGUS_DIR}/scripts/memoria_heartbeat_gate.py "
     "--mark-seen --conv-upto {conv_max}\n"
     "A {conv_max} a FENTI ablak vege, ne ird at a pillanatnyi max-ra. A ket jelolo "
     "szandekosan NEM egyformán lep: a tool_call_log a pillanatnyi max-ra megy (az a te "
