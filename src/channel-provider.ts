@@ -159,7 +159,7 @@ export async function checkTelegramTokenBusy(
         busy: true,
         reason: 'webhook',
         // The token itself must never appear in this user-facing message.
-        error: 'A bot token érvényes, de a bot jelenleg webhookra van kötve, így a Marveen nem tud rá csatlakozni. '
+        error: 'A bot token érvényes, de a bot jelenleg webhookra van kötve, így a Webinár Mágus nem tud rá csatlakozni. '
           + `Teendő: szüntesd meg a webhookot (nyisd meg böngészőben: https://api.telegram.org/bot<A-TOKENED>/deleteWebhook), `
           + 'vagy készíts új botot a @BotFather-nél, és annak a tokenjét add meg itt.',
       }
@@ -210,8 +210,8 @@ export function formatForSlackMrkdwn(text: string): string {
 
 const slackProvider: ChannelProvider = {
   type: 'slack',
-  pluginId: 'slack-channel@marveen-marketplace',
-  pluginPaneId: 'plugin:slack-channel:marveen-marketplace',
+  pluginId: 'slack-channel@webinar-magus-marketplace',
+  pluginPaneId: 'plugin:slack-channel:webinar-magus-marketplace',
   envKeys: ['SLACK_BOT_TOKEN', 'SLACK_APP_TOKEN'],
   stateDir: 'slack',
   chatIdFormat: 'Slack channel/DM ID (e.g. C01234ABCDE)',
@@ -442,8 +442,8 @@ const TEAMS_MAX_MESSAGE_LENGTH = 28000
 
 const teamsProvider: ChannelProvider = {
   type: 'teams',
-  pluginId: 'teams@marveen-marketplace',
-  pluginPaneId: 'plugin:teams:marveen-marketplace',
+  pluginId: 'teams@webinar-magus-marketplace',
+  pluginPaneId: 'plugin:teams:webinar-magus-marketplace',
   envKeys: ['TEAMS_BOT_APP_ID', 'TEAMS_BOT_APP_PASSWORD', 'TEAMS_BOT_TENANT_ID'],
   stateDir: 'teams',
   chatIdFormat: 'Teams conversation id (managed by the plugin per pairing)',
