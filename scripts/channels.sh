@@ -15,7 +15,7 @@
 #    némán, véglegesen leállt. Ezért ad a watchdog-ág mostantól nem-nulla kódot,
 #    és ezért Restart=always a unit -- a két platform szemantikája így egyezik.
 #
-# Kézzel rácsatlakozás: tmux attach -t <MAIN_AGENT_ID>-channels (pl. marveen-channels)
+# Kézzel rácsatlakozás: tmux attach -t <MAIN_AGENT_ID>-channels (pl. webinar-magus-channels)
 
 INSTALL_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 
@@ -58,7 +58,7 @@ if [ -f "$INSTALL_DIR/.env" ]; then
   unset _api_key _oauth
 fi
 CHANNEL_PROVIDER="${CHANNEL_PROVIDER:-telegram}"
-SESSION="${MAIN_AGENT_ID:-marveen}-channels"
+SESSION="${MAIN_AGENT_ID:-webinar-magus}-channels"
 
 # Resolve plugin ID from provider.
 #
@@ -69,9 +69,9 @@ SESSION="${MAIN_AGENT_ID:-marveen}-channels"
 # the /mcp pane for it.
 resolve_plugin_ids() {
   case "$1" in
-    slack)    PLUGIN_ID="slack-channel@marveen-marketplace"; PLUGIN_PANE_ID="plugin:slack-channel:marveen-marketplace" ;;
-    whatsapp) PLUGIN_ID="whatsapp@marveen-marketplace";      PLUGIN_PANE_ID="plugin:whatsapp:marveen-marketplace" ;;
-    teams)    PLUGIN_ID="teams@marveen-marketplace";         PLUGIN_PANE_ID="plugin:teams:marveen-marketplace" ;;
+    slack)    PLUGIN_ID="slack-channel@webinar-magus-marketplace"; PLUGIN_PANE_ID="plugin:slack-channel:webinar-magus-marketplace" ;;
+    whatsapp) PLUGIN_ID="whatsapp@webinar-magus-marketplace";      PLUGIN_PANE_ID="plugin:whatsapp:webinar-magus-marketplace" ;;
+    teams)    PLUGIN_ID="teams@webinar-magus-marketplace";         PLUGIN_PANE_ID="plugin:teams:webinar-magus-marketplace" ;;
     discord)  PLUGIN_ID="discord@claude-plugins-official";   PLUGIN_PANE_ID="plugin:discord:discord" ;;
     *)        PLUGIN_ID="telegram@claude-plugins-official";  PLUGIN_PANE_ID="plugin:telegram:telegram" ;;
   esac
@@ -155,7 +155,7 @@ resolve_main_model() {
   # restart). The .env override above still wins, so a hand-set model is untouched.
   #
   # EVERY failure here is NAMED to store/channels-failures.log, never a silent
-  # empty (Marveen review, the jq-gap's sibling): a missing node, a missing/stale
+  # empty (Webinár Mágus review, the jq-gap's sibling): a missing node, a missing/stale
   # dist (channels can start before the update rebuilds it), or an empty read all
   # get a log line so the operator sees WHY the model is unset instead of it
   # looking like nothing was configured.
@@ -304,7 +304,7 @@ fi
 # exited 0, systemd's Restart=on-failure did not restart it, and the box lost
 # its supervisor with nothing to read afterwards; journald had no line either,
 # because leftover cgroup processes suppressed the usual "Deactivated" record).
-# Marveen's ordering decision (msg 23453): exit LOGGING lands first; only then
+# Webinár Mágus's ordering decision (msg 23453): exit LOGGING lands first; only then
 # is a Restart-policy change even discussable, because until the exit is
 # measured, `on-failure` is the last remaining signal.
 #
@@ -353,7 +353,7 @@ chexit_track() {
 trap chexit_track DEBUG
 trap 'record_channels_exit "$?"' EXIT
 
-# Positive-control seam for the trap itself (Marveen's stipulation, msg 23453):
+# Positive-control seam for the trap itself (Webinár Mágus's stipulation, msg 23453):
 # a deliberate exit through the test path MUST write a row, otherwise a silent
 # log is indistinguishable from "no exit happened". Sits AFTER the trap so the
 # exit exercises the real handler; touches nothing else.
@@ -470,7 +470,7 @@ unset TELEGRAM_BOT_TOKEN SLACK_BOT_TOKEN SLACK_APP_TOKEN DISCORD_BOT_TOKEN
 # the parent client's socket. Any `tmux new-session` we spawn then tries to
 # attach to that socket and fails with "Permission denied" (different uid,
 # different socket dir, or just the new-session-from-inside-tmux block). The
-# child marveen-channels session must live on a fresh tmux client context, so
+# child webinar-magus-channels session must live on a fresh tmux client context, so
 # scrub the env var before any tmux command runs.
 unset TMUX
 
@@ -626,7 +626,7 @@ MODEL_FLAG=""
 # -- the ROTATING macOS Keychain OAuth session, or (Linux) the shared
 # ~/.claude/.credentials.json -- both periodically expire and 401 the main bot
 # ("Please run /login"), while the isolated sub-agents (long-lived fleet
-# setup-token) never do (confirmed root cause of the 2026-07-23 marveen-channels
+# setup-token) never do (confirmed root cause of the 2026-07-23 webinar-magus-channels
 # silent outage). The helper provisions an isolated CLAUDE_CONFIG_DIR (same code
 # path as the sub-agents, via dist/web/agent-process.js) and authenticates the
 # main agent from the fleet setup-token instead.
@@ -711,7 +711,7 @@ if [ -n "$_node_bin" ] && [ -f "$INSTALL_DIR/dist/web/agent-process.js" ]; then
       curl -s --max-time 5 -X POST "http://localhost:${_guard_port:-3420}/api/messages" \
         -H "Content-Type: application/json" \
         -H "Authorization: Bearer $(cat "$INSTALL_DIR/store/.dashboard-token")" \
-        -d "{\"from\":\"channels-sh-guard\",\"to\":\"${MAIN_AGENT_ID:-marveen}\",\"content\":\"[GUARD] A fo agens a KOZOS ~/.claude alol indult, pedig van flotta setup-token (store/.claude-oauth-token). A MAIN_AGENT_ISOLATED_CONFIG nincs beallitva, ezert az auth a rotalodo megosztott credentialbol megy: ez lejarhat, 401-be all a TUI, es a csatorna NEMAN elerhetetlen lesz. Teendo: MAIN_AGENT_ISOLATED_CONFIG=1 beallitasa, majd channels session restart.\"}" \
+        -d "{\"from\":\"channels-sh-guard\",\"to\":\"${MAIN_AGENT_ID:-webinar-magus}\",\"content\":\"[GUARD] A fo agens a KOZOS ~/.claude alol indult, pedig van flotta setup-token (store/.claude-oauth-token). A MAIN_AGENT_ISOLATED_CONFIG nincs beallitva, ezert az auth a rotalodo megosztott credentialbol megy: ez lejarhat, 401-be all a TUI, es a csatorna NEMAN elerhetetlen lesz. Teendo: MAIN_AGENT_ISOLATED_CONFIG=1 beallitasa, majd channels session restart.\"}" \
         -o /dev/null -w '%{http_code}' 2>>"$INSTALL_DIR/store/channels-failures.log" > "$INSTALL_DIR/store/.channels-guard-http.$$" || true
       # Honest delivery (NOTIFYVAKSWEEP826 zaro kor): a fenti WARN csak a helyi
       # logban el -- ha a koordinatornak szolo POST elbukik, az is a logba
@@ -737,7 +737,7 @@ if [ -n "$_node_bin" ] && [ -f "$INSTALL_DIR/dist/web/agent-process.js" ]; then
       curl -s --max-time 5 -X POST "http://localhost:${_guard_port:-3420}/api/messages" \
         -H "Content-Type: application/json" \
         -H "Authorization: Bearer $(cat "$INSTALL_DIR/store/.dashboard-token")" \
-        -d "{\"from\":\"channels-sh-guard\",\"to\":\"${MAIN_AGENT_ID:-marveen}\",\"content\":\"[GUARD] A channels session most a KOZOS ~/.claude alol indult, pedig letezik izolalt config dir (.channels-config). A MAIN_AGENT_ISOLATED_CONFIG beallitas valoszinuleg elveszett (store/config-overrides.json torlodott es nincs .env kulcs). Az auth a rotalodo shared sessionbol megy, 401-veszely. Teendo: MAIN_AGENT_ISOLATED_CONFIG=1 visszaallitasa, majd channels session restart.\"}" \
+        -d "{\"from\":\"channels-sh-guard\",\"to\":\"${MAIN_AGENT_ID:-webinar-magus}\",\"content\":\"[GUARD] A channels session most a KOZOS ~/.claude alol indult, pedig letezik izolalt config dir (.channels-config). A MAIN_AGENT_ISOLATED_CONFIG beallitas valoszinuleg elveszett (store/config-overrides.json torlodott es nincs .env kulcs). Az auth a rotalodo shared sessionbol megy, 401-veszely. Teendo: MAIN_AGENT_ISOLATED_CONFIG=1 visszaallitasa, majd channels session restart.\"}" \
         -o /dev/null -w '%{http_code}' 2>>"$INSTALL_DIR/store/channels-failures.log" > "$INSTALL_DIR/store/.channels-guard-http.$$" || true
       # Honest delivery (NOTIFYVAKSWEEP826 zaro kor): a fenti WARN csak a helyi
       # logban el -- ha a koordinatornak szolo POST elbukik, az is a logba
@@ -889,8 +889,8 @@ STATE_DIR_ENV="export ${STATE_ENV_VAR}='${MAIN_CHAN_DIR}' && "
 #
 # `start-server` first, because the "no server yet -> new-session inherits this
 # shell's env" assumption below is only safe when NOTHING ELSE creates the
-# server in between. At boot it does: systemd starts marveen-channels and
-# marveen-dashboard in the same second, and the dashboard's worker sessions win
+# server in between. At boot it does: systemd starts webinar-magus-channels and
+# webinar-magus-dashboard in the same second, and the dashboard's worker sessions win
 # the race about half the time. Then `set-environment -g` silently no-ops (no
 # server), the dashboard creates the server WITHOUT the token, and our
 # new-session inherits that empty global env instead of this shell's -- the
@@ -916,7 +916,7 @@ $TMUX set-environment -g DISABLE_AUTOUPDATER 1 2>/dev/null || true
 
 # Hybrid channel-coordinator model: the native plugin stays the PRIMARY inbound
 # path (it always polls getUpdates here -- never outbound-only). The standalone
-# marveen-channel-coordinator only BACKFILLS while this session's plugin is
+# webinar-magus-channel-coordinator only BACKFILLS while this session's plugin is
 # down, so there is never a second concurrent poller in steady state. Nothing to
 # set here: the coordinator gates itself on native liveness.
 
@@ -1006,9 +1006,9 @@ for i in 1 2 3 4 5 6 7 8 9 10 11 12; do
       if [ "$_eperm_restarted" = "0" ]; then
         _eperm_restarted=1
         $TMUX kill-session -t "$SESSION" 2>/dev/null
-        _CHANNELS_STARTDIR="$(mktemp -d /tmp/marveen-channels-XXXXXX)"
+        _CHANNELS_STARTDIR="$(mktemp -d /tmp/webinar-magus-channels-XXXXXX)"
         # Carry the project CLAUDE.md into the fallback cwd so the session keeps
-        # Marveen's instructions/personality instead of running as a generic,
+        # Webinár Mágus's instructions/personality instead of running as a generic,
         # context-less assistant (the biggest degradation of the /tmp fallback).
         # Best-effort: a symlink failure degrades to the prior behaviour and
         # never blocks startup. The trust dialog for the fresh /tmp path still
@@ -1057,7 +1057,7 @@ unset _eperm_restarted
 
 # Set agent name once the session is ready. (/remote-control dropped: the operator no
 # longer uses Remote Control.)
-_bot_name="${BOT_NAME:-${MAIN_AGENT_ID:-marveen}}"
+_bot_name="${BOT_NAME:-${MAIN_AGENT_ID:-webinar-magus}}"
 sleep 1
 $TMUX send-keys -t "$SESSION" "/rename ${_bot_name}" Enter
 unset _bot_name
@@ -1066,7 +1066,7 @@ unset _bot_name
 # is not immediately judged stale by the dashboard's checkMainKeepaliveStaleness
 # (channel-monitor.ts, ~18min threshold). The dashboard's hardRestartMarveenChannels
 # path writes both files when it triggers the restart, but a manual
-# `launchctl kickstart -k com.marveen.channels` (or the launchd KeepAlive's own
+# `launchctl kickstart -k com.webinar-magus.channels` (or the launchd KeepAlive's own
 # restart after a crash) bypasses the dashboard - those code paths never touched
 # the watchdog baseline, and the old mtimes survived into the fresh session,
 # triggering a false-positive respawn loop within minutes (2026-06-01 18:26).
@@ -1089,7 +1089,7 @@ date +%s > "$INSTALL_DIR/store/.channel-last-respawn"
 #
 # Two-stage detection, both must indicate "no plugin" before we fire keystrokes:
 #
-#   1. pgrep -P claude_pid bun   -- looks for a bun child of the marveen-channels
+#   1. pgrep -P claude_pid bun   -- looks for a bun child of the webinar-magus-channels
 #      claude process. This catches the case the env-var grep misses: Claude Code
 #      does NOT inherit TELEGRAM_STATE_DIR into the spawned poller on the main
 #      session (only on sub-agents), so an env-var-needle scan reports "no
@@ -1122,7 +1122,7 @@ date +%s > "$INSTALL_DIR/store/.channel-last-respawn"
 (
   sleep 15
   CLAUDE_PID="$($TMUX list-panes -t "$SESSION" -F '#{pane_pid}' 2>/dev/null | head -1)"
-  # Check 1: bun grandchild of the marveen-channels claude
+  # Check 1: bun grandchild of the webinar-magus-channels claude
   BUN_CHILD=""
   if [ -n "$CLAUDE_PID" ]; then
     BUN_CHILD="$(/usr/bin/pgrep -P "$CLAUDE_PID" bun 2>/dev/null | head -1)"
