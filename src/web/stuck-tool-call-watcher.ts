@@ -1,19 +1,19 @@
 // Stuck tool-call watchdog for the main channels session (2026-06-02 incident).
 //
-// Symptom & root cause (from cold-memory entry `marveen,deafness,Worked for`):
-//   Marveen's TUI gets stuck at "Worked for 31s" indefinitely. The Telegram
+// Symptom & root cause (from cold-memory entry `webinar-magus,deafness,Worked for`):
+//   Webinár Mágus's TUI gets stuck at "Worked for 31s" indefinitely. The Telegram
 //   reply tool-call hung server-side (no client-side timeout), and the
 //   claude TUI render loop blocks on its stdio pipe. CPU drops to 0.3%,
 //   IO-wait. The bun channel-plugin poller is still alive, so #240's
 //   bun-alive short-circuit hides the freeze from the main recovery cascade --
 //   stage 1-4 never fires. Inbound traffic is read by bun and delivered into
-//   the prompt buffer, but the TUI can never act on it: Szabi sees "Marveen
+//   the prompt buffer, but the TUI can never act on it: Szabi sees "Webinár Mágus
 //   válaszol, de a válasz nem jön meg Telegramra".
 //
 // Detection: parse the TUI's "<verb> for Ns" progress line; if the same
 // tag+seconds is observed across multiple polls AND the seconds value has
 // reached freezeSeconds, the tool-call is wedged. Recovery (#248 fix) is the
-// respawn-pane path resumeMarveenSession() -- NOT the launchctl hard-restart.
+// respawn-pane path resumeWebinarMagusSession() -- NOT the launchctl hard-restart.
 // `tmux respawn-pane -k` replaces only the pane's claude process: it does NOT
 // `tmux kill-session`, so an attached client is never kicked ([exited], the
 // #248 user-visible crash), and it runs the pane-attribution detached-claude
@@ -21,7 +21,7 @@
 // the launchctl/channels.sh path never cleaned). A CPU-profile guard skips the
 // recovery unless the process matches the idle stdio-wedge profile.
 //
-// Critical guard (Marveen 2026-06-02 review): a legitimate long-running
+// Critical guard (Webinár Mágus 2026-06-02 review): a legitimate long-running
 // tool-call (slow Anthropic inference, multi-stage research agent) MUST
 // NOT trigger this. Two layers of false-positive protection:
 //   1. seconds >= freezeSeconds (180s default) -- below that, just record.
@@ -32,7 +32,7 @@
 // A real wedge satisfies BOTH. A real slow-but-progressing tool-call fails
 // the second (counter keeps incrementing) so we never act.
 //
-// Scope: MAIN channels session only. Sub-agents are managed by Marveen
+// Scope: MAIN channels session only. Sub-agents are managed by Webinár Mágus
 // inter-agent; their tool-call freezes are not user-facing in the same way
 // and the respawn path (stopAgentProcess + startAgentProcess) is different.
 // Extend if a sub-agent case ever materialises.
@@ -45,7 +45,7 @@ import { PROJECT_ROOT } from '../config.js'
 import { capturePane } from './agent-process.js'
 import { readTranscriptMtimeFromProjectDir } from './active-model.js'
 import { MAIN_CHANNELS_SESSION } from './main-agent.js'
-import { resumeMarveenSession, sendAlert, lastMainRespawnAt, MARVEEN_POST_RESPAWN_GRACE_MS } from './channel-monitor.js'
+import { resumeWebinarMagusSession, sendAlert, lastMainRespawnAt, WEBINAR_MAGUS_POST_RESPAWN_GRACE_MS } from './channel-monitor.js'
 import { sendRoutineAlert } from './routine-alert.js'
 import {
   stuckToolCallSignature,
@@ -182,7 +182,7 @@ const watchState = new Map<string, StuckToolCallState>()
 export function shouldDeferForRecentRespawn(
   lastRespawnMs: number,
   nowMs: number,
-  graceMs = MARVEEN_POST_RESPAWN_GRACE_MS,
+  graceMs = WEBINAR_MAGUS_POST_RESPAWN_GRACE_MS,
 ): boolean {
   return lastRespawnMs > 0 && nowMs - lastRespawnMs < graceMs
 }
@@ -273,7 +273,7 @@ async function checkSession(label: string, session: string): Promise<void> {
     const lastRespawn = lastMainRespawnAt()
     if (shouldDeferForRecentRespawn(lastRespawn, Date.now())) {
       logger.info(
-        { label, session, sinceRespawnMs: lastRespawn ? Date.now() - lastRespawn : null, graceMs: MARVEEN_POST_RESPAWN_GRACE_MS },
+        { label, session, sinceRespawnMs: lastRespawn ? Date.now() - lastRespawn : null, graceMs: WEBINAR_MAGUS_POST_RESPAWN_GRACE_MS },
         'stuck-tool-call-watcher: recent respawn within grace, deferring recovery (avoid double-respawn / boot churn)',
       )
       return
@@ -305,7 +305,7 @@ async function checkSession(label: string, session: string): Promise<void> {
       )
       return
     }
-    // Audit log requested by Marveen 2026-06-02: every respawn this watcher
+    // Audit log requested by Webinár Mágus 2026-06-02: every respawn this watcher
     // decides on must record the input that led to it, so a regression
     // (spurious respawn during legitimate long work) is easy to spot.
     logger.warn(
@@ -321,14 +321,14 @@ async function checkSession(label: string, session: string): Promise<void> {
       },
       'stuck-tool-call-watcher: TUI counter stagnant past freeze threshold + idle wedge profile -- recovering main channels session (respawn-pane, no client-kick)',
     )
-    // Recover via the respawn-pane path (resumeMarveenSession), NOT the launchctl
+    // Recover via the respawn-pane path (resumeWebinarMagusSession), NOT the launchctl
     // hard-restart. respawn-pane -k replaces only the pane's claude process: no
     // `tmux kill-session`, so an attached client is never kicked ([exited], the
-    // #248 user-visible crash). resumeMarveenSession also runs the
+    // #248 user-visible crash). resumeWebinarMagusSession also runs the
     // pane-attribution detached-claude reap FIRST, breaking the
     // orphan->409->freeze doom-loop that the launchctl/channels.sh env-grep reap
     // never cleaned (the loop's launchctl path never reaped the main orphans).
-    const ok = await resumeMarveenSession()
+    const ok = await resumeWebinarMagusSession()
     if (!ok) {
       logger.error({ label, session }, 'stuck-tool-call-watcher: respawn-pane recovery failed')
     }
@@ -351,7 +351,7 @@ async function checkSession(label: string, session: string): Promise<void> {
         `🔧 A fő session beragadt: a kijelző számlálója ${Math.round(next.lastSeconds ?? 0)}s-nál megállt, és több mint ${THRESHOLDS.freezeSeconds}s-ig nem mozdult. Automatikusan újraindítottam a beszélgetés megtartásával. Ha volt megválaszolatlan üzeneted, mindjárt válaszolok rá.`,
       )
     } else {
-      sendAlert(`🚨 A fő session beragadt, és az automatikus újraindítás NEM sikerült. Kézi beavatkozás kellhet: tmux attach -t ${session}, vagy scripts/stop.sh && scripts/start.sh a marveen mappából.`)
+      sendAlert(`🚨 A fő session beragadt, és az automatikus újraindítás NEM sikerült. Kézi beavatkozás kellhet: tmux attach -t ${session}, vagy scripts/stop.sh && scripts/start.sh a webinar-magus mappából.`)
     }
   }
 }
