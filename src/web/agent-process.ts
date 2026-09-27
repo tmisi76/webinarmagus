@@ -338,7 +338,7 @@ export function ensureIsolatedChannelConfigDir(
 // never retry, and Claude Code prefers an on-disk .credentials.json over an
 // otherwise-valid CLAUDE_CODE_OAUTH_TOKEN env var (claude-credentials-guard.ts),
 // so a stale file wins even with a live token sitting right next to it
-// (confirmed root cause of the 2026-07-23 marveen-channels silent outage,
+// (confirmed root cause of the 2026-07-23 webinar-magus-channels silent outage,
 // PLAN.md GAP 1). The isolated sub-agents, which authenticate from the
 // long-lived fleet setup-token via an isolated CLAUDE_CONFIG_DIR carrying no
 // .credentials.json at all, never hit this. This gives the main agent the SAME
@@ -1078,8 +1078,8 @@ export function stampFableOverageConsentSharedRoots(): void {
   const candidates = [
     mainDir ? join(mainDir, '.claude.json') : null,
     join(homedir(), '.claude.json'),
-    join(process.env.MARVEEN_WORKER_DIR || join(homedir(), '.marveen-worker'), '.claude-config', '.claude.json'),
-    join(process.env.MARVEEN_WORKER_DIR_FAST || join(homedir(), '.marveen-worker-fast'), '.claude-config', '.claude.json'),
+    join(process.env.WEBINAR_MAGUS_WORKER_DIR || join(homedir(), '.webinar-magus-worker'), '.claude-config', '.claude.json'),
+    join(process.env.WEBINAR_MAGUS_WORKER_DIR_FAST || join(homedir(), '.webinar-magus-worker-fast'), '.claude-config', '.claude.json'),
   ]
   for (const p of candidates) {
     if (p && existsSync(p)) stampFableOverageConsent(p)
@@ -1260,7 +1260,7 @@ export function tmuxInvocationFor(tmuxArgs: string[], target: string | null | Tm
   const { host, runAsUser } = resolveTarget(target, tmuxArgs)
   // Ensure the private ControlMaster socket dir exists before ANY remote ssh
   // call (idempotent, ~free). Without this a watcher-first remote call after a
-  // marveen restart would lose connection multiplexing and re-handshake each tick.
+  // webinar-magus restart would lose connection multiplexing and re-handshake each tick.
   if (host) ensureControlDir()
   return buildTmuxInvocation(host, tmuxBin(), tmuxArgs, 'tmux', runAsUser ?? null)
 }
@@ -1601,7 +1601,7 @@ export async function startAgentProcess(name: string, opts: { fresh?: boolean } 
     // per-agent override (which a respawn silently wiped). The main agent runs
     // via channels.sh, not this path, so it remains the sole telegram poller.
     //
-    // CATASTROPHE GUARD: never scope the MAIN agent's plugins here. marveen is
+    // CATASTROPHE GUARD: never scope the MAIN agent's plugins here. webinar-magus is
     // not in agents/ (so listAgentNames never spawns it through this path) and
     // its channel comes up via channels.sh -- but if a future caller ever passed
     // MAIN_AGENT_ID in, scopeChannelPlugins(null) would DISABLE the owner's
@@ -2363,7 +2363,7 @@ const IDENTITY_LANE_MAX_ATTEMPTS = 5
 // Schedule the identity setup for a freshly (re)spawned session: once it has
 // had time to render, dismiss any first-run/resume modals, then send `/rename`.
 // Shared by startAgentProcess and the channel-monitor recovery respawns
-// (resumeMarveenSession / respawnMarveenSessionFresh), which previously left the
+// (resumeWebinarMagusSession / respawnWebinarMagusSessionFresh), which previously left the
 // main session without its identity after auto-recovery. Fire-and-forget; all
 // errors are swallowed/logged so a missed setup never tears down the caller.
 //
@@ -2372,7 +2372,7 @@ const IDENTITY_LANE_MAX_ATTEMPTS = 5
 // it typed `/rename <name>` with a bare `runTmux(['send-keys', ...])` on a
 // fire-and-forget timer, outside the lane. Measured 2026-09-10 09:40:01: an
 // update.sh restart fired identity setup while the scheduler was chunk-pasting
-// a task prompt into the SAME pane, and `/rename Marveen_is` spliced into the
+// a task prompt into the SAME pane, and `/rename WebinarMagus_is` spliced into the
 // MIDDLE of that prompt -- between two words of a python expression on line 100
 // of the task's SKILL.md. The prompt file on disk was clean, so the splice
 // happened in transit. Reading agent saw an unprovenanced self-rename command
