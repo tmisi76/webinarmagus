@@ -51,7 +51,7 @@ UPSTREAM_REF=upstream/main scripts/upstream-new.sh
 
 ## What it is worth
 
-Measured on 2026-08-31, on this fork (`maxineender/marveen`, tracking `Szotasz/marveen`),
+Measured on 2026-08-31, on this fork (`maxineender/Webinár Mágus`, tracking `tmisi76/webinar-magus`),
 which had let 54 upstream commits accumulate: the raw
 `git log HEAD..upstream/develop` listed everything ever hand-ported alongside them, while
 `upstream-new.sh` listed only the genuinely undecided ones. That is the difference between a
