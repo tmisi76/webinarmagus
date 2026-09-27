@@ -30,7 +30,7 @@ Ezért kell a lépés: **a gyanú is állítás, amit meg kell mérni, mielőtt 
 mérés itt sem a forrást, sem a gyanút nem hagyta érintetlenül. A tanulság változatlan: a repo-név, a
 link és a bemutatott funkció három külön dolog, amíg valaki össze nem veti őket.
 
-### A másik 0. kérdés: mihez képest méri magát? (Marveen, 2026-08-22)
+### A másik 0. kérdés: mihez képest méri magát? (Webinár Mágus, 2026-08-22)
 
 Minden külső eszköz a **saját választott viszonyítási alapjához** képest méri magát, és az szinte soha
 nem a mi mai utunk. A Defuddle a nyers WebFetch-hez képest javít sokat, nálunk viszont a külső tartalom
@@ -62,7 +62,7 @@ kértünk, különben a saját kérésünket mérjük.
 - **Épített sentinel-oldal** a TÚLSZŰRÉST mutatja meg (elveszett cikk-tartalom), amit valódi oldalon
   nem lehet mérni, mert nem tudjuk, mi lett volna a teljes elvárt szöveg.
 
-**Álló kikötés a mérés árára (Marveen, 2026-08-22):** ha egy belső méréshez a fájlt csak PUBLIKUS
+**Álló kikötés a mérés árára (Webinár Mágus, 2026-08-22):** ha egy belső méréshez a fájlt csak PUBLIKUS
 közzététellel lehetne elérhetővé tenni, azt NEM tesszük meg. Egy belső mérés nem ér meg egy kifelé ható
 lépést. Ilyenkor marad a gyengébb változat, és a doksiba **eredményként kell odaírni, melyik felét
 mértük kontrollal és melyiket nem.**
@@ -99,7 +99,7 @@ Ezért a katalógusban a licenc, a verziószám és a konfigurációs értékek 
 domainekre egy determinisztikus, forrás-közeli markdown-törzset ír fájlba (két futás, azonos sha1),
 és idézethez az a fájl a helyes forrás, nem a válasz szövege. Lásd az 1. tételnél.
 
-### Ez a doksi és az Ötletláda viszonya (Marveen döntése, 2026-08-22)
+### Ez a doksi és az Ötletláda viszonya (Webinár Mágus döntése, 2026-08-22)
 
 A kettő más életciklus-szakaszra való, ezért nem párhuzamos nyilvántartás:
 
@@ -225,7 +225,7 @@ való, tehát az SPA-keret hatása közös.
 3. Az `obsidian-skills` README a repo tartalmát a **gazda Obsidian-vaultjának** `/.claude` mappájába
    telepíttetné, nem az ügynök saját skill-mappájába. Ez a mi álló kikötésünkkel megy szembe.
 
-### 2. Caveman (ELVETVE, 2026-08-22, Marveen)
+### 2. Caveman (ELVETVE, 2026-08-22, Webinár Mágus)
 Ultratömör kimeneti mód. A repo állítása 65 százalék kimeneti token-megtakarítás. Az érvelés helytálló:
 a kimenet drágább mint a bemenet, és minden további körben újra elmegy a kontextusban.
 
@@ -274,7 +274,7 @@ ide tartozik: a hoston lévő yt-dlp elavult (a videó-letöltés 403-ra fut, fr
 felirat nélküli videóhoz nincs beállított Whisper-kulcs. Ezek a saját házunk táján javítandók, nem
 ezzel a csomaggal (kártya: VIDEOESZKOZ822).
 
-**A helyes diagnózis viszont nem is ez volt (Marveen visszamérése, 2026-08-22).** Az eredeti állítás
+**A helyes diagnózis viszont nem is ez volt (Webinár Mágus visszamérése, 2026-08-22).** Az eredeti állítás
 egy ügynök saját pipeline-járól szólt ("nekem nincs meg"), és abból lett továbbadás közben flotta-szintű
 képesség-hiány. A mért valóság: Irisnek megvan, Zarának nincs bekötve. Ez tehát **belső bekötési rés két
 saját ügynök között, nem képesség-rés**, és sokkal olcsóbban javítható, mint egy harmadik féltől
@@ -284,7 +284,7 @@ figyelésre. A meglévő utunk pontosan ezt fedi, Zara le is futtatta a saját g
 6591 szó). **Ezzel az Agent Reach YouTube-ágú indoklása kiesett.** Bulk-figyelésre ma nincs sem
 csatorna-listánk, sem ritmusunk, tehát azt senki nem állítja igénynek.
 
-**A tétel ketté van vágva, és ez nem formaság (Marveen, 2026-08-22):**
+**A tétel ketté van vágva, és ez nem formaság (Webinár Mágus, 2026-08-22):**
 - A **képesség-rés mérése** Zaráé: mit nem lát ma, és mit nyernénk vele. Megvan, lásd fent.
 - A **telepítés-döntés NEM a flottáé**: az API-díj megkerülése a platform feltételein múlik, az pedig
   kifelé ható és jogi jellegű kérdés, tehát Szabi asztala. Amíg nincs gazda-döntés, senki nem telepíti.
@@ -299,7 +299,7 @@ csatorna-listánk, sem ritmusunk, tehát azt senki nem állítja igénynek.
 A README szerint Claude Code, Codex, Cursor és minden Agent Skills spec-kompatibilis ügynökkel megy.
 **Nálunk:** Zara profiljába vág. Egy 49 elemű csomag viszont pont az a "40 használhatatlan alá temeted
 a jókat" eset, amitől a videó óv.
-**Döntés (Marveen, 2026-08-22):** részhalmazként megy. Zara válassza ki a 49-ből azt a maximum 5-8-at,
+**Döntés (Webinár Mágus, 2026-08-22):** részhalmazként megy. Zara válassza ki a 49-ből azt a maximum 5-8-at,
 ami a mi munkánkba vág, és azokat értékelje. A teljes csomag globális átvétele nem opció.
 
 ### 7. Composio
@@ -313,7 +313,7 @@ tudásfájl. A lényegi különbség: renderelés ELŐTT koncepciókat, tervezet
 és előnézetet ad, és a felhasználó hagyja jóvá.
 **Nálunk:** ez az én területem. Ma hyperframes + video-use + ffmpeg-pipeline van. A jóváhagyási kapu
 és a költségbecslés az, ami hiányzik, és pont ezt csinálja jól.
-**A mérés fókusza (Marveen, 2026-08-22):** nem a teljes rendszer átvétele a cél, hanem a renderelés
+**A mérés fókusza (Webinár Mágus, 2026-08-22):** nem a teljes rendszer átvétele a cél, hanem a renderelés
 ELŐTTI költségbecslés és jóváhagyási kapu mintája. Ha csak ezt az egy mintát tudjuk beépíteni a saját
 videó-utunkba, az már megérte a mérést.
 
@@ -379,14 +379,14 @@ azt keressük, mit tanulhatunk belőle, nem azt, hogy lecseréljük-e a mienket.
 
 ### 11. Mission Control (a videó szerzőjének saját projektje)
 Flotta-dashboard: task-kiosztás, ügynök-állapot, élő költség-követés egy képernyőn.
-**Nálunk:** a Marveen dashboard ugyanez a műfaj. Referenciaként érdekes, főleg a költség-nézet.
+**Nálunk:** a Webinár Mágus dashboard ugyanez a műfaj. Referenciaként érdekes, főleg a költség-nézet.
 
 ### 12. Nova (a videó szerzőjének saját projektje)
 YouTube-növekedési ügynök: versenytárs-figyelés, csatorna-elemzés, ötletgenerálás, script, teljesítmény-
 követés. A README szerint OpenClaw-hoz készült.
 **Nálunk:** a YouTube-munka ma emberi (Kuzma Péter vág) és ad hoc ügynök-támogatású. Referencia.
 
-## Mérési sorrend és gazdák (kiosztva: Marveen, 2026-08-22)
+## Mérési sorrend és gazdák (kiosztva: Webinár Mágus, 2026-08-22)
 
 Amit mérni érdemes, az nem a "jó-e", hanem hogy **nálunk** mennyivel jobb a mostaninál:
 
