@@ -132,13 +132,13 @@ export const OWNER_NAME = env['OWNER_NAME'] ?? OWNER_NAME_PLACEHOLDER
 // install's generated agent CLAUDE.md); set OWNER_DRIVE_FOLDER in .env to wire
 // the default shared drive for this install.
 export const OWNER_DRIVE_FOLDER = env['OWNER_DRIVE_FOLDER'] ?? ''
-export const BOT_NAME = env['BOT_NAME'] ?? 'Marveen'
+export const BOT_NAME = env['BOT_NAME'] ?? 'Webinár Mágus'
 
 // Product / system brand shown in the dashboard chrome (browser tab title,
 // mobile topbar, sidebar, updates page). Kept SEPARATE from BOT_NAME so an
 // operator can name the product one thing (BRAND_NAME) and the main agent
 // another (BOT_NAME, the agent's display name). Defaults to BOT_NAME -- which
-// itself defaults to 'Marveen' -- so an install that sets neither, or only
+// itself defaults to 'Webinár Mágus' -- so an install that sets neither, or only
 // BOT_NAME, behaves exactly as before.
 export const BRAND_NAME = env['BRAND_NAME'] ?? BOT_NAME
 
