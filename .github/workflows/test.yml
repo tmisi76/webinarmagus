@@ -24,17 +24,17 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Apply one-time brand migration on PR branch
-        if: github.head_ref == 'webinar-magus-remove-marveen'
+        if: github.head_ref == 'webinar-magus-brand-cleanup'
         run: |
-          git fetch origin webinar-magus-remove-marveen
-          git checkout -B webinar-magus-remove-marveen origin/webinar-magus-remove-marveen
+          git fetch origin webinar-magus-brand-cleanup
+          git checkout -B webinar-magus-brand-cleanup origin/webinar-magus-brand-cleanup
           python3 scripts/one-time-brand-migration.py
           if ! git diff --quiet; then
             git config user.name "Webinár Mágus CI"
             git config user.email "actions@users.noreply.github.com"
             git add -A
             git commit -m "refactor: finish repository-wide brand migration [brand-migration]"
-            git push origin HEAD:webinar-magus-remove-marveen
+            git push origin HEAD:webinar-magus-brand-cleanup
           fi
       - uses: actions/setup-node@v4
         with:
