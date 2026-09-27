@@ -229,7 +229,7 @@ export function initDatabase(dbPathOverride?: string): void {
   }
   // Migration: add agent_id, category, auto_generated columns to memories
   try {
-    db.exec("ALTER TABLE memories ADD COLUMN agent_id TEXT NOT NULL DEFAULT 'marveen'")
+    db.exec("ALTER TABLE memories ADD COLUMN agent_id TEXT NOT NULL DEFAULT 'webinar-magus'")
   } catch {
     // column already exists
   }
@@ -253,7 +253,7 @@ export function initDatabase(dbPathOverride?: string): void {
   // replay hook injects the last ~20 turns of context PLUS highlights the open
   // question (the most recent inbound with no later outbound), so the fresh
   // session continues exactly where the connection dropped -- ZERO agent
-  // discretion. Generic across all three channel agents (marveen/dia/erno-ba);
+  // discretion. Generic across all three channel agents (webinar-magus/dia/erno-ba);
   // agent_id is derived from the session cwd so each session only sees its own
   // chat. Written by the settings.json hooks (UserPromptSubmit capture +
   // PostToolUse outbound). UNIQUE(...) makes inbound capture idempotent; outbound
@@ -336,7 +336,7 @@ export function initDatabase(dbPathOverride?: string): void {
           salience REAL NOT NULL DEFAULT 1.0,
           created_at INTEGER NOT NULL,
           accessed_at INTEGER NOT NULL,
-          agent_id TEXT NOT NULL DEFAULT 'marveen',
+          agent_id TEXT NOT NULL DEFAULT 'webinar-magus',
           category TEXT NOT NULL DEFAULT 'warm' CHECK(category IN ('hot','warm','cold','shared')),
           auto_generated INTEGER NOT NULL DEFAULT 0,
           keywords TEXT
@@ -1025,7 +1025,7 @@ export function initDatabase(dbPathOverride?: string): void {
       category TEXT NOT NULL DEFAULT 'Egyéb',
       scope TEXT NOT NULL DEFAULT 'munka',
       status TEXT NOT NULL DEFAULT 'new' CHECK(status IN ('new','reviewed','kanban','rejected')),
-      source TEXT NOT NULL DEFAULT 'marveen',
+      source TEXT NOT NULL DEFAULT 'webinar-magus',
       kanban_id TEXT,
       created_at INTEGER NOT NULL,
       updated_at INTEGER NOT NULL
@@ -1322,7 +1322,7 @@ export function initDatabase(dbPathOverride?: string): void {
     )
   `)
   // Bridge pairing (AUTHPLAN1 #2): links a device key to the SSH enrollment's
-  // marveen-remote:<uuid> so revoking the key can drop the authorized_keys
+  // webinar-magus-remote:<uuid> so revoking the key can drop the authorized_keys
   // line in the same step. Null for keys minted outside the pairing flow.
   try { db.exec(`ALTER TABLE device_keys ADD COLUMN install_id TEXT`) } catch { /* column already exists */ }
 
