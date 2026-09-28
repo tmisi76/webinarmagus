@@ -133,7 +133,7 @@ WEB_PORT="${WEB_PORT:-3420}"
 clear
 echo ""
 echo -e "${BOLD}  ▐▛███▜▌   Webinár Mágus${NC}"
-if [[ "${MARVEEN_LANG:-hu}" == "en" ]]; then
+if [[ "${WEBINAR_MAGUS_LANG:-hu}" == "en" ]]; then
   echo -e "${BOLD} ▝▜█████▛▘  Your AI team, running while you sleep.${NC}"
 else
   echo -e "${BOLD} ▝▜█████▛▘  $(_t tagline)${NC}"
