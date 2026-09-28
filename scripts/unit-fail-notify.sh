@@ -24,7 +24,7 @@ ENV_FILE="${TELEGRAM_ENV:-$TG_CHAN_DIR/.env}"
 # Alert target chat-id -- MUST be provided by the install's own config; there is
 # deliberately NO hardcoded fallback (a hardcoded id would make every downstream
 # install send its alerts to that one private chat via its own bot token).
-CHAT_ID="${MARVEEN_ALERT_CHAT_ID:-}"
+CHAT_ID="${WEBINAR_MAGUS_ALERT_CHAT_ID:-}"
 
 now_local="$(date '+%Y-%m-%d %H:%M:%S %Z' 2>/dev/null || echo now)"
 msg="Marveen app-crash: a(z) ${UNIT} unit FAILED állapotba került (${now_local}).
@@ -47,7 +47,7 @@ if [[ -n "$token" && -n "$CHAT_ID" ]]; then
   fi
 else
   # Not silent: name the missing piece so a misconfigured install is diagnosable.
-  miss=""; [[ -z "$token" ]] && miss+=" TELEGRAM_BOT_TOKEN(via TELEGRAM_ENV=$ENV_FILE)"; [[ -z "$CHAT_ID" ]] && miss+=" MARVEEN_ALERT_CHAT_ID"
+  miss=""; [[ -z "$token" ]] && miss+=" TELEGRAM_BOT_TOKEN(via TELEGRAM_ENV=$ENV_FILE)"; [[ -z "$CHAT_ID" ]] && miss+=" WEBINAR_MAGUS_ALERT_CHAT_ID"
   echo "[unit-fail-notify] ${UNIT} FAILED but no Telegram sent -- missing:${miss}" >&2
 fi
 exit 0
