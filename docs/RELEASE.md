@@ -28,8 +28,9 @@ A branch push után a `release-kickoff` workflow ellenőrzi:
 
 1. a branch verzióját;
 2. a `package.json` verzióját;
-3. a `WEBINAR_MAGUS_RELEASE_TOKEN` meglétét;
-4. hogy a `v0.1.0` tag még nem létezik.
+3. hogy a `v0.1.0` tag még nem létezik.
+
+A runtime feltöltés hitelesítését a külön `runtime-bundle` workflow GitHub OIDC tokenje végzi; kézzel kezelt release secret nem szükséges.
 
 Siker esetén létrehozza a `v0.1.0` taget.
 
