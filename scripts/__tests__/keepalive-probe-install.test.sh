@@ -125,7 +125,7 @@ assert_eq "second run calls no systemctl" "0" "$(wc -c < "$TMP/systemctl.calls" 
 assert_eq "second run prints nothing" "" "$OUT"
 
 # 2d. A renamed agent: the timer follows the unit name actually on disk.
-printf '[Service]\n' > "$UNITS/marveen-channels.service"
+printf '[Service]\n' > "$UNITS/webinar-magus-channels.service"
 OUT="$(run_fn "$UNITS")"
 assert_eq "second agent gets its own probe timer" "yes" \
   "$([ -f "$UNITS/marveen-channel-keepalive-probe.timer" ] && echo yes || echo no)"
