@@ -78,7 +78,7 @@ async function openPairingPanel(page: import('@playwright/test').Page, lang: 'hu
     r.fulfill({ status: 400, contentType: 'application/json', body: JSON.stringify(realErrorBody(BAD_LINE)) }))
 
   await page.addInitScript((l) => {
-    try { localStorage.setItem('marveen.lang', l) } catch { /* ignore */ }
+    try { localStorage.setItem('webinar-magus.lang', l) } catch { /* ignore */ }
   }, lang)
   await page.goto('/index.html')
   await page.evaluate((l) => {
