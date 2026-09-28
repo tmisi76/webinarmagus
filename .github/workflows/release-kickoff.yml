@@ -1,0 +1,77 @@
+name: release-kickoff
+
+on:
+  push:
+    branches:
+      - 'release/v*'
+
+permissions:
+  contents: write
+
+jobs:
+  tag:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Resolve release tag
+        id: version
+        shell: bash
+        run: |
+          set -euo pipefail
+          TAG="${GITHUB_REF_NAME#release/}"
+          if [[ ! "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::Invalid release branch name: $GITHUB_REF_NAME"
+            exit 1
+          fi
+          PACKAGE_VERSION="$(node -p "require('./package.json').version")"
+          if [ "v$PACKAGE_VERSION" != "$TAG" ]; then
+            echo "::error::package.json version is $PACKAGE_VERSION but branch requests $TAG"
+            exit 1
+          fi
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+
+      - name: Verify release credentials are configured
+        shell: bash
+        env:
+          MAC_CSC_LINK: ${{ secrets.MAC_CSC_LINK }}
+          MAC_CSC_KEY_PASSWORD: ${{ secrets.MAC_CSC_KEY_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          WIN_CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
+          WIN_CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
+          WEBINAR_MAGUS_RELEASE_TOKEN: ${{ secrets.WEBINAR_MAGUS_RELEASE_TOKEN }}
+        run: |
+          set -euo pipefail
+          missing=0
+          for name in             MAC_CSC_LINK             MAC_CSC_KEY_PASSWORD             APPLE_ID             APPLE_APP_SPECIFIC_PASSWORD             APPLE_TEAM_ID             WIN_CSC_LINK             WIN_CSC_KEY_PASSWORD             WEBINAR_MAGUS_RELEASE_TOKEN
+          do
+            if [ -z "${!name:-}" ]; then
+              echo "::error::Missing required release secret: $name"
+              missing=1
+            fi
+          done
+          [ "$missing" -eq 0 ]
+
+      - name: Refuse duplicate tag
+        env:
+          TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          set -euo pipefail
+          if git ls-remote --exit-code --tags origin "refs/tags/$TAG" >/dev/null 2>&1; then
+            echo "::error::Tag $TAG already exists."
+            exit 1
+          fi
+
+      - name: Create release tag
+        env:
+          TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          set -euo pipefail
+          git config user.name "Webinár Mágus Release"
+          git config user.email "release@autowebinar.hu"
+          git tag -a "$TAG" "$GITHUB_SHA" -m "Webinár Mágus $TAG"
+          git push origin "$TAG"
