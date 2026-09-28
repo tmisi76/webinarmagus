@@ -40,7 +40,7 @@ source "$(dirname "$0")/install-lang.sh"
 # Error-translation layer (NPMPERM1 kor): minden stderr egy log-fajlba is
 # megy, hogy hibanal a trap ne csak sorszamot mondjon, hanem le tudja
 # forditani az upstream hibat (explain_install_error, install-lang.sh).
-INSTALL_ERRLOG=$(mktemp "${TMPDIR:-/tmp}/marveen-install-stderr.XXXXXX")
+INSTALL_ERRLOG=$(mktemp "${TMPDIR:-/tmp}/webinar-magus-install-stderr.XXXXXX")
 exec 2> >(tee -a "$INSTALL_ERRLOG" >&2)
 
 ok() { echo -e "  ${GREEN}✓${NC} $*"; }
@@ -795,6 +795,12 @@ ok "$(_t macos.ts_built)"
 # Idempotens: meglévő autowebinar beállítást és más MCP-ket nem ír felül.
 if ! node "$INSTALL_DIR/scripts/seed-autowebinar-mcp.mjs"; then
   warn "AutoWebinar MCP automatikus beállítása kimaradt; később a Beállításokból pótolható."
+fi
+
+# OpenAI/Gemini provider bridge. Claude és DeepSeek enélkül is működik,
+# ezért a bridge telepítési hibája nem blokkolja a teljes Webinár Mágus installt.
+if [ -f "$INSTALL_DIR/scripts/install-ai-provider-bridge.sh" ]; then
+  bash "$INSTALL_DIR/scripts/install-ai-provider-bridge.sh" || warn "AI Provider Bridge telepítése kimaradt; OpenAI/Gemini később pótolható."
 fi
 
 # Stamp the build-marker after a successful fresh-install build, mirroring the

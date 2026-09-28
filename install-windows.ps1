@@ -76,7 +76,7 @@ if ($distros -match "Ubuntu") {
         Write-Host "  Telepítés folytatása az Ubuntu-ban (install-linux.sh)..." -ForegroundColor Cyan
         # Triggers first-run init if still pending; if the distro needs a reboot
         # the call fails and we fall through to the manual instructions below.
-        wsl -d Ubuntu -- bash -c "curl -fsSL https://raw.githubusercontent.com/Szotasz/marveen/main/install-linux.sh -o /tmp/marveen-install.sh && bash /tmp/marveen-install.sh"
+        wsl -d Ubuntu -- bash -c "curl -fsSL https://raw.githubusercontent.com/tmisi76/webinar-magus/main/install-linux.sh -o /tmp/webinar-magus-install.sh && bash /tmp/webinar-magus-install.sh"
         if ($LASTEXITCODE -eq 0) {
             Write-Host ""
             Write-Host "  ✓ Webinár Mágus telepítve az Ubuntu-ban (install-linux.sh)." -ForegroundColor Green
@@ -87,7 +87,7 @@ if ($distros -match "Ubuntu") {
     Write-Host ""
     Write-Host "  Fejezd be így: indítsd el az Ubuntu-t (Start menü -> Ubuntu), állítsd" -ForegroundColor Yellow
     Write-Host "  be a felhasználót, majd az Ubuntu shellben futtasd:" -ForegroundColor Yellow
-    Write-Host "    curl -fsSL https://raw.githubusercontent.com/Szotasz/marveen/main/install-linux.sh -o install.sh && bash install.sh" -ForegroundColor Cyan
+    Write-Host "    curl -fsSL https://raw.githubusercontent.com/tmisi76/webinar-magus/main/install-linux.sh -o install.sh && bash install.sh" -ForegroundColor Cyan
     Write-Host "  (vagy indítsd újra ezt a PowerShell scriptet, ha kell a gép-újraindítás)" -ForegroundColor DarkGray
     exit 0
 }
@@ -106,6 +106,13 @@ if ! command -v node &>/dev/null; then
     sudo apt-get install -y nodejs
 fi
 echo "  ✓ Node.js \$(node -v)"
+
+# Python + pipx (AI Provider Bridge)
+if ! command -v pipx &>/dev/null; then
+    sudo apt-get update -qq
+    sudo apt-get install -y python3 pipx
+fi
+echo '  ✓ Python + pipx'
 
 # tmux
 if ! command -v tmux &>/dev/null; then
@@ -183,6 +190,9 @@ echo '  ✓ TypeScript lefordítva'
 
 # AutoWebinar MCP alapkapcsolat seedelése
 node scripts/seed-autowebinar-mcp.mjs || echo '  ! AutoWebinar MCP automatikus beállítása kimaradt'
+
+# OpenAI/Gemini provider bridge
+bash scripts/install-ai-provider-bridge.sh || echo '  ! AI Provider Bridge telepítése kimaradt; Claude/DeepSeek továbbra is használható'
 
 # Ollama models
 if command -v ollama &>/dev/null; then

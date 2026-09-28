@@ -2,10 +2,24 @@ import { describe, it, expect } from 'vitest'
 import { resolveProviderEnv } from '../web/agent-process.js'
 
 describe('resolveProviderEnv', () => {
-  it('returns no export chain for a claude- model (uses host OAuth/API key elsewhere)', () => {
+  it('keeps OAuth behaviour for Claude when no shared Vault API key exists', () => {
     const r = resolveProviderEnv('claude-sonnet-5', () => null)
     expect(r.provider).toBe('claude')
     expect(r.exportsStr).toBe('')
+  })
+
+  it('routes Claude specialists through the shared Vault Anthropic API key when configured', () => {
+    const seen: string[] = []
+    const r = resolveProviderEnv('claude-sonnet-5', (id) => {
+      seen.push(id)
+      return id === 'ANTHROPIC_API_KEY' ? 'claude-secret' : null
+    })
+    expect(seen).toEqual(['ANTHROPIC_API_KEY'])
+    expect(r.provider).toBe('claude')
+    expect(r.exportsStr).toContain('ANTHROPIC_API_KEY="claude-secret"')
+    expect(r.exportsStr).toContain(`ANTHROPIC_MODEL='claude-sonnet-5'`)
+    expect(r.exportsStr).toContain('unset CLAUDE_CODE_OAUTH_TOKEN')
+    expect(r.exportsStr).toContain('unset ANTHROPIC_AUTH_TOKEN')
   })
 
   it('routes deepseek- models to the DeepSeek Anthropic-compatible endpoint with DEEPSEEK_API_KEY', () => {
@@ -18,7 +32,17 @@ describe('resolveProviderEnv', () => {
     expect(seen).toEqual(['DEEPSEEK_API_KEY'])
     expect(r.exportsStr).toContain('ANTHROPIC_AUTH_TOKEN="ds-secret"')
     expect(r.exportsStr).toContain('ANTHROPIC_BASE_URL=https://api.deepseek.com/anthropic')
+    expect(r.exportsStr).toContain('unset CLAUDE_CODE_OAUTH_TOKEN')
+    expect(r.exportsStr).toContain('unset ANTHROPIC_API_KEY')
     expect(r.exportsStr).toContain(`ANTHROPIC_MODEL='deepseek-v4-pro'`)
+  })
+
+  it('uses DeepSeek Flash full-context runtime settings for Claude Code', () => {
+    const r = resolveProviderEnv('deepseek-flash', () => 'ds-secret')
+    expect(r.exportsStr).toContain(`ANTHROPIC_MODEL='deepseek-flash[1m]'`)
+    expect(r.exportsStr).toContain(`ANTHROPIC_DEFAULT_SONNET_MODEL='deepseek-flash[1m]'`)
+    expect(r.exportsStr).toContain('CLAUDE_CODE_SUBAGENT_MODEL=deepseek-flash')
+    expect(r.exportsStr).toContain('CLAUDE_CODE_AUTO_COMPACT_WINDOW=786432')
   })
 
   it('routes minimax- models to the MiniMax Anthropic-compatible endpoint with MINIMAX_API_KEY', () => {
@@ -44,6 +68,23 @@ describe('resolveProviderEnv', () => {
     expect(r.exportsStr).not.toContain('CLAUDE_CODE_MAX_CONTEXT_TOKENS')
   })
 
+
+  it('routes OpenAI GPT models to the local Webinár Mágus provider bridge', () => {
+    const r = resolveProviderEnv('gpt-6-sol', () => null)
+    expect(r.provider).toBe('openai')
+    expect(r.exportsStr).toContain('unset CLAUDE_CODE_OAUTH_TOKEN')
+    expect(r.exportsStr).toContain('ANTHROPIC_BASE_URL=http://127.0.0.1:4010')
+    expect(r.exportsStr).toContain('.ai-provider-bridge-token')
+    expect(r.exportsStr).toContain(`ANTHROPIC_MODEL='gpt-6-sol'`)
+  })
+
+  it('routes Gemini models to the local Webinár Mágus provider bridge', () => {
+    const r = resolveProviderEnv('gemini-3.8-flash', () => null)
+    expect(r.provider).toBe('google')
+    expect(r.exportsStr).toContain('ANTHROPIC_BASE_URL=http://127.0.0.1:4010')
+    expect(r.exportsStr).toContain(`ANTHROPIC_MODEL='gemini-3.8-flash'`)
+  })
+
   it('routes provider/model ids (containing "/") to OpenRouter, not minimax or ollama', () => {
     const seen: string[] = []
     const r = resolveProviderEnv('minimax/minimax-m3', (id) => {
@@ -62,12 +103,12 @@ describe('resolveProviderEnv', () => {
     expect(r.exportsStr).toContain(`ANTHROPIC_MODEL='qwen3.6:27b'`)
   })
 
-  it('never asks the secret lookup for a claude- model', () => {
-    let called = false
-    resolveProviderEnv('claude-sonnet-5', () => {
-      called = true
-      return 'unused'
+  it('asks only for the shared Anthropic key on a claude- model', () => {
+    const seen: string[] = []
+    resolveProviderEnv('claude-sonnet-5', (id) => {
+      seen.push(id)
+      return null
     })
-    expect(called).toBe(false)
+    expect(seen).toEqual(['ANTHROPIC_API_KEY'])
   })
 })

@@ -1119,7 +1119,24 @@ export function shSingleQuote(value: string): string {
  * redirects the Claude Code CLI to that provider's Anthropic-compatible endpoint. Pure function
  * (no I/O) -- the caller supplies secrets via `secretLookup` so this is testable without a vault.
  */
-export type ProviderKind = 'claude' | 'deepseek' | 'minimax' | 'openrouter' | 'ollama'
+export type ProviderKind = 'claude' | 'deepseek' | 'minimax' | 'openrouter' | 'openai' | 'google' | 'ollama'
+
+export function needsLocalAiBridge(model: string): boolean {
+  return model.startsWith('gpt-') || model.startsWith('gemini-')
+}
+
+function ensureLocalAiBridge(model: string): void {
+  if (!needsLocalAiBridge(model)) return
+  const script = join(PROJECT_ROOT, 'scripts', 'ai-provider-runtime.mjs')
+  if (!existsSync(script)) throw new Error('AI provider runtime bridge script is missing')
+  execFileSync(process.execPath, [script, '--json'], {
+    cwd: PROJECT_ROOT,
+    timeout: 30_000,
+    stdio: ['ignore', 'pipe', 'pipe'],
+  })
+}
+
+const bridgeTokenFile = join(STORE_DIR, '.ai-provider-bridge-token')
 
 export function resolveProviderEnv(
   model: string,
@@ -1128,16 +1145,36 @@ export function resolveProviderEnv(
   const isClaude = model.startsWith('claude-')
   const isDeepseek = model.startsWith('deepseek-')
   const isMinimax = model.startsWith('minimax-')
+  const isOpenAi = model.startsWith('gpt-')
+  const isGoogle = model.startsWith('gemini-')
   // OpenRouter model ids are `provider/model` (contain '/'); Ollama tags use
-  // ':' and no '/'. This discriminator keeps OpenRouter ids off the Ollama path.
-  const isOpenRouter = !isClaude && !isDeepseek && !isMinimax && model.includes('/')
-  const isOllama = !isClaude && !isDeepseek && !isMinimax && !isOpenRouter
+  // ':' and no '/'. This discriminator keeps direct OpenAI/Gemini model ids
+  // on the local provider bridge instead of misclassifying them as Ollama.
+  const isOpenRouter = !isClaude && !isDeepseek && !isMinimax && !isOpenAi && !isGoogle && model.includes('/')
+  const isOllama = !isClaude && !isDeepseek && !isMinimax && !isOpenAi && !isGoogle && !isOpenRouter
+
+  if (isClaude) {
+    // New Webinár Mágus onboarding stores a shared Anthropic API key in the
+    // encrypted Vault. Prefer it when present; otherwise keep the historical
+    // OAuth/host-credential behaviour byte-for-byte unchanged.
+    const key = secretLookup('ANTHROPIC_API_KEY') ?? ''
+    return {
+      provider: 'claude',
+      exportsStr: key
+        ? `unset CLAUDE_CODE_OAUTH_TOKEN && unset ANTHROPIC_AUTH_TOKEN && unset ANTHROPIC_BASE_URL && export ANTHROPIC_API_KEY="${key}" && export ANTHROPIC_MODEL=${shSingleQuote(model)} && `
+        : '',
+    }
+  }
 
   if (isDeepseek) {
     const key = secretLookup('DEEPSEEK_API_KEY') ?? ''
+    // DeepSeek's Claude Code guide uses the [1m] suffix for Flash so Claude
+    // Code exposes the full 1M context. The public API model id remains
+    // deepseek-flash, which is what the onboarding live probe validates.
+    const runtimeModel = model === 'deepseek-flash' ? 'deepseek-flash[1m]' : model
     return {
       provider: 'deepseek',
-      exportsStr: `export ANTHROPIC_AUTH_TOKEN="${key}" && export ANTHROPIC_BASE_URL=https://api.deepseek.com/anthropic && export ANTHROPIC_MODEL=${shSingleQuote(model)} && `,
+      exportsStr: `unset CLAUDE_CODE_OAUTH_TOKEN && unset ANTHROPIC_API_KEY && export ANTHROPIC_AUTH_TOKEN="${key}" && export ANTHROPIC_BASE_URL=https://api.deepseek.com/anthropic && export ANTHROPIC_MODEL=${shSingleQuote(runtimeModel)} && export ANTHROPIC_DEFAULT_OPUS_MODEL=${shSingleQuote(runtimeModel)} && export ANTHROPIC_DEFAULT_SONNET_MODEL=${shSingleQuote(runtimeModel)} && export ANTHROPIC_DEFAULT_HAIKU_MODEL=deepseek-flash && export CLAUDE_CODE_SUBAGENT_MODEL=deepseek-flash && export CLAUDE_CODE_EFFORT_LEVEL=max && export CLAUDE_CODE_AUTO_COMPACT_WINDOW=786432 && `,
     }
   }
   if (isMinimax) {
@@ -1151,7 +1188,13 @@ export function resolveProviderEnv(
     // of the compat layer's wrong one.
     return {
       provider: 'minimax',
-      exportsStr: `export ANTHROPIC_AUTH_TOKEN="${key}" && export ANTHROPIC_BASE_URL=https://api.minimax.io/anthropic && export ANTHROPIC_MODEL=${shSingleQuote(model)} && export CLAUDE_CODE_MAX_CONTEXT_TOKENS=1000000 && `,
+      exportsStr: `unset CLAUDE_CODE_OAUTH_TOKEN && export ANTHROPIC_AUTH_TOKEN="${key}" && export ANTHROPIC_BASE_URL=https://api.minimax.io/anthropic && export ANTHROPIC_MODEL=${shSingleQuote(model)} && export CLAUDE_CODE_MAX_CONTEXT_TOKENS=1000000 && `,
+    }
+  }
+  if (isOpenAi || isGoogle) {
+    return {
+      provider: isOpenAi ? 'openai' : 'google',
+      exportsStr: `unset CLAUDE_CODE_OAUTH_TOKEN && unset ANTHROPIC_API_KEY && export ANTHROPIC_AUTH_TOKEN="$(cat ${shSingleQuote(bridgeTokenFile)})" && export ANTHROPIC_BASE_URL=http://127.0.0.1:4010 && export ANTHROPIC_MODEL=${shSingleQuote(model)} && `,
     }
   }
   if (isOpenRouter) {
@@ -1159,7 +1202,7 @@ export function resolveProviderEnv(
     const key = secretLookup('openrouter-fleet-key') ?? ''
     return {
       provider: 'openrouter',
-      exportsStr: `export ANTHROPIC_AUTH_TOKEN="${key}" && export ANTHROPIC_BASE_URL=https://openrouter.ai/api && export ANTHROPIC_MODEL=${shSingleQuote(model)} && `,
+      exportsStr: `unset CLAUDE_CODE_OAUTH_TOKEN && export ANTHROPIC_AUTH_TOKEN="${key}" && export ANTHROPIC_BASE_URL=https://openrouter.ai/api && export ANTHROPIC_MODEL=${shSingleQuote(model)} && `,
     }
   }
   if (isOllama) {
@@ -1170,7 +1213,7 @@ export function resolveProviderEnv(
       // the native ollama API. Empty AGENT_LOCAL_BASE_URL falls back to
       // OLLAMA_URL, so nothing changes for an install whose local agent really
       // is ollama.
-      exportsStr: `export ANTHROPIC_AUTH_TOKEN=ollama && export ANTHROPIC_BASE_URL=${AGENT_LOCAL_BASE_URL} && export ANTHROPIC_MODEL=${shSingleQuote(model)} && `,
+      exportsStr: `unset CLAUDE_CODE_OAUTH_TOKEN && export ANTHROPIC_AUTH_TOKEN=ollama && export ANTHROPIC_BASE_URL=${AGENT_LOCAL_BASE_URL} && export ANTHROPIC_MODEL=${shSingleQuote(model)} && `,
     }
   }
   return { provider: 'claude', exportsStr: '' }
@@ -1558,6 +1601,11 @@ export async function startAgentProcess(name: string, opts: { fresh?: boolean } 
     // the agents run the TUI.) Single-quoted so a `:` in the tag is shell-safe.
     // Provider discriminator + env-export chain live in resolveProviderEnv (pure,
     // unit-tested in agent-provider-env.test.ts) so a new provider is one branch there.
+    // OpenAI and Gemini use a local LiteLLM Anthropic-compatible gateway so
+    // Claude Code can keep its tool/MCP loop while the upstream model changes.
+    // Starting it here makes sub-agent launches self-contained even when the
+    // main channels session has not started the bridge yet.
+    ensureLocalAiBridge(model)
     const { exportsStr: providerEnv } = resolveProviderEnv(model, getSecret)
     // When authMode is 'api', the agent uses its own ANTHROPIC_API_KEY from
     // the vault instead of the host's OAuth. The vault entry ID follows the

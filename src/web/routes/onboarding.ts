@@ -19,6 +19,10 @@ import { liveProbeAuth, stampTokenVerified } from '../claude-credentials-guard.j
 import { json, readBody } from '../http-helpers.js'
 import { isManagedSettingsReady, getManagedSettingsSudoCommand } from './agents.js'
 import type { RouteContext } from './types.js'
+import { setSecret, getSecret } from '../vault.js'
+import { AI_PROVIDER_CATALOG, findAiProvider, findAiModel } from '../../ai-provider-catalog.js'
+import { probeAiProviderCredential } from '../../ai-provider-probe.js'
+import { seedWebinarMagusTeam } from '../webinar-magus-team.js'
 
 // First-run onboarding for the "pre-install now, configure later" flow: the
 // dashboard boots without Claude auth / channels, and the operator finishes
@@ -28,6 +32,54 @@ import type { RouteContext } from './types.js'
 const ENV_FILE = join(PROJECT_ROOT, '.env')
 const HOME_CREDENTIALS = join(homedir(), '.claude', '.credentials.json')
 const FLEET_TOKEN_FILE = join(STORE_DIR, '.claude-oauth-token')
+const AI_PROVIDER_CONFIG_FILE = join(STORE_DIR, 'ai-provider.json')
+
+type AiProviderSelection = { provider: string; model: string }
+
+function readAiProviderSelection(): AiProviderSelection | null {
+  try {
+    const raw = JSON.parse(readFileSync(AI_PROVIDER_CONFIG_FILE, 'utf-8')) as Partial<AiProviderSelection>
+    if (typeof raw.provider !== 'string' || typeof raw.model !== 'string') return null
+    const provider = findAiProvider(raw.provider)
+    if (!provider || !findAiModel(provider, raw.model)) return null
+    return { provider: raw.provider, model: raw.model }
+  } catch {
+    return null
+  }
+}
+
+function aiProviderConfigured(): boolean {
+  const selection = readAiProviderSelection()
+  if (!selection) return false
+  const provider = findAiProvider(selection.provider)
+  return provider ? getSecret(provider.vaultKeyId) !== null : false
+}
+
+function saveAiProviderSelection(providerId: string, modelId: string, apiKey: string): void {
+  const provider = findAiProvider(providerId)
+  if (!provider) throw new Error('Ismeretlen AI szolgáltató.')
+  const model = findAiModel(provider, modelId)
+  if (!model) throw new Error('A kiválasztott modell nem tartozik ehhez a szolgáltatóhoz.')
+  const cleanKey = apiKey.trim()
+  if (!cleanKey && getSecret(provider.vaultKeyId) === null) {
+    throw new Error('API kulcs szükséges ehhez a szolgáltatóhoz.')
+  }
+
+  mkdirSync(STORE_DIR, { recursive: true })
+  if (cleanKey) setSecret(provider.vaultKeyId, provider.apiKeyLabel, cleanKey)
+  atomicWriteFileSync(
+    AI_PROVIDER_CONFIG_FILE,
+    JSON.stringify({ provider: provider.id, model: model.id }, null, 2) + '\n',
+    { mode: 0o600 },
+  )
+
+  // Fresh-install defaults: main agent + newly created specialists inherit the
+  // chosen provider model. Existing agents with explicit model configs remain
+  // untouched by design.
+  setEnvKey('AI_PROVIDER', provider.id)
+  setEnvKey('DEFAULT_AGENT_MODEL', model.id)
+  setEnvKey('MAIN_AGENT_MODEL', model.id)
+}
 
 function readEnvValue(key: string): string | null {
   try {
@@ -236,9 +288,89 @@ export function identitySavePlan(
 export async function tryHandleOnboarding(ctx: RouteContext): Promise<boolean> {
   const { req, res, path, method } = ctx
 
+  // Webinár Mágus AI provider catalog. Public metadata only: never returns API keys.
+  if (path === '/api/onboarding/ai-providers' && method === 'GET') {
+    const selected = readAiProviderSelection()
+    json(res, {
+      providers: AI_PROVIDER_CATALOG.map((provider) => ({
+        id: provider.id,
+        name: provider.name,
+        company: provider.company,
+        recommendedModel: provider.recommendedModel,
+        priceLevel: provider.priceLevel,
+        priceLabel: provider.priceLabel,
+        precisionLabel: provider.precisionLabel,
+        hungarianLabel: provider.hungarianLabel,
+        recommendation: provider.recommendation,
+        decisionLabel: provider.decisionLabel,
+        recommendedFor: provider.recommendedFor,
+        caveat: provider.caveat ?? null,
+        configured: getSecret(provider.vaultKeyId) !== null,
+        models: provider.models,
+      })),
+      selected,
+      configured: aiProviderConfigured(),
+      qualityNote: 'A magyar nyelvi címkék Webinár Mágus termék-ajánlások, nem hivatalos magyar benchmark pontszámok.',
+      pricingCheckedAt: '2026-09-28',
+    })
+    return true
+  }
+
+  // Persist provider/model choice plus the provider API key. The key goes ONLY
+  // into the encrypted Vault; ai-provider.json contains provider/model IDs only.
+  if (path === '/api/onboarding/ai-provider' && method === 'POST') {
+    let body: { provider?: string; model?: string; apiKey?: string } = {}
+    try { body = JSON.parse((await readBody(req)).toString()) as typeof body } catch { /* bad body handled below */ }
+    const providerId = (body.provider ?? '').trim()
+    const modelId = (body.model ?? '').trim()
+    const apiKey = (body.apiKey ?? '').trim()
+    if (!providerId || !modelId) {
+      json(res, { error: 'Szolgáltató és modell szükséges.', reason: 'missing' }, 400)
+      return true
+    }
+    try {
+      const provider = findAiProvider(providerId)
+      if (!provider) {
+        json(res, { error: 'Ismeretlen AI szolgáltató.', reason: 'invalid-provider' }, 400)
+        return true
+      }
+      if (!findAiModel(provider, modelId)) {
+        json(res, { error: 'A kiválasztott modell nem érhető el ennél a szolgáltatónál.', reason: 'invalid-model' }, 400)
+        return true
+      }
+
+      // Validate BEFORE persisting. When the provider already has a Vault key,
+      // an empty input means "keep the saved key" and that saved key is probed
+      // against the newly selected model.
+      const effectiveKey = apiKey || getSecret(provider.vaultKeyId) || ''
+      const probe = await probeAiProviderCredential(provider.id, modelId, effectiveKey)
+      if (!probe.ok) {
+        const error = probe.kind === 'auth-rejected'
+          ? 'Az API kulcsot a szolgáltató elutasította.'
+          : probe.kind === 'model-unavailable'
+            ? 'A kiválasztott modell nem érhető el ezzel az API fiókkal.'
+            : probe.kind === 'network-error'
+              ? 'Most nem sikerült elérni az AI szolgáltatót. Ellenőrizd az internetkapcsolatot és próbáld újra.'
+              : 'Az AI szolgáltató nem fogadta el a próbahívást.'
+        logger.warn({ provider: providerId, model: modelId, probeKind: probe.kind, status: probe.status ?? null }, 'onboarding: AI provider probe failed')
+        json(res, { error, reason: probe.kind, status: probe.status ?? null }, probe.kind === 'network-error' ? 503 : 400)
+        return true
+      }
+
+      saveAiProviderSelection(providerId, modelId, apiKey)
+      logger.info({ provider: providerId, model: modelId }, 'onboarding: AI provider configured and verified')
+      json(res, { ok: true, verified: true, provider: providerId, model: modelId })
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Nem sikerült menteni az AI szolgáltatót.'
+      json(res, { error: message, reason: 'invalid-provider' }, 400)
+    }
+    return true
+  }
+
   // Onboarding state so the frontend knows which step to show.
   if (path === '/api/onboarding/status' && method === 'GET') {
     const claude = claudeAuthPresent()
+    const aiConfigured = aiProviderConfigured()
     const running = agentsRunning()
     const ch = channelConfigured()
     const pr = paired()
@@ -271,9 +403,11 @@ export async function tryHandleOnboarding(ctx: RouteContext): Promise<boolean> {
     }
     json(res, {
       identityConfirmed: identityConfirmed(),
-      currentAgentName: readEnvValue('BRAND_NAME') || readEnvValue('BOT_NAME') || 'Marveen',
+      currentAgentName: readEnvValue('BRAND_NAME') || readEnvValue('BOT_NAME') || 'Webinár Mágus',
       currentOwnerName: readEnvValue('OWNER_NAME') || '',
       claudeAuthPresent: claude,
+      aiProviderConfigured: aiConfigured,
+      aiProviderSelection: readAiProviderSelection(),
       agentsRunning: running,
       channelConfigured: ch,
       channelLive,
@@ -286,7 +420,7 @@ export async function tryHandleOnboarding(ctx: RouteContext): Promise<boolean> {
       paired: pr,
       // The identity step never re-opens the wizard on an already-configured
       // install: it only participates while first-run setup is incomplete.
-      needsOnboarding: !claude || !running || !ch || !pr,
+      needsOnboarding: (!aiConfigured && !claude) || !running || !ch || !pr,
     })
     return true
   }
@@ -452,8 +586,24 @@ export async function tryHandleOnboarding(ctx: RouteContext): Promise<boolean> {
 
   // Launch the fleet (main-agent channels session). Idempotent: no double-spawn.
   if (path === '/api/onboarding/launch' && method === 'POST') {
-    if (agentsRunning()) { json(res, { ok: true, alreadyRunning: true }); return true }
-    if (!claudeAuthPresent()) { json(res, { error: 'Eloszor allitsd be a Claude-autentikaciot.', reason: 'no-auth' }, 409); return true }
+    if (!aiProviderConfigured() && !claudeAuthPresent()) {
+      json(res, { error: 'Először állíts be egy AI szolgáltatót és API kulcsot.', reason: 'no-ai-provider' }, 409)
+      return true
+    }
+
+    const selectedModel = readAiProviderSelection()?.model
+      || readEnvValue('DEFAULT_AGENT_MODEL')
+      || 'claude-sonnet-5'
+
+    // Team creation is idempotent and never overwrites an existing specialist's
+    // persona/config. This also means an upgraded install can safely use the
+    // onboarding launch action to add only the missing canonical specialists.
+    const team = await seedWebinarMagusTeam(selectedModel, true)
+
+    if (agentsRunning()) {
+      json(res, { ok: true, alreadyRunning: true, team })
+      return true
+    }
     // ONBTMUX1: on a fresh install the channels session does NOT exist yet, and
     // `tmux respawn-pane` (what hardRestartMarveenChannels does on Linux) cannot
     // bring back a session that was never there -- it fails with "respawn-pane
@@ -478,13 +628,13 @@ export async function tryHandleOnboarding(ctx: RouteContext): Promise<boolean> {
         return true
       }
       logger.info({ created }, 'onboarding: channels session absent -- creating via channels.sh')
-      json(res, { ok: true, starting: true })
+      json(res, { ok: true, starting: true, team })
       return true
     }
     const r = hardRestartMarveenChannels()
     if (!r.ok) { json(res, { error: r.error || 'Nem sikerult eletre kelteni az agenteket.', reason: 'launch-failed' }, 500); return true }
     logger.info('onboarding: fleet launched (channels session)')
-    json(res, { ok: true, started: true })
+    json(res, { ok: true, started: true, team })
     return true
   }
 

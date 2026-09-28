@@ -83,9 +83,8 @@ describe('the docs stop hiding the Discord provider', () => {
     expect(doc).toContain('### Discord-specifikum')
   })
 
-  it('README offers Discord next to Telegram and Slack', () => {
-    const readme = readFileSync(join(ROOT, 'README.md'), 'utf-8')
-    expect(readme).toContain('#### Discord (alternatív)')
-    expect(readme).toContain('CHANNEL_PROVIDER=discord')
+  it('channel docs expose the Discord environment selector', () => {
+    const doc = readFileSync(join(ROOT, 'docs', 'channels.md'), 'utf-8')
+    expect(doc).toContain('CHANNEL_PROVIDER=discord')
   })
 })

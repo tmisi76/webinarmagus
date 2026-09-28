@@ -14,7 +14,7 @@ import { join } from 'node:path'
 // agent, so it was unaffected.
 //
 // The same boot race is already documented and guarded for the Messages page
-// (ensureMarveenLoaded). This change applies that existing guard at the second
+// (ensureMainAgentLoaded). This change applies that existing guard at the second
 // call site; it deliberately does NOT remove the mainAgentId() fallback, which
 // other call sites rely on.
 //
@@ -48,14 +48,14 @@ function loadPendingBlock(): string {
 
 describe('PAIRAPPROVE1: the wizard resolves the real agent id before asking', () => {
   it('the boot-race guard still exists and is what we reuse', () => {
-    expect(APP).toContain('async function ensureMarveenLoaded()')
+    expect(APP).toContain('async function ensureMainAgentLoaded()')
     // it must remain a no-op once the id is known, or every poll refetches
-    expect(APP).toMatch(/async function ensureMarveenLoaded\(\)\s*\{\s*\n\s*if \(window\._marveen\?\.agentId\) return/)
+    expect(APP).toMatch(/async function ensureMainAgentLoaded\(\)\s*\{\s*\n\s*if \(window\._marveen\?\.agentId\) return/)
   })
 
   it('awaits the guard BEFORE fetching pending (order is the whole fix)', () => {
     const blk = loadPendingBlock()
-    const guard = blk.indexOf('await ensureMarveenLoaded()')
+    const guard = blk.indexOf('await ensureMainAgentLoaded()')
     const fetchAt = blk.indexOf('await fetch(')
     expect(guard, 'guard not called in loadPending').toBeGreaterThan(-1)
     expect(fetchAt).toBeGreaterThan(-1)

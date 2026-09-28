@@ -615,9 +615,14 @@ MCP_BATCH_ENV="export CLAUDE_CODE_ENABLE_PROMPT_SUGGESTION=false CLAUDE_CODE_DIS
 # which then blocks the update preflight and gets reverted by the next update.
 MAIN_MODEL="$(resolve_main_model)"
 MODEL_FLAG=""
-# Single-quote the model id so values like `claude-opus-4-8[1m]` survive the
-# tmux command-string round-trip without the inner shell glob-expanding `[1m]`.
-[ -n "$MAIN_MODEL" ] && MODEL_FLAG="--model '$MAIN_MODEL' "
+# Claude Code's --model picker validates Anthropic-native IDs. For direct
+# DeepSeek and for OpenAI/Gemini behind the local bridge, ANTHROPIC_MODEL is
+# authoritative; passing a non-Claude id through --model can be rejected by the
+# TUI before the provider gateway sees it.
+case "$MAIN_MODEL" in
+  claude-*) MODEL_FLAG="--model '$MAIN_MODEL' " ;;
+  *) MODEL_FLAG="" ;;
+esac
 
 # Main-agent config isolation (OPT-IN, default OFF).
 #
@@ -898,12 +903,46 @@ STATE_DIR_ENV="export ${STATE_ENV_VAR}='${MAIN_CHAN_DIR}' && "
 # plugin dies in a restart loop, on a headless box where /login is impossible.
 # Creating the server ourselves makes set-environment -g always land, which is
 # what the fix intended. start-server is idempotent and cheap.
+#
+# Webinár Mágus AI-provider selection: if onboarding saved store/ai-provider.json,
+# resolve the selected provider/model from the encrypted Vault before starting
+# the main agent. OpenAI/Gemini also start the local LiteLLM bridge here.
+if [ -f "$INSTALL_DIR/store/ai-provider.json" ] && [ -f "$INSTALL_DIR/scripts/ai-provider-runtime.mjs" ]; then
+  _wm_provider_env="$(node "$INSTALL_DIR/scripts/ai-provider-runtime.mjs" --shell 2>>"$INSTALL_DIR/store/channels-failures.log")" || {
+    echo "AI provider runtime failed; main agent not started with selected provider." >>"$INSTALL_DIR/store/channels-failures.log"
+    exit 1
+  }
+  if [ -n "$_wm_provider_env" ]; then
+    eval "$_wm_provider_env"
+  fi
+  unset _wm_provider_env
+fi
+
 $TMUX start-server 2>/dev/null || true
+# Refresh auth/provider globals on EVERY launch. A provider switch must never
+# inherit a stale Claude OAuth token from an older tmux server, otherwise the
+# selected API key can be silently ignored.
+$TMUX set-environment -gu CLAUDE_CODE_OAUTH_TOKEN 2>/dev/null || true
 if [ -n "${CLAUDE_CODE_OAUTH_TOKEN:-}" ]; then
   $TMUX set-environment -g CLAUDE_CODE_OAUTH_TOKEN "$CLAUDE_CODE_OAUTH_TOKEN" 2>/dev/null || true
 fi
+# Provider-routing variables are refreshed on every main-agent launch so
+# switching AI providers cannot leave a stale base URL/model in the tmux server.
+$TMUX set-environment -gu ANTHROPIC_API_KEY 2>/dev/null || true
+$TMUX set-environment -gu ANTHROPIC_AUTH_TOKEN 2>/dev/null || true
+$TMUX set-environment -gu ANTHROPIC_BASE_URL 2>/dev/null || true
+$TMUX set-environment -gu ANTHROPIC_MODEL 2>/dev/null || true
 if [ -n "${ANTHROPIC_API_KEY:-}" ]; then
   $TMUX set-environment -g ANTHROPIC_API_KEY "$ANTHROPIC_API_KEY" 2>/dev/null || true
+fi
+if [ -n "${ANTHROPIC_AUTH_TOKEN:-}" ]; then
+  $TMUX set-environment -g ANTHROPIC_AUTH_TOKEN "$ANTHROPIC_AUTH_TOKEN" 2>/dev/null || true
+fi
+if [ -n "${ANTHROPIC_BASE_URL:-}" ]; then
+  $TMUX set-environment -g ANTHROPIC_BASE_URL "$ANTHROPIC_BASE_URL" 2>/dev/null || true
+fi
+if [ -n "${ANTHROPIC_MODEL:-}" ]; then
+  $TMUX set-environment -g ANTHROPIC_MODEL "$ANTHROPIC_MODEL" 2>/dev/null || true
 fi
 # Propagate the prompt-suggestion disable to every sub-agent tmux session.
 $TMUX set-environment -g CLAUDE_CODE_ENABLE_PROMPT_SUGGESTION false 2>/dev/null || true

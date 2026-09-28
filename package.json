@@ -13,7 +13,7 @@
     "dashboard-user": "tsx scripts/dashboard-user.ts",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
-    "syntax-check": "node --check web/app.js && node --check web/sw.js && node --check web/autowebinar.js && node --check scripts/seed-autowebinar-mcp.mjs",
+    "syntax-check": "node --check web/app.js && node --check web/sw.js && node --check web/autowebinar.js && node --check web/ai-provider-onboarding.js && node --check scripts/seed-autowebinar-mcp.mjs && node --check scripts/ai-provider-runtime.mjs",
     "smoke": "playwright test --config=playwright.config.ts",
     "skill": "tsx scripts/skill.ts",
     "browser-verify": "playwright test --config=playwright.browser.config.ts"

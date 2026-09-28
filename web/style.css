@@ -7807,3 +7807,199 @@ body {
   .aw-integration-title-row { align-items: flex-start; }
   .aw-integration-actions { flex-direction: column; }
 }
+
+
+/* === Webinár Mágus AI provider onboarding === */
+.onb-ai-intro h3 {
+  margin: 0 0 6px;
+  font-family: Poppins, Inter, sans-serif;
+  font-size: 19px;
+  color: var(--text);
+}
+.onb-ai-intro p {
+  margin: 0 0 16px;
+  color: var(--text-secondary);
+  line-height: 1.55;
+}
+.onb-ai-legacy {
+  margin: 0 0 14px;
+  padding: 10px 12px;
+  border: 1px solid rgba(14,165,233,.25);
+  border-radius: var(--radius-sm);
+  background: var(--info-soft);
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+.onb-ai-provider-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0,1fr));
+  gap: 10px;
+  margin-bottom: 14px;
+}
+.onb-ai-provider-card {
+  display: block;
+  width: 100%;
+  min-height: 136px;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-card);
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+  transition: border-color var(--transition), box-shadow var(--transition), transform var(--transition);
+}
+.onb-ai-provider-card:hover {
+  border-color: rgba(37,99,235,.45);
+  box-shadow: var(--shadow-sm);
+  transform: translateY(-1px);
+}
+.onb-ai-provider-card.selected {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-soft), var(--shadow-sm);
+  background: linear-gradient(135deg, rgba(37,99,235,.045), rgba(14,165,233,.02));
+}
+.onb-ai-provider-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 9px;
+}
+.onb-ai-provider-head strong { font-size: 15px; }
+.onb-ai-rec {
+  display: inline-flex;
+  padding: 3px 7px;
+  border-radius: 999px;
+  background: var(--gradient-primary);
+  color: #fff;
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 1.25;
+  letter-spacing: .02em;
+  text-align: center;
+}
+.onb-ai-badges {
+  display: flex;
+  gap: 5px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+.onb-ai-badges span {
+  display: inline-flex;
+  padding: 3px 7px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: 10px;
+  font-weight: 650;
+}
+.onb-ai-provider-card p {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 11px;
+  line-height: 1.45;
+}
+.onb-ai-model-panel {
+  margin-top: 12px;
+  padding: 15px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-card);
+}
+.onb-ai-panel-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.onb-ai-panel-head h3 {
+  margin: 0 0 3px;
+  font-size: 17px;
+  font-family: Poppins, Inter, sans-serif;
+}
+.onb-ai-panel-head p {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 11px;
+}
+.onb-ai-hu-badge {
+  padding: 5px 8px;
+  border-radius: 999px;
+  background: rgba(16,185,129,.10);
+  color: var(--success);
+  font-size: 10px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.onb-ai-model-list {
+  display: grid;
+  gap: 7px;
+  margin-bottom: 12px;
+}
+.onb-ai-model-option {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: border-color var(--transition), background var(--transition);
+}
+.onb-ai-model-option.selected {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+.onb-ai-model-option input { margin-top: 4px; }
+.onb-ai-model-title {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+.onb-ai-model-title strong { font-size: 13px; }
+.onb-ai-model-title span {
+  color: var(--accent);
+  font-size: 10px;
+  font-weight: 700;
+}
+.onb-ai-price {
+  margin-top: 2px;
+  font-size: 11px;
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+.onb-ai-bestfor, .onb-ai-note, .onb-ai-caveat, .onb-ai-quality-note {
+  margin-top: 3px;
+  color: var(--text-muted);
+  font-size: 10px;
+  line-height: 1.45;
+}
+.onb-ai-caveat {
+  margin: 0 0 12px;
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  background: rgba(245,158,11,.10);
+  color: #B45309;
+}
+.onb-ai-quality-note { margin-top: 10px; }
+.onb-ai-loading, .onb-ai-error {
+  grid-column: 1 / -1;
+  padding: 16px;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+.onb-ai-error { color: var(--danger); }
+@media (max-width: 640px) {
+  .onb-ai-provider-grid { grid-template-columns: 1fr; }
+  .onb-ai-provider-card { min-height: 0; }
+  .onb-ai-panel-head { flex-direction: column; }
+}
+
+
+/* Keep the HTML hidden attribute authoritative for the AutoWebinar integration icon. */
+.aw-integration-icon[hidden] { display: none; }

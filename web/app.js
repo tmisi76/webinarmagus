@@ -3292,7 +3292,7 @@ async function showIdleFlushScheduleWarning(agent) {
   } catch { /* the hint is best-effort; never break the pane over it */ }
 }
 
-async function openWebinár MágusDetail() {
+async function openMainAgentDetail() {
   const m = window._marveen
   if (!m) return
 
@@ -3366,7 +3366,7 @@ async function openWebinár MágusDetail() {
       document.getElementById('editMcpJson').value = mFull.mcpJson || ''
     }
   } catch {}
-  applyWebinár MágusReadonlyMode(true)
+  applyMainAgentReadonlyMode(true)
 
   // Telegram tab -- without this the tab stays in the default "not connected"
   // view even though the bot is running and receiving messages.
@@ -3388,11 +3388,11 @@ async function openWebinár MágusDetail() {
 }
 
 // `readOnly` is really "this modal is showing the MAIN agent" -- it is called
-// with true from openWebinár MágusDetail and false from openAgentDetail, which makes
+// with true from openMainAgentDetail and false from openAgentDetail, which makes
 // it the one hook both open-paths share. Anything that must differ for the main
 // agent belongs here; putting it in openAgentDetail alone silently no-ops for
 // the main agent, whose panel never runs that function.
-function applyWebinár MágusReadonlyMode(readOnly) {
+function applyMainAgentReadonlyMode(readOnly) {
   // The Team tab describes a SUB-agent's place in the hierarchy: role
   // (leader | member), who it reports to, who it delegates to. None of it
   // applies to the main agent, which has no team record and cannot have one.
@@ -3539,7 +3539,7 @@ function renderAgents() {
     mCard.querySelector('.agent-conversation-btn')?.addEventListener('click', (e) => {
       e.stopPropagation(); openConversationModal(mainAgentId(), t('agents.marveen_boss'))
     })
-    mCard.addEventListener('click', () => onAgentCardClick(mainAgentId(), openWebinár MágusDetail))
+    mCard.addEventListener('click', () => onAgentCardClick(mainAgentId(), openMainAgentDetail))
     agentsGrid.insertBefore(mCard, addBtn)
   }
 
@@ -3757,7 +3757,7 @@ function openFederatedThread(qualifiedId) {
 // === Agent Detail ===
 async function openAgentDetail(agentName) {
   if (agentName === mainAgentId()) {
-    return openWebinár MágusDetail()
+    return openMainAgentDetail()
   }
 
   try {
@@ -3851,7 +3851,7 @@ async function openAgentDetail(agentName) {
   document.getElementById('marveenRestartBtn').hidden = true
 
   // Restore editable Settings (Webinár Mágus detail flips this to read-only).
-  applyWebinár MágusReadonlyMode(false)
+  applyMainAgentReadonlyMode(false)
 
   // Delete button (restore visibility for normal agents)
   document.getElementById('deleteAgentBtn').style.display = ''
@@ -3948,8 +3948,8 @@ document.getElementById('avatarChangeBtn').addEventListener('click', () => {
   const gallery = document.getElementById('detailAvatarGallery')
   gallery.hidden = !gallery.hidden
   if (!gallery.hidden) {
-    const isWebinár Mágus = currentAgent && currentAgent.role === 'main'
-    const avatarEndpoint = isWebinár Mágus ? '/api/marveen/avatar' : `/api/agents/${encodeURIComponent(currentAgent.name)}/avatar`
+    const isMainAgent = currentAgent && currentAgent.role === 'main'
+    const avatarEndpoint = isMainAgent ? '/api/marveen/avatar' : `/api/agents/${encodeURIComponent(currentAgent.name)}/avatar`
 
     const grid = document.getElementById('detailAvatarGrid')
     grid.innerHTML = ''
@@ -3967,7 +3967,7 @@ document.getElementById('avatarChangeBtn').addEventListener('click', () => {
           if (!res.ok) throw new Error()
           showToast(t('agents.toast.avatar_updated'))
           bumpAvatarEpoch()
-          const imgUrl = isWebinár Mágus ? `/api/marveen/avatar${avatarBust()}` : `/api/agents/${encodeURIComponent(currentAgent.name)}/avatar${avatarBust()}`
+          const imgUrl = isMainAgent ? `/api/marveen/avatar${avatarBust()}` : `/api/agents/${encodeURIComponent(currentAgent.name)}/avatar${avatarBust()}`
           document.getElementById('agentDetailAvatar').innerHTML = `<img src="${imgUrl}" alt="">`
           gallery.hidden = true
           loadAgents()
@@ -4033,8 +4033,8 @@ document.getElementById('avatarChangeBtn').addEventListener('click', () => {
 
   async function uploadAvatarFile(file) {
     if (!currentAgent) return
-    const isWebinár Mágus = currentAgent.role === 'main'
-    const endpoint = isWebinár Mágus ? '/api/marveen/avatar' : `/api/agents/${encodeURIComponent(currentAgent.name)}/avatar`
+    const isMainAgent = currentAgent.role === 'main'
+    const endpoint = isMainAgent ? '/api/marveen/avatar' : `/api/agents/${encodeURIComponent(currentAgent.name)}/avatar`
     const form = new FormData()
     form.append('avatar', file, file.name)
     try {
@@ -4042,7 +4042,7 @@ document.getElementById('avatarChangeBtn').addEventListener('click', () => {
       if (!res.ok) throw new Error()
       showToast(t('agents.toast.avatar_uploaded'))
       bumpAvatarEpoch()
-      const imgUrl = isWebinár Mágus ? `/api/marveen/avatar${avatarBust()}` : `/api/agents/${encodeURIComponent(currentAgent.name)}/avatar${avatarBust()}`
+      const imgUrl = isMainAgent ? `/api/marveen/avatar${avatarBust()}` : `/api/agents/${encodeURIComponent(currentAgent.name)}/avatar${avatarBust()}`
       document.getElementById('agentDetailAvatar').innerHTML = `<img src="${imgUrl}" alt="">`
       document.getElementById('detailAvatarGallery').hidden = true
       resetAvatarUpload()
@@ -11536,7 +11536,7 @@ function chatAvatarHtml(agentName, size = 32) {
 // -- composing to it creates a phantom "marveen" thread that sits pending
 // forever and shows up as a duplicate of the true main agent (whatever id this
 // install actually uses). Resolve _marveen before rendering any chat target.
-async function ensureWebinár MágusLoaded() {
+async function ensureMainAgentLoaded() {
   if (window._marveen?.agentId) return
   try {
     const r = await fetch('/api/marveen')
@@ -11545,7 +11545,7 @@ async function ensureWebinár MágusLoaded() {
 }
 
 async function loadMessagesPage() {
-  await ensureWebinár MágusLoaded()
+  await ensureMainAgentLoaded()
   await loadChatAgentList()
 }
 
@@ -12560,7 +12560,10 @@ async function waitForChannelLive(fetchStatus, delayMs, maxTries) {
 // WIZFLOW809 END waitForChannelLive
 function onboardingCurrentStep(s) {
   if (!s.identityConfirmed) return 1
-  if (!s.claudeAuthPresent || !s.agentsRunning) return 2
+  // Fresh Webinár Mágus installs choose their own AI API provider. Existing
+  // working Claude-auth installs remain valid and are not forced through a new
+  // provider step during upgrade.
+  if ((!s.aiProviderConfigured && !s.claudeAuthPresent) || !s.agentsRunning) return 2
   if (!s.channelConfigured) return 3
   if (!s.paired) return 4
   return 0
@@ -12594,7 +12597,7 @@ let onboardingAgentId = null
 // to the Telegram wording on every language switch, so both call sites re-apply the provider-specific text here.
 function applyOnboardingProviderTab() {
   const el = document.querySelector('#onboardingSteps .onboarding-step[data-ostep="3"] span:last-child')
-  if (el) el.textContent = onboardingChannelProvider === 'slack' ? t('onboarding.step2.tab_slack') : t('onboarding.step2.tab')
+  if (el) el.textContent = 'Csatorna'
 }
 function renderOnboarding(s) {
   if (onboardingDismissed()) return
@@ -12624,6 +12627,14 @@ function renderOnboarding(s) {
   else if (step === 3) body.innerHTML = onbStep2Html(s)
   else body.innerHTML = onbStep3Html(s)
   wireOnboarding(step)
+  if (step === 2 && window.WebinarMagusAI && typeof window.WebinarMagusAI.init === 'function') {
+    window.WebinarMagusAI.init({
+      status: s,
+      onbMsg,
+      refreshOnboarding,
+      fetchOnboardingStatus,
+    })
+  }
   // Step 3, token already on disk, managed-settings.json still missing: the status GET already knows this (no probe/write/restart triggered),
   // so show the sudo command right away instead of waiting for a Save click. Retry just re-polls status -- no token POST, no channel restart.
   if (step === 3 && s.sudoCommand) showSudoModal(s.sudoCommand, () => refreshOnboarding())
@@ -12643,17 +12654,10 @@ function onbIdentityHtml(s) {
     + `<div id="onbMsg" class="onb-msg"></div>`
 }
 function onbStep1Html(s) {
-  return `<p>${escapeHtml(t('onboarding.step1.desc'))}</p>`
-    + (s.claudeAuthPresent
-      ? `<p class="onb-ok-line">${escapeHtml(t('onboarding.step1.auth_done'))}</p>`
-      : `<label class="form-label-sm">${escapeHtml(t('onboarding.step1.token_label'))}</label>`
-        + `<input id="onbToken" type="password" class="onb-input" placeholder="sk-ant-oat01-..." autocomplete="off">`
-        + `<div class="onb-hint">${escapeHtml(t('onboarding.step1.token_hint'))}</div>`
-        + `<button class="btn-primary btn-compact" id="onbAuthBtn">${escapeHtml(t('onboarding.step1.save_btn'))}</button>`)
-    + (s.claudeAuthPresent && !s.agentsRunning
-      ? `<button class="btn-primary btn-compact" id="onbLaunchBtn">${escapeHtml(t('onboarding.step1.launch_btn'))}</button>`
-      : '')
-    + `<div id="onbMsg" class="onb-msg"></div>`
+  if (window.WebinarMagusAI && typeof window.WebinarMagusAI.html === 'function') {
+    return window.WebinarMagusAI.html(s)
+  }
+  return `<p>AI szolgáltató választó betöltése...</p><div id="onbMsg" class="onb-msg"></div>`
 }
 function onbStep2Html(s) {
   const isSlack = onboardingChannelProvider === 'slack'
@@ -12693,6 +12697,8 @@ function onbStep3Html(s) {
     + `<div id="onbMsg" class="onb-msg"></div>`
 }
 function wireOnboarding(step) {
+  // The Webinár Mágus AI-provider module owns step 2 on fresh installs.
+  if (step === 2 && window.WebinarMagusAI) return
   if (step === 1) {
     const idBtn = document.getElementById('onbIdentityBtn')
     if (idBtn) idBtn.addEventListener('click', async () => {
@@ -12817,13 +12823,13 @@ function wireOnboarding(step) {
     const loadPending = async () => {
       try {
         // Same boot race the Messages page already guards against (see
-        // ensureWebinár MágusLoaded): until /api/marveen resolves window._marveen,
+        // ensureMainAgentLoaded): until /api/marveen resolves window._marveen,
         // mainAgentId() returns the literal 'marveen' fallback. On a renamed
         // install that is not the main agent, so the backend takes the
         // sub-agent branch, finds no such agent dir and answers 404 -- and the
         // wizard rendered that as "no pending pairing" while the Channel view,
         // which uses the selected agent, listed the very same request.
-        await ensureWebinár MágusLoaded()
+        await ensureMainAgentLoaded()
         const res = await fetch(`/api/agents/${encodeURIComponent(onboardingAgentId || mainAgentId())}/channels/${onboardingChannelProvider}/pending`)
         // Surface the failure instead of rendering it as an empty list. This is
         // a separate defect from the id race: without it a 404 or an auth error
