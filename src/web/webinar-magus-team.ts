@@ -94,7 +94,7 @@ function soulFor(def: TeamSeedDefinition): string {
  * authoritative. Fresh agents receive the selected install-wide model and the
  * shared MCP config through scaffoldAgentDir().
  */
-export function seedWebinarMagusTeam(model: string, start = true): WebinarMagusSeedResult[] {
+export async function seedWebinarMagusTeam(model: string, start = true): Promise<WebinarMagusSeedResult[]> {
   const results: WebinarMagusSeedResult[] = []
 
   for (const def of WEBINAR_MAGUS_TEAM) {
@@ -127,7 +127,7 @@ export function seedWebinarMagusTeam(model: string, start = true): WebinarMagusS
       if (start) {
         addDesiredAgent(def.id)
         if (!started) {
-          const launch = startAgentProcess(def.id)
+          const launch = await startAgentProcess(def.id)
           started = launch.ok
           if (!launch.ok) {
             results.push({
