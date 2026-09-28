@@ -63,7 +63,7 @@ AGENT_CAP="${MARVEEN_AGENT_CAP:-12}"
 # primary bot always survives the safe-mode band; override with MARVEEN_CORE_AGENTS.
 CORE_AGENTS="${MARVEEN_CORE_AGENTS:-$MAIN_AGENT_ID}"
 STAGGER_SEC="${MARVEEN_STAGGER_SEC:-20}"   # consumed by fleet-safe-start.sh
-STATE_DIR="${MARVEEN_STORE:-$INSTALL_DIR/store}"
+STATE_DIR="${WEBINAR_MAGUS_STORE:-$INSTALL_DIR/store}"
 SAFE_FLAG="$STATE_DIR/.fleet-safe-mode"
 ALERT_STAMP="$STATE_DIR/.fleet-memgate-alert"   # "band:epoch" of last alert
 OBSERVE_FLAG="$STATE_DIR/.fleet-memgate-observe"  # if present -> observe-only
