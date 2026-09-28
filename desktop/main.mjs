@@ -1,5 +1,5 @@
 import { app, BrowserWindow, ipcMain, shell } from 'electron'
-import { spawn } from 'node:child_process'
+import { spawn, spawnSync } from 'node:child_process'
 import { existsSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
@@ -37,7 +37,12 @@ function spawnDetached(file, args, options = {}) {
 
 function startRuntime() {
   if (process.platform === 'win32') {
-    // Runtime remains in WSL for v0.1. The desktop shell is native Windows.
+    const probe = spawnSync('wsl.exe', ['bash', '-lc', 'test -f ~/webinar-magus/scripts/start.sh'], {
+      windowsHide: true,
+      stdio: 'ignore',
+    })
+    if (probe.status !== 0) return { ok: false, reason: 'runtime-missing-wsl' }
+
     spawnDetached('wsl.exe', ['bash', '-lc', 'cd ~/webinar-magus && bash scripts/start.sh'])
     runtimeStartedByApp = true
     return { ok: true, mode: 'wsl' }
@@ -133,18 +138,32 @@ ipcMain.handle('webinar-magus:retry-runtime', async () => {
 
 ipcMain.handle('webinar-magus:install-runtime', async () => {
   if (runtimeInstallChild) return { ok: false, reason: 'already-running' }
-  if (process.platform !== 'darwin') {
+
+  let file
+  let args
+  let env = { ...process.env }
+
+  if (process.platform === 'darwin') {
+    const script = join(import.meta.dirname, 'bootstrap', 'macos.sh')
+    if (!existsSync(script)) return { ok: false, reason: 'bootstrap-missing' }
+    file = '/bin/bash'
+    args = [script]
+    env = { ...env, WEBINAR_MAGUS_RUNTIME: DEFAULT_RUNTIME_DIR }
+  } else if (process.platform === 'win32') {
+    const script = join(import.meta.dirname, 'bootstrap', 'windows.ps1')
+    if (!existsSync(script)) return { ok: false, reason: 'bootstrap-missing' }
+    file = 'powershell.exe'
+    args = ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', script]
+  } else {
     return { ok: false, reason: 'unsupported-platform' }
   }
 
-  const script = join(import.meta.dirname, 'bootstrap', 'macos.sh')
-  if (!existsSync(script)) return { ok: false, reason: 'bootstrap-missing' }
-
   return await new Promise((resolve) => {
-    const child = spawn('/bin/bash', [script], {
+    const child = spawn(file, args, {
       cwd: import.meta.dirname,
-      env: { ...process.env, WEBINAR_MAGUS_RUNTIME: DEFAULT_RUNTIME_DIR },
+      env,
       stdio: ['ignore', 'pipe', 'pipe'],
+      windowsHide: true,
     })
     runtimeInstallChild = child
 
@@ -168,6 +187,8 @@ ipcMain.handle('webinar-magus:install-runtime', async () => {
         resolve({ ok: true })
       } else if (code === 20) {
         resolve({ ok: false, reason: 'homebrew-required' })
+      } else if (code === 30) {
+        resolve({ ok: false, reason: 'wsl-required' })
       } else {
         resolve({ ok: false, reason: 'install-failed', code })
       }
@@ -183,6 +204,20 @@ ipcMain.handle('webinar-magus:open-runtime-help', async () => {
 ipcMain.handle('webinar-magus:open-homebrew', async () => {
   await shell.openExternal('https://brew.sh')
   return true
+})
+
+ipcMain.handle('webinar-magus:install-wsl', async () => {
+  if (process.platform !== 'win32') return { ok: false, reason: 'unsupported-platform' }
+  try {
+    spawnDetached('powershell.exe', [
+      '-NoProfile',
+      '-Command',
+      'Start-Process wsl.exe -Verb RunAs -ArgumentList "--install"',
+    ])
+    return { ok: true }
+  } catch (err) {
+    return { ok: false, reason: 'spawn-error', message: err.message }
+  }
 })
 
 app.whenReady().then(createWindow)
