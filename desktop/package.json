@@ -7,11 +7,16 @@
   "scripts": {
     "start": "electron .",
     "dist:mac": "electron-builder --mac dmg",
-    "dist:win": "electron-builder --win nsis"
+    "dist:win": "electron-builder --win nsis",
+    "icons": "node prepare-icons.mjs",
+    "predist:mac": "npm run icons",
+    "predist:win": "npm run icons"
   },
   "devDependencies": {
     "electron": "^39.0.0",
-    "electron-builder": "^26.0.12"
+    "electron-builder": "^26.0.12",
+    "sharp": "^0.34.4",
+    "png-to-ico": "^3.0.1"
   },
   "build": {
     "appId": "hu.autowebinar.webinarmagus",
