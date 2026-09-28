@@ -310,7 +310,7 @@ const MAIN_STUCK_THRESHOLDS: StuckInputThresholds = {
 // main channel input is STILL parked, the TUI is hard-wedged: a paste
 // placeholder that Enter only expands (never submits), or a state where
 // keystrokes no longer register. Soft recovery cannot win there; the only fix
-// is a fresh claude process. Escalate to hardRestartMarveenChannels()
+// is a fresh claude process. Escalate to hardRestartWebinarMagusChannels()
 // (respawn-pane on Linux -- replaces ONLY the main pane's claude, the tmux
 // server + every other agent session stay intact). Rate-limited + capped so a
 // wedge a restart cannot clear never becomes a restart loop.
@@ -1029,7 +1029,7 @@ export function lastMainRespawnAt(): number {
 // (scripts/channel-watchdog.sh). That timer writes RESPAWN_STAMP_FILE (epoch
 // SECONDS) when IT respawns; reading it here means an out-of-process respawn
 // also suppresses this in-process watchdog for the grace window. Symmetrically,
-// hardRestartMarveenChannels writes the same file so the timer defers to us.
+// hardRestartWebinarMagusChannels writes the same file so the timer defers to us.
 // Best-effort: 0 if absent/garbage.
 const RESPAWN_STAMP_FILE = join(PROJECT_ROOT, 'store', '.channel-last-respawn')
 function fileRespawnStampMs(): number {
@@ -1316,7 +1316,7 @@ function mainPaneClaudePid(): number | null {
   }
 }
 
-export function hardRestartMarveenChannels(): { ok: boolean; error?: string } {
+export function hardRestartWebinarMagusChannels(): { ok: boolean; error?: string } {
   // FABLEFALL1: the restarted session boots from the main/worker shared config
   // roots, which the per-agent spawn-time stamp never covers -- stamp them now
   // so the model consent dialog cannot render on the fresh boot (change-only,
@@ -1430,7 +1430,7 @@ function maybeRestartWedgedMainChannel(state: StuckInputState): void {
     return
   }
   logger.warn({ session: MAIN_CHANNELS_SESSION, attempts: state.attempts, restart: stuckRestartCount + 1 }, 'Stuck main channel input survived soft recovery -- escalating to hard restart (respawn-pane)')
-  const r = hardRestartMarveenChannels()
+  const r = hardRestartWebinarMagusChannels()
   lastStuckRestartAt = Date.now()
   if (r.ok) {
     stuckRestartCount++
@@ -1773,7 +1773,7 @@ async function handleMarveenDown(): Promise<void> {
     logger.warn({ provider: providerLabel }, 'Marveen channel plugin still down -- stage 4 (hard restart)')
     const svcName = process.platform === 'linux' ? 'systemctl' : 'launchctl'
     sendAlert(`⚠️ Session resume nem segitett. Hard restart (${svcName}) most a ${MAIN_CHANNELS_SESSION} session-on...`)
-    hardRestartMarveenChannels()
+    hardRestartWebinarMagusChannels()
     return
   }
   if (marveenDownState.stage === 'hard') {
