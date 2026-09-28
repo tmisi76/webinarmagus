@@ -740,7 +740,7 @@
             <p class="subtitle" data-i18n="connectors.page_subtitle">AutoWebinar és külső kapcsolatok kezelése</p>
           </div>
           <div style="display:flex;gap:8px">
-            <button class="btn-secondary btn-compact" id="connectorRefreshBtn" title="Claude MCP lista frissítése" data-i18n="connectors.btn.refresh">
+            <button class="btn-secondary btn-compact" id="connectorRefreshBtn" title="MCP lista frissítése" data-i18n="connectors.btn.refresh">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
               </svg>
@@ -755,10 +755,10 @@
           </div>
         </div>
         <div class="info-box" id="connectorInfoBox" data-i18n-html="connectors.builtin.dedup_html">
-          Az itt listázott MCP szerverek a te Claude Code előfizetésedben bekapcsoltak (claude.ai OAuth connectorok, marketplace pluginok, lokális konfig).
-          Minden sub-agent automatikusan látja őket, mert ugyanabban a HOME-ban fut, mint a fő session.
-          Ha egy MCP már bekapcsolva van claude.ai-n, <strong>ne vedd fel még egyszer lokálisan</strong>: duplikálódik,
-          és a Claude CLI "local wins" üzenetet ad rá. A lista a dashboard indulásakor töltődik be, explicit frissítés a "Frissítés" gombbal.
+          Az itt listázott MCP szerverek a Webinár Mágusban elérhető globális és lokális kapcsolatok.
+          Az ügynökök a hozzájuk engedélyezett connectorokat automatikusan használhatják.
+          Ha egy MCP már globálisan be van kapcsolva, <strong>ne add hozzá még egyszer lokálisan</strong>, mert duplikálódhat.
+          A lista a dashboard indulásakor töltődik be, és a "Frissítés" gombbal kérhető le újra.
         </div>
       </div>
 
