@@ -67,7 +67,7 @@ import {
   readAgentSlackConfig,
   readAgentGooglechatConfig,
   readAgentTeamsConfig,
-  readMarveenTelegramConfig,
+  readWebinarMagusTelegramConfig,
   sendAvatarChangeMessage,
   sendWelcomeMessage,
   validateTelegramToken,
@@ -79,7 +79,7 @@ import {
   revokeInvite,
   agentChannelDir,
 } from '../channel-invites.js'
-import { hardRestartMarveenChannels } from '../channel-monitor.js'
+import { hardRestartWebinarMagusChannels } from '../channel-monitor.js'
 import { isMainChannelsAgent, MAIN_CHANNELS_SESSION, withoutMainAgent } from '../main-agent.js'
 import {
   getProvider,
@@ -237,7 +237,7 @@ function agentRunStateCached(name: string, isRemote: boolean): AgentRunState {
 // long in practice (current Discord scheme is 64-bit, with the leading bit
 // always 0). Rejects empty, whitespace-only, non-numeric, or wrong-length
 // values before any state write so a typo in the dashboard cannot bounce the
-// live Marveen session through hardRestartMarveenChannels().
+// live Marveen session through hardRestartWebinarMagusChannels().
 export function validateDiscordChannelId(cid: string | undefined): { ok: boolean; error?: string } {
   const trimmed = cid?.trim()
   if (!trimmed || !/^[0-9]{17,20}$/.test(trimmed)) {
@@ -1261,7 +1261,7 @@ export async function tryHandleAgents(ctx: RouteContext, webDir: string): Promis
       let gcRestarted = false
       let gcWasRunning = false
       if (isMain) {
-        const r = hardRestartMarveenChannels()
+        const r = hardRestartWebinarMagusChannels()
         gcRestarted = r.ok
         gcWasRunning = true
       } else {
@@ -1304,7 +1304,7 @@ export async function tryHandleAgents(ctx: RouteContext, webDir: string): Promis
     // Discord-specific channelId guard: the dashboard ships the channel where
     // the bot will post by default; without it the plugin spins up but cannot
     // resolve a default channel, and on the main Marveen agent the missing
-    // value would still trigger hardRestartMarveenChannels and bounce the
+    // value would still trigger hardRestartWebinarMagusChannels and bounce the
     // live session for no useful reason. Reject before any state write.
     if (provider === 'discord') {
       const cidCheck = validateDiscordChannelId(channelId)
@@ -1375,7 +1375,7 @@ export async function tryHandleAgents(ctx: RouteContext, webDir: string): Promis
     let restarted = false
     let wasRunning = false
     if (isMain) {
-      const r = hardRestartMarveenChannels()
+      const r = hardRestartWebinarMagusChannels()
       restarted = r.ok
       wasRunning = true
     } else {
@@ -1738,7 +1738,7 @@ export async function tryHandleAgents(ctx: RouteContext, webDir: string): Promis
     let botName: string | undefined
     if (provider === 'telegram') {
       botName = name === MAIN_AGENT_ID
-        ? readMarveenTelegramConfig().botUsername
+        ? readWebinarMagusTelegramConfig().botUsername
         : readAgentTelegramConfig(name).botUsername
       if (!botName) {
         const stateDir = name === MAIN_AGENT_ID ? channelStateDir(provider) : channelStateDir(provider, agentDir(name))
@@ -1771,7 +1771,7 @@ export async function tryHandleAgents(ctx: RouteContext, webDir: string): Promis
     let botName: string | undefined
     if (provider === 'telegram') {
       botName = name === MAIN_AGENT_ID
-        ? readMarveenTelegramConfig().botUsername
+        ? readWebinarMagusTelegramConfig().botUsername
         : readAgentTelegramConfig(name).botUsername
     }
     const cleanBotName = botName?.replace(/^@/, '')
@@ -2054,7 +2054,7 @@ export async function tryHandleAgents(ctx: RouteContext, webDir: string): Promis
     // `/remote-control` (needs a full-scope login token the agent lacks). Mirror
     // the precedent in the channels-config handler above. Sub-agents unchanged.
     if (isMainChannelsAgent(name)) {
-      const r = hardRestartMarveenChannels()
+      const r = hardRestartWebinarMagusChannels()
       if (r.ok) { json(res, { ok: true }); return true }
       json(res, { error: r.error || 'Restart failed' }, 500)
       return true
