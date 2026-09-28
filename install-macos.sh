@@ -1715,11 +1715,15 @@ echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━
 # bot will answer, which is false when the services have no working credential.
 if [ "${INSTALL_AUTH_STATE:-UNKNOWN}" != "OK" ]; then
   echo ""
-  if [ "${INSTALL_AUTH_STATE:-}" = "UNKNOWN" ]; then
+  if [ "${WEBINAR_MAGUS_CLI_BOOTSTRAP:-0}" = "1" ]; then
+    echo -e "  ${BLUE}→ Következő lépés: nyisd meg a Webinár Mágus dashboardot, és válassz AI szolgáltatót.${NC}"
+    echo -e "  ${DIM}  A rendszer szándékosan csak az onboardingban kér API kulcsot.${NC}"
+  elif [ "${INSTALL_AUTH_STATE:-}" = "UNKNOWN" ]; then
     echo -e "  ${ORANGE}! FIGYELEM: az auth-ot nem sikerult ellenoriznunk.${NC}"
+    echo -e "  ${BOLD}  Javitas: ${BLUE}bash \"$INSTALL_DIR/scripts/auth.sh\"${NC}${BOLD} majd ${BLUE}bash \"$INSTALL_DIR/scripts/channels.sh\" restart${NC}"
   else
     echo -e "  ${RED}✗ AZ UGYNOKOK MEG NEM FOGNAK VALASZOLNI: hianyzik a mukodo auth kulcs.${NC}"
+    echo -e "  ${BOLD}  Javitas: ${BLUE}bash \"$INSTALL_DIR/scripts/auth.sh\"${NC}${BOLD} majd ${BLUE}bash \"$INSTALL_DIR/scripts/channels.sh\" restart${NC}"
   fi
-  echo -e "  ${BOLD}  Javitas: ${BLUE}bash \"$INSTALL_DIR/scripts/auth.sh\"${NC}${BOLD} majd ${BLUE}bash \"$INSTALL_DIR/scripts/channels.sh\" restart${NC}"
   echo ""
 fi
