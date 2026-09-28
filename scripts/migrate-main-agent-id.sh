@@ -70,8 +70,8 @@ elif [ "$OS" = "Linux" ]; then
   # Stop and disable the old-named units before the rename. Missing units are
   # fine (partial installs); a failure to stop a RUNNING unit is not, but stop
   # returns 0 for not-loaded units, so the || true only covers no-systemd hosts.
-  systemctl --user stop marveen-channels.service marveen-dashboard.service marveen-morning.timer 2>/dev/null || true
-  systemctl --user disable marveen-channels.service marveen-dashboard.service marveen-morning.timer marveen-host-watchdog.service 2>/dev/null || true
+  systemctl --user stop webinar-magus-channels.service marveen-dashboard.service marveen-morning.timer 2>/dev/null || true
+  systemctl --user disable webinar-magus-channels.service marveen-dashboard.service marveen-morning.timer webinar-magus-host-watchdog.service 2>/dev/null || true
 fi
 tmux kill-session -t marveen-channels 2>/dev/null || true
 
@@ -119,7 +119,7 @@ elif [ "$OS" = "Linux" ]; then
   done
   # OnFailure drop-in dirs: rename the dir AND patch the notifier reference
   # inside, or every crash of the renamed units would fire a non-existent
-  # marveen-notify@ unit (silently -- OnFailure on a missing unit just logs).
+  # webinar-magus-notify@ unit (silently -- OnFailure on a missing unit just logs).
   for kind in dashboard channels; do
     OLDD="$SYSTEMD_DIR/marveen-${kind}.service.d"
     NEWD="$SYSTEMD_DIR/${NEW_SLUG}-${kind}.service.d"
@@ -129,7 +129,7 @@ elif [ "$OS" = "Linux" ]; then
         python3 - "$NEWD/onfailure.conf" "$NEW_SLUG" <<'PYEOF'
 import sys, pathlib
 p = pathlib.Path(sys.argv[1]); slug = sys.argv[2]
-p.write_text(p.read_text().replace('marveen-notify@', f'{slug}-notify@'))
+p.write_text(p.read_text().replace('webinar-magus-notify@', f'{slug}-notify@'))
 PYEOF
       fi
       echo "✓ Renamed $OLDD → $NEWD"
