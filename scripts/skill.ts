@@ -43,7 +43,7 @@ import {
  * helyeken szetszorva: egy sajat peldanyt futtato telepitesnek at kell tudni
  * allitani, es a teszteknek is.
  */
-const ALAP_API = process.env.MARVEEN_API_BASE || 'https://fpxycpxdxgifimbmwgzj.supabase.co'
+const ALAP_API = process.env.WEBINAR_MAGUS_API_BASE || 'https://fpxycpxdxgifimbmwgzj.supabase.co'
 
 function fail(uzenet: string): never {
   console.error(`hiba: ${uzenet}`)
@@ -78,7 +78,7 @@ function parseArgs(argv: string[]): Args {
     scope: 'user',
     apiBase: ALAP_API,
     rotate: false,
-    accessToken: process.env.MARVEEN_ACCESS_TOKEN,
+    accessToken: process.env.WEBINAR_MAGUS_ACCESS_TOKEN,
   }
   for (let i = 1; i < argv.length; i++) {
     const a = argv[i]
@@ -101,7 +101,7 @@ function sugo(): void {
 
   npm run skill -- enroll [--project] [--rotate]
       Egyszeri bekotes: attest-kulcs kerese es helyi tarolas (0600).
-      Hitelesites: MARVEEN_ACCESS_TOKEN vagy --access-token; enelkul email+jelszo bekerese.
+      Hitelesites: WEBINAR_MAGUS_ACCESS_TOKEN vagy --access-token; enelkul email+jelszo bekerese.
 
   npm run skill -- enroll --key-id <id> --attest-key <titok> --member-id <uuid>
       Ugyanaz, de egy MAR KIADOTT kulccsal, szerver-hivas nelkul.
@@ -133,7 +133,7 @@ async function felhasznaloiToken(args: Args): Promise<string> {
   if (!process.stdin.isTTY) {
     fail(
       'nincs hozzaferesi token es nincs interaktiv terminal.\n' +
-        '  Add meg: MARVEEN_ACCESS_TOKEN=... vagy --access-token ...',
+        '  Add meg: WEBINAR_MAGUS_ACCESS_TOKEN=... vagy --access-token ...',
     )
   }
   const rl = createInterface({ input: process.stdin, output: process.stdout })
@@ -166,18 +166,18 @@ async function felhasznaloiToken(args: Args): Promise<string> {
  * nem eri meg a vak foltot.
  */
 function anonKulcs(): string {
-  const k = process.env.MARVEEN_ANON_KEY
+  const k = process.env.WEBINAR_MAGUS_ANON_KEY
   if (!k) {
     // NEM MONDJUK MEG, HOL TALALJA, MERT NEM TUDJUK. Megmerve: a
-    // MARVEEN_ANON_KEY sem a doksikban, sem a telepitokben, sem a
+    // WEBINAR_MAGUS_ANON_KEY sem a doksikban, sem a telepitokben, sem a
     // dashboardon nem szerepel. Egy talalgatott hely rosszabb a hianynal:
     // a tag keresne valamit, ami nincs ott. Helyette a ket ut, ami MA
     // mukodik.
     fail(
-      'az interaktiv bejelentkezeshez a MARVEEN_ANON_KEY kornyezeti valtozo kell,\n' +
+      'az interaktiv bejelentkezeshez a WEBINAR_MAGUS_ANON_KEY kornyezeti valtozo kell,\n' +
         '  es az ezen a gepen nincs beallitva. Ket ut mukodik nelkule:\n' +
         '    npm run skill -- enroll --access-token <token>\n' +
-        '      (vagy MARVEEN_ACCESS_TOKEN kornyezeti valtozokent)\n' +
+        '      (vagy WEBINAR_MAGUS_ACCESS_TOKEN kornyezeti valtozokent)\n' +
         '    npm run skill -- enroll --key-id <id> --attest-key <titok> --member-id <uuid>\n' +
         '      (egy MASIK gepen kiadott kulcs atvitele; a kulcsot ott az\n' +
         '       `enroll --access-token` adja ki, egyszer)',
