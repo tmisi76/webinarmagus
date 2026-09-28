@@ -51,4 +51,11 @@ chmod +x "$INSTALL_DIR/install.sh" "$INSTALL_DIR/install-macos.sh" "$INSTALL_DIR
 
 echo "✓ Runtime ellenőrizve."
 cd "$INSTALL_DIR"
+export WEBINAR_MAGUS_CLI_BOOTSTRAP=1
+# The bootstrap itself may arrive through `curl | bash`, whose stdin is the
+# download pipe. Reconnect the real terminal before the interactive onboarding
+# installer so prompts never consume/EOF on the curl stream.
+if [ -r /dev/tty ]; then
+  exec bash ./install.sh </dev/tty
+fi
 exec bash ./install.sh
