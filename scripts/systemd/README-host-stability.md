@@ -16,9 +16,9 @@ WSL handle/terminal closes), Windows sleep/hibernate -> resume, `wsl
 
 | File | Role |
 |------|------|
-| `host-restart-watchdog.sh` + `marveen-host-watchdog.service` | oneshot at every user-manager start; if `/proc/stat btime` changed vs `store/.last-btime`, Telegrams "host/WSL VM restarted" with an estimated downtime. btime-change => host restart. |
-| `unit-fail-notify.sh` + `marveen-notify@.service` | instantiated by `OnFailure=marveen-notify@%n.service` drop-ins on the dashboard/channels units; Telegrams "app-crash: <unit> FAILED". OnFailure => app crash. |
-| `marveen-channels.service` StartLimit fix | `StartLimitIntervalSec`/`StartLimitBurst` moved from `[Service]` (where systemd logged "Unknown key ... in section [Service]" and ignored them) to `[Unit]`, so the crash-loop throttle actually applies. |
+| `host-restart-watchdog.sh` + `webinar-magus-host-watchdog.service` | oneshot at every user-manager start; if `/proc/stat btime` changed vs `store/.last-btime`, Telegrams "host/WSL VM restarted" with an estimated downtime. btime-change => host restart. |
+| `unit-fail-notify.sh` + `webinar-magus-notify@.service` | instantiated by `OnFailure=webinar-magus-notify@%n.service` drop-ins on the dashboard/channels units; Telegrams "app-crash: <unit> FAILED". OnFailure => app crash. |
+| `webinar-magus-channels.service` StartLimit fix | `StartLimitIntervalSec`/`StartLimitBurst` moved from `[Service]` (where systemd logged "Unknown key ... in section [Service]" and ignored them) to `[Unit]`, so the crash-loop throttle actually applies. |
 
 The two notifiers deliberately use different triggers so a fleet-wide silence
 can be classified: **btime change = host/VM restart**, **OnFailure = app crash**.
@@ -38,10 +38,10 @@ Linux side must not write it automatically.
 
 ## Rollback
 
-    systemctl --user disable --now marveen-host-watchdog.service
-    rm ~/.config/systemd/user/marveen-host-watchdog.service
+    systemctl --user disable --now webinar-magus-host-watchdog.service
+    rm ~/.config/systemd/user/webinar-magus-host-watchdog.service
     rm -rf ~/.config/systemd/user/marveen-dashboard.service.d/onfailure.conf \
-           ~/.config/systemd/user/marveen-channels.service.d/onfailure.conf
-    rm ~/.config/systemd/user/marveen-notify@.service
+           ~/.config/systemd/user/webinar-magus-channels.service.d/onfailure.conf
+    rm ~/.config/systemd/user/webinar-magus-notify@.service
     # revert the channels StartLimit move by reinstalling the previous unit, then:
     systemctl --user daemon-reload
