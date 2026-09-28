@@ -2,10 +2,23 @@ import { describe, it, expect } from 'vitest'
 import { resolveProviderEnv } from '../web/agent-process.js'
 
 describe('resolveProviderEnv', () => {
-  it('returns no export chain for a claude- model (uses host OAuth/API key elsewhere)', () => {
+  it('keeps OAuth behaviour for Claude when no shared Vault API key exists', () => {
     const r = resolveProviderEnv('claude-sonnet-5', () => null)
     expect(r.provider).toBe('claude')
     expect(r.exportsStr).toBe('')
+  })
+
+  it('routes Claude specialists through the shared Vault Anthropic API key when configured', () => {
+    const seen: string[] = []
+    const r = resolveProviderEnv('claude-sonnet-5', (id) => {
+      seen.push(id)
+      return id === 'ANTHROPIC_API_KEY' ? 'claude-secret' : null
+    })
+    expect(seen).toEqual(['ANTHROPIC_API_KEY'])
+    expect(r.provider).toBe('claude')
+    expect(r.exportsStr).toContain('ANTHROPIC_API_KEY="claude-secret"')
+    expect(r.exportsStr).toContain(`ANTHROPIC_MODEL='claude-sonnet-5'`)
+    expect(r.exportsStr).toContain('unset ANTHROPIC_AUTH_TOKEN')
   })
 
   it('routes deepseek- models to the DeepSeek Anthropic-compatible endpoint with DEEPSEEK_API_KEY', () => {
@@ -79,12 +92,12 @@ describe('resolveProviderEnv', () => {
     expect(r.exportsStr).toContain(`ANTHROPIC_MODEL='qwen3.6:27b'`)
   })
 
-  it('never asks the secret lookup for a claude- model', () => {
-    let called = false
-    resolveProviderEnv('claude-sonnet-5', () => {
-      called = true
-      return 'unused'
+  it('asks only for the shared Anthropic key on a claude- model', () => {
+    const seen: string[] = []
+    resolveProviderEnv('claude-sonnet-5', (id) => {
+      seen.push(id)
+      return null
     })
-    expect(called).toBe(false)
+    expect(seen).toEqual(['ANTHROPIC_API_KEY'])
   })
 })
