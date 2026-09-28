@@ -13,8 +13,8 @@ NC='\033[0m'
 INSTALL_DIR="$(cd "$(dirname "$0")" && pwd)"
 cd "$INSTALL_DIR"
 # ── Language (saved by installer, falls back to HU) ──────────────────────────
-MARVEEN_LANG="$(cat "${INSTALL_DIR}/.lang" 2>/dev/null || echo hu)"
-export MARVEEN_LANG
+WEBINAR_MAGUS_LANG="$(cat "${INSTALL_DIR}/.lang" 2>/dev/null || echo hu)"
+export WEBINAR_MAGUS_LANG
 # shellcheck source=install-lang.sh
 source "$(dirname "$0")/install-lang.sh"
 
@@ -243,7 +243,7 @@ fi
 exec > >(tee -a "$UPDATE_LOG") 2>&1
 
 echo ""
-if [[ "${MARVEEN_LANG:-hu}" == "en" ]]; then
+if [[ "${WEBINAR_MAGUS_LANG:-hu}" == "en" ]]; then
   echo -e "${BOLD}Marveen update...${NC} [$(date -u +%Y-%m-%dT%H:%M:%SZ)]"
 else
   echo -e "${BOLD}Marveen frissítés...${NC} [$(date -u +%Y-%m-%dT%H:%M:%SZ)]"
@@ -262,7 +262,7 @@ echo ""
 # this is defense-in-depth for manual invocations.
 CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "")
 if [ "$CURRENT_BRANCH" = "HEAD" ] || [ -z "$CURRENT_BRANCH" ]; then
-  if [[ "${MARVEEN_LANG:-hu}" == "en" ]]; then
+  if [[ "${WEBINAR_MAGUS_LANG:-hu}" == "en" ]]; then
     echo -e "${RED}ERROR:${NC} The repo is in detached-HEAD state."
   else
     echo -e "${RED}HIBA:${NC} A repo detached-HEAD állapotban van."
@@ -287,7 +287,7 @@ if [ "$CURRENT_BRANCH" = "HEAD" ] || [ -z "$CURRENT_BRANCH" ]; then
   # `+refs/tags/<tag>:refs/tags/<tag>` sora kiesik. Az update-utra artalmatlan
   # (az ag-refbol dolgozik), de ez a parancs maradando config-valtozas.
   if [ "$(git rev-parse --is-shallow-repository 2>/dev/null)" = "true" ] || [ -f .git/shallow ]; then
-    if [[ "${MARVEEN_LANG:-hu}" == "en" ]]; then
+    if [[ "${WEBINAR_MAGUS_LANG:-hu}" == "en" ]]; then
       echo "       This is a SHALLOW clone with no branch refs, so 'git checkout main' cannot work here."
       echo "       Fetch the release branch first, then switch to it:"
     else
@@ -302,7 +302,7 @@ if [ "$CURRENT_BRANCH" = "HEAD" ] || [ -z "$CURRENT_BRANCH" ]; then
     # MAGYARUL ment, mikozben a folotte allo HIBA/ERROR fejlec helyesen valtott.
     # A #1438-ban szandekosan maradt igy, mert a kartya a regresszio-merest a
     # valtozatlan HU alakra kotte ki; a HU szoveg itt BAJTRA ugyanaz maradt.
-    if [[ "${MARVEEN_LANG:-hu}" == "en" ]]; then
+    if [[ "${WEBINAR_MAGUS_LANG:-hu}" == "en" ]]; then
       echo "       Switch to a release branch, then you can start the update again, e.g.:"
     else
       echo "       Allj at egy release branchre, majd indithatod ujra a frissitest, pl.:"
@@ -315,7 +315,7 @@ fi
 # ref to fast-forward to (e.g. a local-only feature branch). Fail early with
 # a clear message instead of letting set -e abort mid-run.
 if ! git ls-remote --exit-code --heads origin "$CURRENT_BRANCH" >/dev/null 2>&1; then
-  if [[ "${MARVEEN_LANG:-hu}" == "en" ]]; then
+  if [[ "${WEBINAR_MAGUS_LANG:-hu}" == "en" ]]; then
     echo -e "${RED}ERROR:${NC} Branch '${CURRENT_BRANCH}' does not exist on origin."
   else
     echo -e "${RED}HIBA:${NC} A '${CURRENT_BRANCH}' branch nem létezik az origin-on."
@@ -324,7 +324,7 @@ if ! git ls-remote --exit-code --heads origin "$CURRENT_BRANCH" >/dev/null 2>&1;
   # nyelvfuggo volt, az alatta allo ket sor nem. Ugyanabban a kepernyoben all,
   # mint a Guard 1 uzenete, ezert a ketto EGYUTT valt nyelvet -- egy felig javitott
   # kepernyo rosszabb, mint egy egyseges magyar.
-  if [[ "${MARVEEN_LANG:-hu}" == "en" ]]; then
+  if [[ "${WEBINAR_MAGUS_LANG:-hu}" == "en" ]]; then
     echo "       You can only update from a branch that also exists on origin (a tracked branch)."
     echo "       Switch to a release branch, e.g.:"
   else
@@ -356,7 +356,7 @@ if [ -n "$DIRTY" ]; then
   if [ "${AUTO_STASH:-0}" = "1" ]; then
     echo -e "  Lokalis valtozasok stash-elve (auto-stash)..."
     if ! git stash push -u -m "marveen-update-auto-stash $(date +%Y%m%d-%H%M%S)"; then
-      if [[ "${MARVEEN_LANG:-hu}" == "en" ]]; then
+      if [[ "${WEBINAR_MAGUS_LANG:-hu}" == "en" ]]; then
         echo -e "${RED}ERROR:${NC} Auto-stash failed. Check: git status"
       else
         echo -e "${RED}HIBA:${NC} Auto-stash sikertelen. Nézd meg: git status"
@@ -365,7 +365,7 @@ if [ -n "$DIRTY" ]; then
     fi
     STASHED_AUTO=1
   else
-    if [[ "${MARVEEN_LANG:-hu}" == "en" ]]; then
+    if [[ "${WEBINAR_MAGUS_LANG:-hu}" == "en" ]]; then
       echo -e "${RED}ERROR:${NC} The working tree has uncommitted changes."
     else
       echo -e "${RED}HIBA:${NC} A working tree módosult állapotban van."
@@ -388,7 +388,7 @@ restore_stash_before_exit() {
     if git stash pop; then
       STASHED_AUTO=0
     else
-      if [[ "${MARVEEN_LANG:-hu}" == "en" ]]; then
+      if [[ "${WEBINAR_MAGUS_LANG:-hu}" == "en" ]]; then
         echo -e "${RED}WARNING:${NC} Auto-stash pop had conflicts; the stash remains in 'git stash list'."
       else
         echo -e "${RED}FIGYELEM:${NC} Auto-stash pop konfliktusos; a stash benne marad a 'git stash list'-ben."
@@ -831,7 +831,7 @@ if [ "$OLD_VERSION" = "$NEW_VERSION" ]; then
       echo -e "  ${ORANGE}↻${NC} Mar a legfrissebb verzion ($NEW_VERSION), de a dist elavult (built=${BUILT_COMMIT:-none}) -> ongyogyito ujraforditas + restart"
     fi
   elif [ "$RESEED_FLEET" != "1" ] && [ "$REGEN_CLAUDEMD" != "1" ]; then
-    if [[ "${MARVEEN_LANG:-hu}" == "en" ]]; then
+    if [[ "${WEBINAR_MAGUS_LANG:-hu}" == "en" ]]; then
       echo -e "  ${GREEN}✓${NC} Already on the latest version ($NEW_VERSION)"
     else
       echo -e "  ${GREEN}✓${NC} Már a legfrissebb verzión vagy ($NEW_VERSION)"
@@ -856,7 +856,7 @@ if [ "$OLD_VERSION" = "$NEW_VERSION" ]; then
     # run even when the code is already current. dist is verified fresh (marker
     # == HEAD), so skip the dep-install + build below and jump to the
     # seed/identity refresh.
-    if [[ "${MARVEEN_LANG:-hu}" == "en" ]]; then
+    if [[ "${WEBINAR_MAGUS_LANG:-hu}" == "en" ]]; then
       echo -e "  ${GREEN}✓${NC} Already on the latest version ($NEW_VERSION), continuing due to fleet-reseed/regen flag"
     else
       echo -e "  ${GREEN}✓${NC} Már a legfrissebb verzión ($NEW_VERSION), folytatás a kért fleet-reseed/regen miatt"
@@ -895,7 +895,7 @@ if git diff "$OLD_VERSION" "$NEW_VERSION" --name-only | grep -qE "^package(-lock
   # whether to roll back.
   echo -e "  Biztonsagi ellenorzes..."
   if ! npm audit --audit-level=high --omit=dev --silent; then
-    if [[ "${MARVEEN_LANG:-hu}" == "en" ]]; then
+    if [[ "${WEBINAR_MAGUS_LANG:-hu}" == "en" ]]; then
       echo -e "  WARNING: npm audit reported high-severity item(s)."
     else
       echo -e "  FIGYELEM: npm audit magas-súlyosságú tételt jelzett."
@@ -1218,7 +1218,7 @@ if [ -d "$MARKETPLACE_PLUGIN_DIR" ]; then
       if grep -q 'SLACK_SMOKE_TEST_ALLOWED=true' "$AGENT_ENV" 2>/dev/null; then
         echo -e "  Slack smoke-test futtatasa ($SLACK_AGENT)..."
         if ! bash "$INSTALL_DIR/scripts/smoke-test-slack-channel.sh" "$SLACK_AGENT"; then
-          if [[ "${MARVEEN_LANG:-hu}" == "en" ]]; then
+          if [[ "${WEBINAR_MAGUS_LANG:-hu}" == "en" ]]; then
             echo -e "${RED}WARNING:${NC} Slack smoke-test FAILED. Check the plugin integration."
           else
             echo -e "${RED}FIGYELEM:${NC} Slack smoke-test SIKERTELEN. Ellenőrizd a plugin integrációt."
@@ -1268,7 +1268,7 @@ if [ "$STASHED_AUTO" = "1" ]; then
     if [ "${SKIP_BUILD:-0}" != "1" ]; then
       echo -e "  Ujraforditas a visszaallitott helyi valtozasokkal..."
       if ! retry 2 3 npm run build --silent; then
-        if [[ "${MARVEEN_LANG:-hu}" == "en" ]]; then
+        if [[ "${WEBINAR_MAGUS_LANG:-hu}" == "en" ]]; then
           echo -e "${RED}WARNING:${NC} Rebuild after stash-restore failed; dist/ may not reflect local changes."
         else
           echo -e "${RED}FIGYELEM:${NC} Az ujraforditas a stash-visszaallitas utan sikertelen; a dist/ lehet hogy nem tartalmazza a helyi valtozasokat."
@@ -1279,7 +1279,7 @@ if [ "$STASHED_AUTO" = "1" ]; then
       fi
     fi
   else
-    if [[ "${MARVEEN_LANG:-hu}" == "en" ]]; then
+    if [[ "${WEBINAR_MAGUS_LANG:-hu}" == "en" ]]; then
       echo -e "${RED}WARNING:${NC} Auto-stash pop had conflicts; the stash remains in 'git stash list'."
     else
       echo -e "${RED}FIGYELEM:${NC} Auto-stash pop konfliktusos; a stash benne marad a 'git stash list'-ben."
@@ -1398,7 +1398,7 @@ else
 fi
 
 echo ""
-if [[ "${MARVEEN_LANG:-hu}" == "en" ]]; then
+if [[ "${WEBINAR_MAGUS_LANG:-hu}" == "en" ]]; then
   echo -e "${GREEN}✓ Update applied (${OLD_VERSION} -> ${NEW_VERSION}); restarting and health-checking...${NC}"
 else
   echo -e "${GREEN}✓ Frissites alkalmazva (${OLD_VERSION} -> ${NEW_VERSION}); ujrainditas es health-check folyamatban...${NC}"
