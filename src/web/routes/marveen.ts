@@ -6,8 +6,8 @@ import {
   KANBAN_LABEL_COLORS,
 } from '../../config.js'
 import { getEffectiveSettingValue } from '../../settings-store.js'
-import { readMarveenTelegramConfig, readMarveenDiscordConfig, readMarveenSlackConfig, readMarveenGooglechatConfig, readMarveenTeamsConfig, sendMarveenAvatarChange } from '../telegram.js'
-import { hardRestartMarveenChannels } from '../channel-monitor.js'
+import { readWebinarMagusTelegramConfig, readWebinarMagusDiscordConfig, readWebinarMagusSlackConfig, readWebinarMagusGooglechatConfig, readWebinarMagusTeamsConfig, sendWebinarMagusAvatarChange } from '../telegram.js'
+import { hardRestartWebinarMagusChannels } from '../channel-monitor.js'
 import { readFileOr } from '../agent-config.js'
 import { parseMultipart } from '../multipart.js'
 import { readBody, json, serveFile } from '../http-helpers.js'
@@ -17,7 +17,7 @@ import { readAutoRestartConfig } from '../auto-restart-store.js'
 import { configDirFor } from '../main-transcript-root.js'
 import type { RouteContext } from './types.js'
 
-function getActiveMarveenModel(): string {
+function getActiveWebinarMagusModel(): string {
   // configDirFor, not the host default: when the channels session runs on its
   // own CLAUDE_CONFIG_DIR, the default root holds a pre-migration transcript
   // that still parses, so the card would show a model the session stopped
@@ -30,18 +30,18 @@ function getActiveMarveenModel(): string {
 // dashboard chrome + agent routing depend on. Extracted so the mapping (display
 // name -> name, product brand -> brandName, canonical id -> agentId) is provable
 // for any non-default identity, independent of the route's file I/O.
-export interface MarveenIdentityCore {
+export interface WebinarMagusIdentityCore {
   name: string
   brandName: string
   agentId: string
   autoRestartId: string
   role: 'main'
 }
-export function buildMarveenIdentityCore(
+export function buildWebinarMagusIdentityCore(
   botName: string,
   brandName: string,
   mainAgentId: string,
-): MarveenIdentityCore {
+): WebinarMagusIdentityCore {
   return {
     name: botName,
     brandName,
@@ -51,7 +51,7 @@ export function buildMarveenIdentityCore(
   }
 }
 
-export async function tryHandleMarveen(ctx: RouteContext, webDir: string): Promise<boolean> {
+export async function tryHandleWebinarMagus(ctx: RouteContext, webDir: string): Promise<boolean> {
   const { req, res, path, method } = ctx
 
   if (path === '/api/marveen' && method === 'GET') {
@@ -64,17 +64,17 @@ export async function tryHandleMarveen(ctx: RouteContext, webDir: string): Promi
     const firstLine = claudeMd.match(/^Te .+$/m)?.[0]?.trim() || ''
     const descFromPersonality = soulSection.split('\n').filter(l => l.trim()).slice(0, 2).join(' ').slice(0, 200)
     const description = firstLine || descFromPersonality || `${currentOwnerName()} AI asszisztense`
-    const tg = readMarveenTelegramConfig()
-    const dc = readMarveenDiscordConfig()
-    const sl = readMarveenSlackConfig()
-    const gc = readMarveenGooglechatConfig()
-    const tc = readMarveenTeamsConfig()
+    const tg = readWebinarMagusTelegramConfig()
+    const dc = readWebinarMagusDiscordConfig()
+    const sl = readWebinarMagusSlackConfig()
+    const gc = readWebinarMagusGooglechatConfig()
+    const tc = readWebinarMagusTeamsConfig()
     // Brand-relevant identity core. `name` = main agent display name (BOT_NAME),
     // `brandName` = product brand for the dashboard chrome (defaults to BOT_NAME;
     // the client falls back to its own HTML default "Marveen" if absent on a
     // legacy backend), `agentId` = canonical MAIN_AGENT_ID so the dashboard can
     // hit /api/agents/<id>/skills for the main agent.
-    const idCore = buildMarveenIdentityCore(currentBotName(), currentBrandName(), MAIN_AGENT_ID)
+    const idCore = buildWebinarMagusIdentityCore(currentBotName(), currentBrandName(), MAIN_AGENT_ID)
     json(res, {
       ...idCore,
       // Configured owner display name (OWNER_NAME). The dashboard chat view uses
@@ -82,7 +82,7 @@ export async function tryHandleMarveen(ctx: RouteContext, webDir: string): Promi
       // literal, so a renamed install recognizes its real owner.
       ownerName: currentOwnerName(),
       description,
-      model: getActiveMarveenModel(),
+      model: getActiveWebinarMagusModel(),
       tmuxSession: MAIN_CHANNELS_SESSION,
       running: true,
       // Auto-restart applies to the main channels session too; key it by the
@@ -153,7 +153,7 @@ export async function tryHandleMarveen(ctx: RouteContext, webDir: string): Promi
   }
 
   if (path === '/api/marveen/restart' && method === 'POST') {
-    const result = hardRestartMarveenChannels()
+    const result = hardRestartWebinarMagusChannels()
     if (!result.ok) { json(res, { error: result.error || 'Restart failed' }, 500); return true }
     json(res, { ok: true })
     return true
@@ -194,13 +194,13 @@ export async function tryHandleMarveen(ctx: RouteContext, webDir: string): Promi
       if (!existsSync(srcPath)) { json(res, { error: 'Avatar not found' }, 404); return true }
       const destPath = join(PROJECT_ROOT, 'store', `marveen-avatar${extname(galleryAvatar) || '.png'}`)
       copyFileSync(srcPath, destPath)
-      sendMarveenAvatarChange(destPath).catch(() => {})
+      sendWebinarMagusAvatarChange(destPath).catch(() => {})
     } else {
       const { file } = parseMultipart(body, contentType)
       if (!file) { json(res, { error: 'No file uploaded' }, 400); return true }
       const destPath = join(PROJECT_ROOT, 'store', `marveen-avatar${extname(file.name) || '.png'}`)
       writeFileSync(destPath, file.data)
-      sendMarveenAvatarChange(destPath).catch(() => {})
+      sendWebinarMagusAvatarChange(destPath).catch(() => {})
     }
     json(res, { ok: true })
     return true
