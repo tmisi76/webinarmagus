@@ -2,6 +2,11 @@ name: runtime-bundle
 
 on:
   workflow_dispatch:
+  pull_request:
+    paths:
+      - 'cli/**'
+      - 'scripts/build-runtime-bundle.sh'
+      - '.github/workflows/runtime-bundle.yml'
   push:
     tags:
       - 'v*'
@@ -14,8 +19,28 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
+      - name: Validate shell installer syntax
+        run: bash -n cli/install.sh
+
+      - name: Validate PowerShell installer syntax
+        shell: pwsh
+        run: |
+          $tokens = $null
+          $errors = $null
+          [System.Management.Automation.Language.Parser]::ParseFile(
+            (Resolve-Path 'cli/install.ps1'),
+            [ref]$tokens,
+            [ref]$errors
+          ) | Out-Null
+          if ($errors.Count -gt 0) {
+            $errors | ForEach-Object { Write-Error $_.Message }
+            exit 1
+          }
+
       - name: Build runtime bundle
         run: bash scripts/build-runtime-bundle.sh
+
       - name: Validate installer payload
         run: |
           test -s release-cli/webinar-magus-runtime.tar.gz
@@ -25,6 +50,12 @@ jobs:
           test -f /tmp/wm-check/install.sh
           test -f /tmp/wm-check/install-macos.sh
           test -f /tmp/wm-check/install-linux.sh
+          test -f /tmp/wm-check/package.json
+          ! test -e /tmp/wm-check/.git
+          ! test -e /tmp/wm-check/.env
+          ! test -e /tmp/wm-check/node_modules
+          ! test -e /tmp/wm-check/store
+
       - uses: actions/upload-artifact@v4
         with:
           name: webinar-magus-runtime
