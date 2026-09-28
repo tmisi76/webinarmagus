@@ -1095,7 +1095,7 @@ function checkExternalMainRespawn(): void {
 // process in the EXISTING pane via `tmux respawn-pane`. respawn-pane needs a
 // live pane: it cannot bring back a session that has disappeared entirely
 // (crash, self-update mid-restart, OOM kill, host reboot). On a deployment
-// where nothing supervises the session -- marveen-channels.service disabled,
+// where nothing supervises the session -- webinar-magus-channels.service disabled,
 // or any pure-tmux install -- a vanished session stays gone, and because the
 // scheduler skips every task whose target tmux session is missing
 // (schedule-runner !sessionExists branch), ALL main-agent scheduled jobs
@@ -1366,7 +1366,7 @@ export function hardRestartWebinarMagusChannels(): { ok: boolean; error?: string
   }
 
   // Linux: respawn-pane ONLY -- NEVER `systemctl --user restart`. The channels
-  // unit (e.g. marveen-channels.service) runs with KillMode=control-group and
+  // unit (e.g. webinar-magus-channels.service) runs with KillMode=control-group and
   // the shared tmux SERVER lives in its cgroup, so restarting the unit kills the
   // tmux server and with it EVERY agent session, not just the main one.
   // respawn-pane replaces only the claude process in the main channels pane,
