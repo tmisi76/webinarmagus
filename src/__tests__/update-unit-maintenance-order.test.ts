@@ -100,11 +100,11 @@ describe('the maintenance itself, executed for real', () => {
   it('repairs BOTH unit kinds in one pass', () => {
     const dir = mkdtempSync(join(tmpdir(), 'units-'))
     try {
-      writeFileSync(join(dir, 'marveen-channels.service'), OLD_CHANNELS_UNIT)
+      writeFileSync(join(dir, 'webinar-magus-channels.service'), OLD_CHANNELS_UNIT)
       writeFileSync(join(dir, 'marveen-morning.timer'), OLD_MORNING_TIMER)
       const r = run(dir)
       expect(r.code).toBe(0)
-      expect(readFileSync(join(dir, 'marveen-channels.service'), 'utf-8')).toMatch(/^Restart=always$/m)
+      expect(readFileSync(join(dir, 'webinar-magus-channels.service'), 'utf-8')).toMatch(/^Restart=always$/m)
       expect(readFileSync(join(dir, 'marveen-morning.timer'), 'utf-8')).not.toMatch(/^Requires=/m)
       // the rest of the timer must survive
       expect(readFileSync(join(dir, 'marveen-morning.timer'), 'utf-8')).toContain('OnCalendar=*-*-* 07:27:00')
@@ -117,17 +117,17 @@ describe('the maintenance itself, executed for real', () => {
   it('is idempotent: the second pass changes nothing and says nothing', () => {
     const dir = mkdtempSync(join(tmpdir(), 'units-'))
     try {
-      writeFileSync(join(dir, 'marveen-channels.service'), OLD_CHANNELS_UNIT)
+      writeFileSync(join(dir, 'webinar-magus-channels.service'), OLD_CHANNELS_UNIT)
       writeFileSync(join(dir, 'marveen-morning.timer'), OLD_MORNING_TIMER)
       run(dir)
       const after1 = [
-        readFileSync(join(dir, 'marveen-channels.service'), 'utf-8'),
+        readFileSync(join(dir, 'webinar-magus-channels.service'), 'utf-8'),
         readFileSync(join(dir, 'marveen-morning.timer'), 'utf-8'),
       ]
       const second = run(dir)
       expect(second.code).toBe(0)
       expect(second.out).not.toContain('javitva')
-      expect(readFileSync(join(dir, 'marveen-channels.service'), 'utf-8')).toBe(after1[0])
+      expect(readFileSync(join(dir, 'webinar-magus-channels.service'), 'utf-8')).toBe(after1[0])
       expect(readFileSync(join(dir, 'marveen-morning.timer'), 'utf-8')).toBe(after1[1])
     } finally {
       rmSync(dir, { recursive: true, force: true })
