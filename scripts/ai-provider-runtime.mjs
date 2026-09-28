@@ -179,8 +179,8 @@ async function runtimeEnv() {
       provider,
       model,
       shell: [
-        'unset ANTHROPIC_AUTH_TOKEN',
-        'export ANTHROPIC_API_KEY=' + q(value),
+        'unset ANTHROPIC_API_KEY',
+        'export ANTHROPIC_AUTH_TOKEN=' + q(value),
         'export ANTHROPIC_BASE_URL=' + q('https://api.deepseek.com/anthropic'),
         'export ANTHROPIC_MODEL=' + q(model),
       ].join('; ') + '; ',
