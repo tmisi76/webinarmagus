@@ -29,7 +29,7 @@ export interface SkillCredentials {
 
 /** A konfig gyokere. A kornyezeti valtozo a TESZTELHETOSEG miatt van, nem opciokent. */
 export function skillHome(): string {
-  return process.env.MARVEEN_SKILL_HOME || join(homedir(), '.marveen', 'skill')
+  return process.env.WEBINAR_MAGUS_SKILL_HOME || join(homedir(), '.marveen', 'skill')
 }
 
 export function credentialsPath(): string {
