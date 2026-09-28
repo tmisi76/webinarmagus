@@ -378,10 +378,10 @@ Az utemezett feladatok a `~/.claude/scheduled-tasks/` mappaban elnek, SKILL.md +
 
 | Utvonal | Metodus | Leiras |
 |---------|---------|--------|
-| `/api/marveen` | GET | Marveen fo agens infoja |
-| `/api/marveen` | PUT | Marveen leiras frissites |
-| `/api/marveen/avatar` | GET | Marveen avatar kep |
-| `/api/marveen/avatar` | POST | Marveen avatar feltoltes/galeria |
+| `/api/webinar-magus` | GET | Marveen fo agens infoja |
+| `/api/webinar-magus` | PUT | Marveen leiras frissites |
+| `/api/webinar-magus/avatar` | GET | Marveen avatar kep |
+| `/api/webinar-magus/avatar` | POST | Marveen avatar feltoltes/galeria |
 | `/api/ollama/models` | GET | Elerheto Ollama modellek (nem embed) |
 | `/api/status` | GET | Claude statusz oldal (RSS parse a status.claude.com-rol) |
 
