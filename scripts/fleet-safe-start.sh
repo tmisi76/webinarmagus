@@ -33,7 +33,7 @@ GATE="$HERE/fleet-memory-gate.sh"
 INSTALL_DIR="$(cd "$HERE/.." && pwd)"
 _env_val() { [[ -f "$INSTALL_DIR/.env" ]] && grep -E "^$1=" "$INSTALL_DIR/.env" | head -1 | cut -d= -f2- | tr -d '"'"'"'\r'; }
 MAIN_AGENT_ID="$(_env_val MAIN_AGENT_ID)"; MAIN_AGENT_ID="${MAIN_AGENT_ID:-marveen}"
-STORE="${MARVEEN_STORE:-$HOME/marveen/store}"
+STORE="${WEBINAR_MAGUS_STORE:-$HOME/marveen/store}"
 TOKEN_FILE="$STORE/.dashboard-token"
 DASH="${MARVEEN_DASHBOARD_URL:-http://localhost:3420}"
 # Core = started first / never throttled. Defaults to THIS install's main agent
