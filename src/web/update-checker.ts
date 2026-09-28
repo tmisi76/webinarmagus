@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process'
-import { readFileSync } from 'node:fs'
+import { readFileSync, existsSync } from 'node:fs'
 import { join } from 'node:path'
 import { PROJECT_ROOT } from '../config.js'
 import { TOOL_TIMEOUTS } from '../tool-timeouts.js'
@@ -58,10 +58,14 @@ let updateStatusCache: UpdateStatus = {
 }
 
 export function getUpdateStatus(): UpdateStatus {
-  // branch and version are resolved live (cheap local rev-parse / file read):
-  // the cache may predate the first refresh cycle, and a checkout switch or
-  // in-place version bump should be visible immediately.
-  return { ...updateStatusCache, branch: trackedBranch(), version: currentVersion() }
+  // Packaged installs intentionally have no .git directory and follow the
+  // signed/checksummed runtime release channel instead of a Git branch.
+  const packaged = !existsSync(join(PROJECT_ROOT, '.git'))
+  return {
+    ...updateStatusCache,
+    branch: packaged ? 'release' : trackedBranch(),
+    version: currentVersion(),
+  }
 }
 
 // Semver of the running instance, read from package.json at PROJECT_ROOT. Returns
@@ -335,7 +339,26 @@ export async function refreshUpdateStatus(): Promise<UpdateStatus> {
     lastChecked: Date.now(),
   }
   if (!current) {
-    status.error = 'Not a git checkout'
+    // DMG/EXE/CLI installs are release bundles, not git clones. Their update
+    // source is the AutoWebinar latest/version.json endpoint.
+    const installed = currentVersion()
+    status.current = installed
+    status.remote = 'autowebinar-runtime'
+    try {
+      const res = await fetch(
+        'https://autowebinar.hu/downloads/webinar-magus/latest/version.json',
+        { headers: { Accept: 'application/json' }, signal: AbortSignal.timeout(TOOL_TIMEOUTS['github']) },
+      )
+      if (!res.ok) throw new Error(`runtime version endpoint -> ${res.status}`)
+      const body = await res.json() as { version?: string }
+      const latest = typeof body.version === 'string' ? body.version.trim() : ''
+      if (!latest) throw new Error('runtime version endpoint returned no version')
+      status.latest = latest
+      status.behind = installed && installed !== latest ? 1 : 0
+      status.branch = 'release'
+    } catch (err) {
+      status.error = err instanceof Error ? err.message : String(err)
+    }
     updateStatusCache = status
     return status
   }
