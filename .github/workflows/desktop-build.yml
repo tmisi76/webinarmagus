@@ -6,9 +6,6 @@ on:
     paths:
       - 'desktop/**'
       - '.github/workflows/desktop-build.yml'
-  push:
-    tags:
-      - 'v*'
 
 permissions:
   contents: write
