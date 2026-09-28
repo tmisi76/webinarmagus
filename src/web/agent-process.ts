@@ -1136,6 +1136,8 @@ function ensureLocalAiBridge(model: string): void {
   })
 }
 
+const bridgeTokenFile = join(STORE_DIR, '.ai-provider-bridge-token')
+
 export function resolveProviderEnv(
   model: string,
   secretLookup: (id: string) => string | null,
@@ -1175,7 +1177,7 @@ export function resolveProviderEnv(
   if (isOpenAi || isGoogle) {
     return {
       provider: isOpenAi ? 'openai' : 'google',
-      exportsStr: `unset ANTHROPIC_API_KEY && export ANTHROPIC_AUTH_TOKEN=sk-webinar-magus-local-bridge && export ANTHROPIC_BASE_URL=http://127.0.0.1:4010 && export ANTHROPIC_MODEL=${shSingleQuote(model)} && `,
+      exportsStr: `unset ANTHROPIC_API_KEY && export ANTHROPIC_AUTH_TOKEN="$(cat ${shSingleQuote(bridgeTokenFile)})" && export ANTHROPIC_BASE_URL=http://127.0.0.1:4010 && export ANTHROPIC_MODEL=${shSingleQuote(model)} && `,
     }
   }
   if (isOpenRouter) {
