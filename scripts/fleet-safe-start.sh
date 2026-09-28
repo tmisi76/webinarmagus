@@ -35,11 +35,11 @@ _env_val() { [[ -f "$INSTALL_DIR/.env" ]] && grep -E "^$1=" "$INSTALL_DIR/.env" 
 MAIN_AGENT_ID="$(_env_val MAIN_AGENT_ID)"; MAIN_AGENT_ID="${MAIN_AGENT_ID:-marveen}"
 STORE="${WEBINAR_MAGUS_STORE:-$HOME/marveen/store}"
 TOKEN_FILE="$STORE/.dashboard-token"
-DASH="${MARVEEN_DASHBOARD_URL:-http://localhost:3420}"
+DASH="${WEBINAR_MAGUS_DASHBOARD_URL:-http://localhost:3420}"
 # Core = started first / never throttled. Defaults to THIS install's main agent
-# so the primary bot always comes up; override with MARVEEN_CORE_AGENTS.
-CORE_AGENTS="${MARVEEN_CORE_AGENTS:-$MAIN_AGENT_ID}"
-STAGGER_SEC="${MARVEEN_STAGGER_SEC:-20}"
+# so the primary bot always comes up; override with WEBINAR_MAGUS_CORE_AGENTS.
+CORE_AGENTS="${WEBINAR_MAGUS_CORE_AGENTS:-$MAIN_AGENT_ID}"
+STAGGER_SEC="${WEBINAR_MAGUS_STAGGER_SEC:-20}"
 
 log() { echo "[fleet-safe-start] $*"; }
 
