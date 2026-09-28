@@ -13,6 +13,7 @@
 
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
+import { homedir } from 'node:os'
 import { spawn, spawnSync } from 'node:child_process'
 import { randomBytes } from 'node:crypto'
 import process from 'node:process'
@@ -23,6 +24,7 @@ const STORE = join(ROOT, 'store')
 const SELECTION_FILE = join(STORE, 'ai-provider.json')
 const LITELLM_CONFIG = join(STORE, 'litellm-webinar-magus.yaml')
 const LITELLM_PID = join(STORE, 'litellm-webinar-magus.pid')
+const LITELLM_STATE = join(STORE, 'litellm-webinar-magus.state.json')
 const BRIDGE_TOKEN_FILE = join(STORE, '.ai-provider-bridge-token')
 const BRIDGE_HOST = '127.0.0.1'
 const BRIDGE_PORT = 4010
@@ -89,12 +91,50 @@ async function readSecret(provider) {
 }
 
 function liteLlmExecutable() {
-  const candidates = ['litellm']
+  const candidates = [
+    join(homedir(), '.local', 'bin', 'litellm'),
+    '/usr/local/bin/litellm',
+    '/opt/homebrew/bin/litellm',
+    'litellm',
+  ]
   for (const bin of candidates) {
     const r = spawnSync(bin, ['--help'], { stdio: 'ignore' })
     if (!r.error) return bin
   }
   return null
+}
+
+function readBridgeState() {
+  try {
+    const parsed = JSON.parse(readFileSync(LITELLM_STATE, 'utf8'))
+    return parsed && typeof parsed.provider === 'string' && typeof parsed.model === 'string'
+      ? parsed
+      : null
+  } catch {
+    return null
+  }
+}
+
+function bridgeStateMatches(provider, model) {
+  const state = readBridgeState()
+  return state?.provider === provider && state?.model === model
+}
+
+async function stopOwnedBridge() {
+  let pid = 0
+  try { pid = Number.parseInt(readFileSync(LITELLM_PID, 'utf8').trim(), 10) } catch { /* no pid */ }
+  if (Number.isFinite(pid) && pid > 1) {
+    try { process.kill(pid, 'SIGTERM') } catch { /* already gone */ }
+  }
+  for (let i = 0; i < 20; i++) {
+    try {
+      const state = pid > 1 ? process.kill(pid, 0) : false
+      if (!state) return
+    } catch {
+      return
+    }
+    await new Promise((r) => setTimeout(r, 150))
+  }
 }
 
 async function bridgeHealthy(token) {
@@ -126,7 +166,9 @@ function writeBridgeConfig(provider, model, keyId) {
 }
 
 async function ensureBridge(provider, model, keyId, apiKey, bridgeToken) {
-  if (await bridgeHealthy(bridgeToken)) return
+  const healthy = await bridgeHealthy(bridgeToken)
+  if (healthy && bridgeStateMatches(provider, model)) return
+  if (healthy) await stopOwnedBridge()
 
   const bin = liteLlmExecutable()
   if (!bin) {
@@ -149,6 +191,7 @@ async function ensureBridge(provider, model, keyId, apiKey, bridgeToken) {
   child.unref()
   mkdirSync(STORE, { recursive: true })
   writeFileSync(LITELLM_PID, String(child.pid) + '\n', { mode: 0o600 })
+  writeFileSync(LITELLM_STATE, JSON.stringify({ provider, model }, null, 2) + '\n', { mode: 0o600 })
 
   for (let i = 0; i < 30; i++) {
     if (await bridgeHealthy(bridgeToken)) return
