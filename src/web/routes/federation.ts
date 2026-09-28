@@ -47,7 +47,7 @@ import {
 import { resetPeerBackoff } from '../federation/bridge.js'
 import { getFederationStatus, refreshFederationStatus, resetFederationPollerCache } from '../federation/poller.js'
 import { ensureFederationClaudeMdSection } from '../federation/onboarding.js'
-import { hardRestartMarveenChannels } from '../channel-monitor.js'
+import { hardRestartWebinarMagusChannels } from '../channel-monitor.js'
 import type { RouteContext } from './types.js'
 
 export const FEDERATION_VERSION = 1
@@ -451,7 +451,7 @@ export async function tryHandleFederation(ctx: RouteContext): Promise<boolean> {
   // not be loaded on the Federation page, which would 404 the generic
   // /api/agents/:name/restart path). Dashboard-token only (not a wire endpoint).
   if (path === '/api/federation/apply' && method === 'POST') {
-    const r = hardRestartMarveenChannels()
+    const r = hardRestartWebinarMagusChannels()
     if (r.ok) { json(res, { ok: true }); return true }
     json(res, { error: r.error || 'Restart failed' }, 500)
     return true
