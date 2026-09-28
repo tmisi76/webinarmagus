@@ -171,7 +171,7 @@ describe('shouldDeferKeepaliveRespawn', () => {
 // B2 CONTRACT: cross-path respawn storm prevention
 //
 // Invariant: after an inbound-probe respawn fires (setting marveenLastHardRestart
-// via hardRestartMarveenChannels), the keepalive path must be suppressed for
+// via hardRestartWebinarMagusChannels), the keepalive path must be suppressed for
 // KEEPALIVE_RESPAWN_GRACE_MS. This is achieved by passing msSinceLastRespawn
 // = now - lastMainRespawnAt() to shouldRespawnForStaleKeepalive, where
 // lastMainRespawnAt() = Math.max(marveenLastKeepaliveRespawn, marveenLastHardRestart).
