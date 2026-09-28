@@ -1157,7 +1157,7 @@ export function resolveProviderEnv(
     const key = secretLookup('DEEPSEEK_API_KEY') ?? ''
     return {
       provider: 'deepseek',
-      exportsStr: `export ANTHROPIC_AUTH_TOKEN="${key}" && export ANTHROPIC_BASE_URL=https://api.deepseek.com/anthropic && export ANTHROPIC_MODEL=${shSingleQuote(model)} && `,
+      exportsStr: `unset ANTHROPIC_AUTH_TOKEN && export ANTHROPIC_API_KEY="${key}" && export ANTHROPIC_BASE_URL=https://api.deepseek.com/anthropic && export ANTHROPIC_MODEL=${shSingleQuote(model)} && `,
     }
   }
   if (isMinimax) {
