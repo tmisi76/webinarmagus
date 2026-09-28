@@ -18,7 +18,7 @@ import { join } from 'node:path'
 // #713 fixed the auto-restart runner by picking the mechanism from the launchctl
 // BINARY (`mainRestartMechanism(existsSync('/bin/launchctl'))`). The other two
 // call sites were untouched and are what this change fixes; they delegate to
-// hardRestartMarveenChannels(), which already existed for the channel-monitor
+// hardRestartWebinarMagusChannels(), which already existed for the channel-monitor
 // down-cascade. So two shapes now coexist, and this guard therefore asserts the
 // INVARIANT both satisfy rather than one particular helper: a runner may name
 // launchctl only if the same file also gates it on that binary existing, and it
@@ -62,7 +62,7 @@ function hasLaunchctlGate(code: string): boolean {
 
 // A path that restarts main WITHOUT launchd.
 function hasNonLaunchdPath(code: string): boolean {
-  return /hardRestartMarveenChannels\(\)/.test(code) || /respawnMainSessionFresh\(\)/.test(code)
+  return /hardRestartWebinarMagusChannels\(\)/.test(code) || /respawnMainSessionFresh\(\)/.test(code)
 }
 
 describe('main-session restart is platform-correct (2026-07-26 launchctl ENOENT)', () => {
@@ -80,7 +80,7 @@ describe('main-session restart is platform-correct (2026-07-26 launchctl ENOENT)
       })
 
       it('surfaces a failed main restart when the helper reports one', () => {
-        // hardRestartMarveenChannels returns {ok,error} rather than throwing.
+        // hardRestartWebinarMagusChannels returns {ok,error} rather than throwing.
         // Ignoring `ok` would recreate the original silent-failure bug with a
         // different mechanism: the caller would record "restarted" and, in the
         // auto-restart case, stamp lastRestart and skip the slot for a day.
@@ -88,7 +88,7 @@ describe('main-session restart is platform-correct (2026-07-26 launchctl ENOENT)
         // returns void and warns internally, so there is no result to check
         // (a real remaining gap, called out in the PR rather than papered over).
         const code = stripComments(read(rel))
-        if (/hardRestartMarveenChannels\(\)/.test(code)) {
+        if (/hardRestartWebinarMagusChannels\(\)/.test(code)) {
           expect(code).toMatch(/if\s*\(\s*!\s*res\.ok\s*\)\s*throw/)
         }
       })
@@ -101,7 +101,7 @@ describe('main-session restart is platform-correct (2026-07-26 launchctl ENOENT)
   // commit message.
   it('the helper keeps the launchd leg for macOS installs, gated on the plist', () => {
     const monitor = read('web/channel-monitor.ts')
-    expect(monitor).toMatch(/export function hardRestartMarveenChannels/)
+    expect(monitor).toMatch(/export function hardRestartWebinarMagusChannels/)
     // mac leg: non-linux AND the channels plist is actually registered.
     expect(monitor).toMatch(/process\.platform !== 'linux' && existsSync\(MAIN_CHANNELS_PLIST\)/)
     // ...and it still drives launchd, rather than having been stripped to a
