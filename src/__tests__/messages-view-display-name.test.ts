@@ -52,7 +52,7 @@ function loadHelpers(win: Record<string, unknown>, mainId: string) {
 }
 
 describe('Messages view maps the main agent id to BOT_NAME (regression #519/#520)', () => {
-  it('shows the BOT_NAME from /api/marveen for the main agent, not the routing id', () => {
+  it('shows the BOT_NAME from /api/webinar-magus for the main agent, not the routing id', () => {
     const { chatDisplayName } = loadHelpers({ _marveen: { name: 'Nova' } }, 'nova')
     expect(chatDisplayName('nova')).toBe('Nova')
   })
