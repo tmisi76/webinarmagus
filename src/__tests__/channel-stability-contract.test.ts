@@ -46,8 +46,8 @@ describe('P1#1 — channels.sh puts the OAuth token into the tmux SERVER global 
   })
 })
 
-describe('P1#2 — marveen-channels.service Restart=always + StartLimit in [Unit]', () => {
-  const unit = read('scripts/systemd/marveen-channels.service')
+describe('P1#2 — webinar-magus-channels.service Restart=always + StartLimit in [Unit]', () => {
+  const unit = read('scripts/systemd/webinar-magus-channels.service')
 
   it('Restart=always (not on-failure)', () => {
     expect(section(unit, 'Service')).toMatch(/^\s*Restart=always\s*$/m)
