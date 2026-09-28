@@ -46,11 +46,11 @@ describe('resolveProviderEnv', () => {
 
 
   it('routes OpenAI GPT models to the local Webinár Mágus provider bridge', () => {
-    const r = resolveProviderEnv('gpt-6-sol', () => null)
+    const r = resolveProviderEnv('gpt-5.6-terra', () => null)
     expect(r.provider).toBe('openai')
     expect(r.exportsStr).toContain('ANTHROPIC_BASE_URL=http://127.0.0.1:4010')
     expect(r.exportsStr).toContain('.ai-provider-bridge-token')
-    expect(r.exportsStr).toContain(`ANTHROPIC_MODEL='gpt-6-sol'`)
+    expect(r.exportsStr).toContain(`ANTHROPIC_MODEL='gpt-5.6-terra'`)
   })
 
   it('routes Gemini models to the local Webinár Mágus provider bridge', () => {
