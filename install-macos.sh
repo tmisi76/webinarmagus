@@ -40,7 +40,7 @@ source "$(dirname "$0")/install-lang.sh"
 # Error-translation layer (NPMPERM1 kor): minden stderr egy log-fajlba is
 # megy, hogy hibanal a trap ne csak sorszamot mondjon, hanem le tudja
 # forditani az upstream hibat (explain_install_error, install-lang.sh).
-INSTALL_ERRLOG=$(mktemp "${TMPDIR:-/tmp}/marveen-install-stderr.XXXXXX")
+INSTALL_ERRLOG=$(mktemp "${TMPDIR:-/tmp}/webinar-magus-install-stderr.XXXXXX")
 exec 2> >(tee -a "$INSTALL_ERRLOG" >&2)
 
 ok() { echo -e "  ${GREEN}✓${NC} $*"; }
