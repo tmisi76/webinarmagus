@@ -168,7 +168,7 @@ describe('host-restart-watchdog.sh: one-shot notice retries until delivered', ()
     writeFileSync(tgEnv, `TELEGRAM_BOT_TOKEN=${FAKE_TOKEN}\n`)
     const env = {
       HOSTWD_PROC_STAT: procStat,
-      MARVEEN_STORE: join(stage, 'store'),
+      WEBINAR_MAGUS_STORE: join(stage, 'store'),
       TELEGRAM_ENV: tgEnv,
       MARVEEN_ALERT_CHAT_ID: '42',
     }
