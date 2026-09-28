@@ -16,8 +16,9 @@ describe('resolveProviderEnv', () => {
     })
     expect(r.provider).toBe('deepseek')
     expect(seen).toEqual(['DEEPSEEK_API_KEY'])
-    expect(r.exportsStr).toContain('ANTHROPIC_AUTH_TOKEN="ds-secret"')
+    expect(r.exportsStr).toContain('ANTHROPIC_API_KEY="ds-secret"')
     expect(r.exportsStr).toContain('ANTHROPIC_BASE_URL=https://api.deepseek.com/anthropic')
+    expect(r.exportsStr).toContain('unset ANTHROPIC_AUTH_TOKEN')
     expect(r.exportsStr).toContain(`ANTHROPIC_MODEL='deepseek-v4-pro'`)
   })
 
