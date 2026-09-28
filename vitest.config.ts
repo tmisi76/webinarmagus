@@ -41,7 +41,7 @@ export default defineConfig({
     //  - assert-supported-node: refuse to run on a Node whose ABI the installed
     //    native modules were not built for, which otherwise reds out 40 files
     //    with errors that look like bugs in those files (2026-08-17).
-    //  - default-ssh-dir-seam: point MARVEEN_SSH_DIR at a scratch directory so no
+    //  - default-ssh-dir-seam: point WEBINAR_MAGUS_SSH_DIR at a scratch directory so no
     //    test can write the operator's REAL ~/.ssh/authorized_keys. Not covered by
     //    the live-install gate above: that one inspects the CHECKOUT, and ~/.ssh is
     //    HOME-scoped -- a clean worktree run leaked 62 real keys (ENROLL813,
