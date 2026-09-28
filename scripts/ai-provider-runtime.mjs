@@ -15,16 +15,16 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { spawn, spawnSync } from 'node:child_process'
 import process from 'node:process'
-import { pathToFileURL } from 'node:url'
+import { fileURLToPath, pathToFileURL } from 'node:url'
 
-const ROOT = resolve(new URL('..', import.meta.url).pathname)
+const ROOT = resolve(fileURLToPath(new URL('..', import.meta.url)))
 const STORE = join(ROOT, 'store')
 const SELECTION_FILE = join(STORE, 'ai-provider.json')
 const LITELLM_CONFIG = join(STORE, 'litellm-webinar-magus.yaml')
 const LITELLM_PID = join(STORE, 'litellm-webinar-magus.pid')
 const BRIDGE_HOST = '127.0.0.1'
 const BRIDGE_PORT = 4010
-const BRIDGE_TOKEN = 'wm-local-provider-bridge'
+const BRIDGE_TOKEN = 'sk-webinar-magus-local-bridge'
 
 function q(value) {
   return "'" + String(value).replace(/'/g, "'\\''") + "'"
@@ -84,7 +84,8 @@ function liteLlmExecutable() {
 
 async function bridgeHealthy() {
   try {
-    const res = await fetch('http://' + BRIDGE_HOST + ':' + BRIDGE_PORT + '/health', {
+    const res = await fetch('http://' + BRIDGE_HOST + ':' + BRIDGE_PORT + '/health/liveliness', {
+      headers: { Authorization: 'Bearer ' + BRIDGE_TOKEN },
       signal: AbortSignal.timeout(1200),
     })
     return res.ok
@@ -103,7 +104,7 @@ function writeBridgeConfig(provider, model, keyId) {
     '      api_key: os.environ/' + keyId,
     '',
     'general_settings:',
-    '  master_key: ' + BRIDGE_TOKEN,
+    '  master_key: os.environ/LITELLM_MASTER_KEY',
     '',
   ].join('\n')
   writeFileSync(LITELLM_CONFIG, config, { mode: 0o600 })
