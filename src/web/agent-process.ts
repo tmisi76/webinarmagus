@@ -1161,7 +1161,7 @@ export function resolveProviderEnv(
     return {
       provider: 'claude',
       exportsStr: key
-        ? `unset ANTHROPIC_AUTH_TOKEN && unset ANTHROPIC_BASE_URL && export ANTHROPIC_API_KEY="${key}" && export ANTHROPIC_MODEL=${shSingleQuote(model)} && `
+        ? `unset CLAUDE_CODE_OAUTH_TOKEN && unset ANTHROPIC_AUTH_TOKEN && unset ANTHROPIC_BASE_URL && export ANTHROPIC_API_KEY="${key}" && export ANTHROPIC_MODEL=${shSingleQuote(model)} && `
         : '',
     }
   }
@@ -1174,7 +1174,7 @@ export function resolveProviderEnv(
     const runtimeModel = model === 'deepseek-flash' ? 'deepseek-flash[1m]' : model
     return {
       provider: 'deepseek',
-      exportsStr: `unset ANTHROPIC_API_KEY && export ANTHROPIC_AUTH_TOKEN="${key}" && export ANTHROPIC_BASE_URL=https://api.deepseek.com/anthropic && export ANTHROPIC_MODEL=${shSingleQuote(runtimeModel)} && export ANTHROPIC_DEFAULT_OPUS_MODEL=${shSingleQuote(runtimeModel)} && export ANTHROPIC_DEFAULT_SONNET_MODEL=${shSingleQuote(runtimeModel)} && export ANTHROPIC_DEFAULT_HAIKU_MODEL=deepseek-flash && export CLAUDE_CODE_SUBAGENT_MODEL=deepseek-flash && export CLAUDE_CODE_EFFORT_LEVEL=max && export CLAUDE_CODE_AUTO_COMPACT_WINDOW=786432 && `,
+      exportsStr: `unset CLAUDE_CODE_OAUTH_TOKEN && unset ANTHROPIC_API_KEY && export ANTHROPIC_AUTH_TOKEN="${key}" && export ANTHROPIC_BASE_URL=https://api.deepseek.com/anthropic && export ANTHROPIC_MODEL=${shSingleQuote(runtimeModel)} && export ANTHROPIC_DEFAULT_OPUS_MODEL=${shSingleQuote(runtimeModel)} && export ANTHROPIC_DEFAULT_SONNET_MODEL=${shSingleQuote(runtimeModel)} && export ANTHROPIC_DEFAULT_HAIKU_MODEL=deepseek-flash && export CLAUDE_CODE_SUBAGENT_MODEL=deepseek-flash && export CLAUDE_CODE_EFFORT_LEVEL=max && export CLAUDE_CODE_AUTO_COMPACT_WINDOW=786432 && `,
     }
   }
   if (isMinimax) {
@@ -1188,13 +1188,13 @@ export function resolveProviderEnv(
     // of the compat layer's wrong one.
     return {
       provider: 'minimax',
-      exportsStr: `export ANTHROPIC_AUTH_TOKEN="${key}" && export ANTHROPIC_BASE_URL=https://api.minimax.io/anthropic && export ANTHROPIC_MODEL=${shSingleQuote(model)} && export CLAUDE_CODE_MAX_CONTEXT_TOKENS=1000000 && `,
+      exportsStr: `unset CLAUDE_CODE_OAUTH_TOKEN && export ANTHROPIC_AUTH_TOKEN="${key}" && export ANTHROPIC_BASE_URL=https://api.minimax.io/anthropic && export ANTHROPIC_MODEL=${shSingleQuote(model)} && export CLAUDE_CODE_MAX_CONTEXT_TOKENS=1000000 && `,
     }
   }
   if (isOpenAi || isGoogle) {
     return {
       provider: isOpenAi ? 'openai' : 'google',
-      exportsStr: `unset ANTHROPIC_API_KEY && export ANTHROPIC_AUTH_TOKEN="$(cat ${shSingleQuote(bridgeTokenFile)})" && export ANTHROPIC_BASE_URL=http://127.0.0.1:4010 && export ANTHROPIC_MODEL=${shSingleQuote(model)} && `,
+      exportsStr: `unset CLAUDE_CODE_OAUTH_TOKEN && unset ANTHROPIC_API_KEY && export ANTHROPIC_AUTH_TOKEN="$(cat ${shSingleQuote(bridgeTokenFile)})" && export ANTHROPIC_BASE_URL=http://127.0.0.1:4010 && export ANTHROPIC_MODEL=${shSingleQuote(model)} && `,
     }
   }
   if (isOpenRouter) {
@@ -1202,7 +1202,7 @@ export function resolveProviderEnv(
     const key = secretLookup('openrouter-fleet-key') ?? ''
     return {
       provider: 'openrouter',
-      exportsStr: `export ANTHROPIC_AUTH_TOKEN="${key}" && export ANTHROPIC_BASE_URL=https://openrouter.ai/api && export ANTHROPIC_MODEL=${shSingleQuote(model)} && `,
+      exportsStr: `unset CLAUDE_CODE_OAUTH_TOKEN && export ANTHROPIC_AUTH_TOKEN="${key}" && export ANTHROPIC_BASE_URL=https://openrouter.ai/api && export ANTHROPIC_MODEL=${shSingleQuote(model)} && `,
     }
   }
   if (isOllama) {
@@ -1213,7 +1213,7 @@ export function resolveProviderEnv(
       // the native ollama API. Empty AGENT_LOCAL_BASE_URL falls back to
       // OLLAMA_URL, so nothing changes for an install whose local agent really
       // is ollama.
-      exportsStr: `export ANTHROPIC_AUTH_TOKEN=ollama && export ANTHROPIC_BASE_URL=${AGENT_LOCAL_BASE_URL} && export ANTHROPIC_MODEL=${shSingleQuote(model)} && `,
+      exportsStr: `unset CLAUDE_CODE_OAUTH_TOKEN && export ANTHROPIC_AUTH_TOKEN=ollama && export ANTHROPIC_BASE_URL=${AGENT_LOCAL_BASE_URL} && export ANTHROPIC_MODEL=${shSingleQuote(model)} && `,
     }
   }
   return { provider: 'claude', exportsStr: '' }
