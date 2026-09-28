@@ -2,112 +2,209 @@
 
 ![Webinár Mágus](banner.png)
 
-**Önálló AI marketingcsapat webináriumhoz, ügyfélszerzéshez, értékesítéshez és automatizáláshoz.**
+**Önálló AI marketing- és ügyfélszerző csapat webináriumhoz, saleshez, automatizáláshoz és kampányokhoz.**
 
-> Státusz: korai fejlesztési verzió (v0.1)
+> Státusz: **v0.1 release candidate**
 
-A Webinár Mágus egy saját márkás, telepíthető AI agent rendszer, amely az AutoWebinar ökoszisztémához készül. A cél, hogy a felhasználó egyetlen alkalmazásból tudjon AI ügynökökkel kampányt tervezni, webináriumot elemezni, hirdetést és emailt készíteni, funnel hibákat keresni és értékesítési feladatokat delegálni.
+A Webinár Mágus egy telepíthető, többügynökös AI rendszer az AutoWebinar ökoszisztémához. A cél, hogy egyetlen felületen lehessen kampányt tervezni, webináriumot elemezni, prezentációt és scriptet készíteni, hirdetést és emailt írni, funnelhibákat keresni, leadeket kezelni és feladatokat specialista AI ügynököknek delegálni.
 
-## V0.1 cél
+## Fő funkciók
 
 - saját **Webinár Mágus Mission Control**
-- AutoWebinar design system
-- több specializált AI ügynök
-- tartós memória
+- Főmágus + specialista AI ügynökök
 - Kanban és feladatdelegálás
-- ütemezett és háttérfeladatok
-- MCP integrációk
+- tartós memória és háttérfeladatok
+- ütemezett automatizmusok
+- MCP connector katalógus
 - natív AutoWebinar MCP kapcsolat
-- macOS és Windows desktop csomagolás
-- később automatikus frissítés
+- több AI provider és modell
+- macOS / Windows desktop alkalmazás
+- terminálos telepítés macOS, Linux és Windows alatt
+- release-alapú önfrissítés
+- titkosított API-kulcs tárolás
 
-## Első AI csapat
+## AI csapat
 
-- 🪄 **Főmágus** — koordináció és delegálás
-- 🎤 **Webinár Mágus** — webinar stratégia, prezentáció, script
-- 🎯 **Hirdetés Mágus** — Meta/Google kampányok és kreatívok
+- 🪄 **Főmágus** — koordináció, tervezés, delegálás
+- 🎤 **Webinár Mágus** — webinárstratégia, prezentáció, script
+- 🎯 **Hirdetés Mágus** — kampányok és kreatívok
 - ✉️ **Email Mágus** — meghívó, reminder, replay és sales emailek
 - 📊 **Funnel Mágus** — konverzió, retention, attribution
 - 💰 **Sales Mágus** — leadek, follow-up és értékesítési folyamat
 
-## AutoWebinar vizuális rendszer
+## AI provider választás
 
-A Webinár Mágus ugyanabba a termékcsaládba tartozik, mint az AutoWebinar.
+Az első indításkor a felhasználó kiválaszthatja a saját szolgáltatóját és modelljét.
 
-- Primary: `#2563EB`
-- Background: `#F7F9FC`
-- Card: `#FFFFFF`
-- Text: `#0F172A`
-- Accent: `#EAF2FE`
-- Info: `#0EA5E9`
-- Success: `#10B981`
-- Warning: `#F59E0B`
-- Error: `#F43F5E`
-- Gradient: `#2563EB → #0EA5E9`
-- Headings: Poppins
-- UI/body: Inter
+| Provider | Mire jó | Költség / karakter |
+|---|---|---|
+| DeepSeek | nagy volumenű háttérmunka, jó ár/érték | kedvező |
+| Anthropic Claude | összetett agentfeladatok, precíz kódolás és elemzés | magasabb |
+| OpenAI | általános munka, magyar marketing- és szövegírás | közepes–magas |
+| Google Gemini | multimodális és általános feladatok | közepes |
+
+Az API-kulcs mentés előtt live ellenőrzést kap, majd a Webinár Mágus Vaultban tárolódik.
 
 ## Telepítés
 
-A Webinár Mágus háromféleképpen telepíthető:
-
-### Terminálból – macOS / Linux
+### macOS / Linux — egy parancs
 
 ```bash
 curl -fsSL https://autowebinar.hu/webinar-magus/install | bash
 ```
 
-A bootstrap egy verziózott runtime csomagot tölt le az AutoWebinar letöltési végpontjáról, SHA-256-tal ellenőrzi, majd elindítja az interaktív Webinár Mágus onboardingot. A végfelhasználónak nem kell GitHub account vagy hozzáférés a privát repositoryhoz.
+A bootstrap:
 
-### Terminálból – Windows
+1. letölti a legfrissebb runtime csomagot,
+2. SHA-256-tal ellenőrzi,
+3. telepíti a szükséges runtime-ot,
+4. elindítja az onboardingot.
 
-PowerShellben:
+A végfelhasználónak nem kell GitHub account vagy hozzáférés a privát repositoryhoz.
+
+### Windows — PowerShell
 
 ```powershell
 irm https://autowebinar.hu/webinar-magus/install.ps1 | iex
 ```
 
-A Windows telepítés WSL-t használ. Ha WSL még nincs telepítve, a bootstrap elindítja a telepítését, majd újraindítás után folytatható.
+A Windows verzió WSL-t használ. Ha WSL még nincs telepítve, a telepítő elindítja a szükséges Windows komponenst.
 
 ### Grafikus telepítő
 
-- macOS: DMG
-- Windows: EXE
+- **macOS:** DMG
+- **Windows:** EXE
 
-A grafikus és CLI telepítő ugyanazt a Webinár Mágus runtime-ot és onboardingot használja.
+A grafikus és a CLI telepítő ugyanazt a runtime-ot és onboardingot használja.
 
-> A két publikus URL az AutoWebinar oldali publikálás után válik élessé. A repository már tartalmazza a `cli/install.sh`, `cli/install.ps1` és a release runtime bundle builder fájlokat.
+## Első indítás
 
-## Desktop cél
+Az onboarding során:
 
-- macOS: `WebinarMagus.dmg`
-- Windows: `WebinarMagus-Setup.exe`
+1. kiválasztod az AI providert,
+2. kiválasztod a modellt,
+3. megadod és ellenőrzöd az API-kulcsot,
+4. összekapcsolod a szükséges connectorokat,
+5. elindul a Főmágus és a specialista csapat.
 
-A telepítés után a felhasználó a Webinár Mágus alkalmazást indítja, majd az onboardingból összekapcsolja az AutoWebinar fiókját.
+## AutoWebinar kapcsolat
 
-## AutoWebinar MCP
-
-Tervezett alapkapcsolat:
+A Webinár Mágus első-party AutoWebinar connectorral érkezik:
 
 ```
 https://autowebinar.hu/mcp
 ```
 
-Az összekapcsolás OAuth-alapú lesz; a cél, hogy a végfelhasználónak ne kelljen MCP URL-eket vagy AutoWebinar API-kulcsokat kézzel konfigurálnia.
+A connector a katalógusban kiemelten jelenik meg, és az AutoWebinar OAuth hitelesítési folyamatát használja.
+
+## Connectorok
+
+A katalógus többek között ezeket tartalmazza:
+
+- AutoWebinar
+- Gmail
+- Google Drive
+- Google Calendar
+- Notion
+- Slack
+- GitHub
+- Brave Search
+- Playwright
+- ElevenLabs
+- Fireflies.ai
+- Billingo
+- Wise
+- Fal.ai
+- Filesystem
+
+Egyes connectorok OAuthot, mások saját API-kulcsot igényelnek.
+
+## Frissítés
+
+### Dashboardból
+
+A Webinár Mágus jelzi, ha új release érhető el. A frissítés a dashboardból indítható.
+
+### Terminálból
+
+```bash
+cd ~/webinar-magus
+bash update.sh
+```
+
+A csomagolt DMG/EXE/CLI installok a saját AutoWebinar release channelből frissülnek. A letöltött runtime SHA-256 ellenőrzést kap, a felhasználói állapot és a titkok nem íródnak felül.
+
+Fejlesztői Git checkout esetén a meglévő Git-alapú updater működik tovább.
+
+## Release-ek
+
+A `v*` tagekhez a CI automatikusan készít:
+
+- macOS DMG
+- Windows EXE
+- CLI runtime bundle
+- SHA-256 checksumokat
+- verzió metadata fájlt
+
+A publikus desktop release csak sikeres signing/notarization után készülhet el.
+
+### macOS
+
+A release workflow támogatja:
+
+- Developer ID signing
+- hardened runtime
+- Apple notarization
+- `codesign` és Gatekeeper ellenőrzés
+
+### Windows
+
+A release workflow támogatja:
+
+- Authenticode signing
+- aláírás-ellenőrzés
+- SmartScreen-barát terjesztést
+
+## Biztonság
+
+- API-kulcsok nem kerülnek plaintext provider-configba
+- a provider secret a Vaultban marad
+- a helyi AI bridge csak localhoston hallgat
+- a CLI runtime checksum-ellenőrzött
+- a privát GitHub repository nem szükséges a telepítéshez
+- release upload külön bearer tokennel védett
+- meglévő `.env`, `store/`, agent- és memóriaállapot frissítéskor megmarad
 
 ## Fejlesztés
 
-A stabil ág: `main`
+```bash
+npm ci
+npm run typecheck
+npm test
+npm run build
+npm run dev
+```
 
-Az első Webinár Mágus átalakítás jelenleg:
+A stabil ág:
 
 ```
-webinar-magus-foundation
+main
 ```
+
+## Repository felépítés
+
+- `src/` — runtime és dashboard backend
+- `web/` — Mission Control frontend
+- `scripts/` — install, update, agent és rendszer helper-ek
+- `desktop/` — Electron DMG/EXE shell
+- `cli/` — publikus one-command bootstrapok
+- `seed-skills/` — alap skillek
+- `seed-scheduled-tasks/` — alap automatizmusok
+- `mcp-catalog.json` — connector katalógus
 
 ## Licenc és third-party komponensek
 
-A projekt MIT licencű nyílt forrású komponenseket is felhasznál. A vonatkozó eredeti copyright- és licencszövegek a `LICENSE` és az attribution/third-party dokumentumokban megmaradnak.
+A projekt MIT licencű nyílt forrású komponenseket is használ. A kötelező copyright- és licencinformációk a [LICENSE](LICENSE) és [ATTRIBUTIONS.md](ATTRIBUTIONS.md) fájlokban találhatók.
 
 ---
 
