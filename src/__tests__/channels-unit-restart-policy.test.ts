@@ -160,7 +160,7 @@ describe('update.sh migration for already-installed machines', () => {
   it('rewrites an existing on-failure channels unit and leaves no backup file', () => {
     const dir = mkdtempSync(join(tmpdir(), 'units-'))
     try {
-      const unit = join(dir, 'marveen-channels.service')
+      const unit = join(dir, 'webinar-magus-channels.service')
       writeFileSync(unit, OLD_UNIT)
       const r = runMigration(dir)
       expect(r.code).toBe(0)
@@ -179,7 +179,7 @@ describe('update.sh migration for already-installed machines', () => {
   it('is idempotent: a second run changes nothing and reports nothing', () => {
     const dir = mkdtempSync(join(tmpdir(), 'units-'))
     try {
-      const unit = join(dir, 'marveen-channels.service')
+      const unit = join(dir, 'webinar-magus-channels.service')
       writeFileSync(unit, OLD_UNIT)
       runMigration(dir)
       const firstPass = readFileSync(unit, 'utf-8')
