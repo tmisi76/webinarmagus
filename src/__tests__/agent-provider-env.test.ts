@@ -16,9 +16,9 @@ describe('resolveProviderEnv', () => {
     })
     expect(r.provider).toBe('deepseek')
     expect(seen).toEqual(['DEEPSEEK_API_KEY'])
-    expect(r.exportsStr).toContain('ANTHROPIC_API_KEY="ds-secret"')
+    expect(r.exportsStr).toContain('ANTHROPIC_AUTH_TOKEN="ds-secret"')
     expect(r.exportsStr).toContain('ANTHROPIC_BASE_URL=https://api.deepseek.com/anthropic')
-    expect(r.exportsStr).toContain('unset ANTHROPIC_AUTH_TOKEN')
+    expect(r.exportsStr).toContain('unset ANTHROPIC_API_KEY')
     expect(r.exportsStr).toContain(`ANTHROPIC_MODEL='deepseek-v4-pro'`)
   })
 
@@ -47,11 +47,11 @@ describe('resolveProviderEnv', () => {
 
 
   it('routes OpenAI GPT models to the local Webinár Mágus provider bridge', () => {
-    const r = resolveProviderEnv('gpt-5.6-terra', () => null)
+    const r = resolveProviderEnv('gpt-6-sol', () => null)
     expect(r.provider).toBe('openai')
     expect(r.exportsStr).toContain('ANTHROPIC_BASE_URL=http://127.0.0.1:4010')
     expect(r.exportsStr).toContain('.ai-provider-bridge-token')
-    expect(r.exportsStr).toContain(`ANTHROPIC_MODEL='gpt-5.6-terra'`)
+    expect(r.exportsStr).toContain(`ANTHROPIC_MODEL='gpt-6-sol'`)
   })
 
   it('routes Gemini models to the local Webinár Mágus provider bridge', () => {
