@@ -1153,6 +1153,19 @@ export function resolveProviderEnv(
   const isOpenRouter = !isClaude && !isDeepseek && !isMinimax && !isOpenAi && !isGoogle && model.includes('/')
   const isOllama = !isClaude && !isDeepseek && !isMinimax && !isOpenAi && !isGoogle && !isOpenRouter
 
+  if (isClaude) {
+    // New Webinár Mágus onboarding stores a shared Anthropic API key in the
+    // encrypted Vault. Prefer it when present; otherwise keep the historical
+    // OAuth/host-credential behaviour byte-for-byte unchanged.
+    const key = secretLookup('ANTHROPIC_API_KEY') ?? ''
+    return {
+      provider: 'claude',
+      exportsStr: key
+        ? `unset ANTHROPIC_AUTH_TOKEN && unset ANTHROPIC_BASE_URL && export ANTHROPIC_API_KEY="${key}" && export ANTHROPIC_MODEL=${shSingleQuote(model)} && `
+        : '',
+    }
+  }
+
   if (isDeepseek) {
     const key = secretLookup('DEEPSEEK_API_KEY') ?? ''
     return {
