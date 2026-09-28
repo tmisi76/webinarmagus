@@ -50,7 +50,7 @@
       <button type="button" class="onb-ai-provider-card${active ? ' selected' : ''}" data-ai-provider="${esc(provider.id)}">
         <div class="onb-ai-provider-head">
           <strong>${esc(provider.name)}</strong>
-          <span class="onb-ai-rec">${esc(provider.recommendation || 'VÁLASZTHATÓ')}</span>
+          <span class="onb-ai-rec">${esc(provider.decisionLabel || provider.recommendation || 'VÁLASZTHATÓ')}</span>
         </div>
         <div class="onb-ai-badges">
           <span>${esc(provider.priceLabel)}</span>
