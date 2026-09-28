@@ -157,7 +157,7 @@ case "$INSTALL_DIR" in
     echo -e "  ${DIM}Kiut: klonozd a Linux home-ba, es onnan futtasd (masold az alabbi sorokat):${NC}"
     echo "    cd ~"
     echo "    git clone --branch main https://github.com/tmisi76/webinar-magus.git"
-    echo "    cd marveen && ./install.sh"
+    echo "    cd webinar-magus && ./install.sh"
     exit 1
     ;;
 esac
@@ -955,7 +955,7 @@ if [ "$MAIN_AGENT_ID" != "marveen" ]; then
   echo -e "  ${DIM}$(_t macos.agent_id_info)${MAIN_AGENT_ID}${NC}"
 fi
 
-# Product / system brand. Per Szabi's decision the installer does NOT prompt for
+# Product / system brand. Product rule: the installer does NOT prompt for
 # a brand -- the product is always named after the main agent. BRAND_NAME and
 # SERVICE_ID remain as fields (config.ts keeps the env support as a dormant
 # capability, default = the agent name), but the install flow hardcodes them to
@@ -1162,7 +1162,7 @@ else
   # Probe the way a SERVICE will run: an isolated config dir (so ~/.claude and
   # the operator's shell exports cannot make a broken install look healthy)
   # carrying ONLY the credential the units will actually get.
-  _probe_cfg="$(mktemp -d 2>/dev/null || echo /tmp/marveen-authprobe.$$)"
+  _probe_cfg="$(mktemp -d 2>/dev/null || echo /tmp/webinar-magus-authprobe.$)"
   _probe_out=""
   _probe_rc=1
   if command -v claude >/dev/null 2>&1; then

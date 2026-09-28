@@ -1,43 +1,43 @@
 # Köszönet
 
-A Marveen több nyílt forrású projektre és koncepcióra épít. Ez a dokumentum azokat a forrásokat kreditálja, amelyek beépültek a kódbasebe vagy érdemi hatással voltak a tervezésre.
+A Webinár Mágus több nyílt forrású projektre és publikusan megosztott koncepcióra épít. Ez a dokumentum azokat a forrásokat kreditálja, amelyek beépültek a kódbázisba vagy érdemi hatással voltak a tervezésre.
 
-A Marveen saját licensze: [LICENSE](./LICENSE) (MIT).
+A projekt licence és a kötelező szerzői jogi notice-ok a [LICENSE](./LICENSE) fájlban találhatók.
 
 ## Becsomagolt vagy adaptált kód
 
 ### Bumblebee (ellátási-lánc biztonsági scanner)
 - **Forrás**: https://github.com/perplexityai/bumblebee
 - **Szerző**: Perplexity AI
-- **Licensz**: Apache 2.0
-- **Hol a Webinár Mágusban**: `seed-scheduled-tasks/bumblebee-hygiene-scan/` (a bináris, a scan profil és a beépített threat-intel katalógusok az integráció időpontjában aktuális verziójukkal)
-- **Mit csinál nálunk**: heti hétfő 09:00-kor read-only leltár a telepített csomagokról, MCP konfigurációkról és kiterjesztésekről, összeillesztve a beépített ellátási-lánc fenyegetés-katalógusokkal. Csak találat esetén szól.
+- **Licenc**: Apache 2.0
+- **Hol használjuk**: `seed-scheduled-tasks/bumblebee-hygiene-scan/`
+- **Szerepe**: read-only leltár a telepített csomagokról, MCP konfigurációkról és kiterjesztésekről, a beépített ellátási-lánc fenyegetés-katalógusokkal összevetve.
 
 ### Zhutov skill csomag (handoff / retrospective / skill-management)
 - **Forrás**: https://artemxtech.substack.com/p/3-claude-code-skills-that-make-claude
 - **Szerző**: Artem Zhutov
-- **Hol a Webinár Mágusban**: `seed-skills/handoff/`, `seed-skills/retrospective/`, `seed-skills/skill-management/`
-- **Mit csinál nálunk**: a skill-csontváz a Marveen flotta-architektúrájára adaptálva. Az 5-szekciós handoff struktúra (Goal, Current Progress, What Worked, What Didn't Work, Next Steps), a sub-agent retrospective minta, és a skill-rot életciklus-kezelés koncepció mind Zhutov csomagjából származik. A megvalósítás TypeScript-ben újraírva, integrálva a Marveen checkpoint, DREAM, memória és inter-agent message rendszereivel.
+- **Hol használjuk**: `seed-skills/handoff/`, `seed-skills/retrospective/`, `seed-skills/skill-management/`
+- **Szerepe**: az 5-szekciós handoff struktúra, a sub-agent retrospective minta és a skill-életciklus-kezelés koncepciója alapján adaptált skill-rendszer. A Webinár Mágus megvalósítása TypeScriptben, a saját checkpoint, memória és inter-agent rétegekkel integrálva készült.
 
 ### printing-press (agent-CLI generátor)
 - **Forrás**: https://github.com/mvanhorn/cli-printing-press
 - **Szerző**: Mike Van Horn
-- **Hol a Webinár Mágusban**: generátor eszközként használjuk (nem becsomagolva) -- ezzel készülnek a `skool-cli`, `aiam-blog-pp-cli`, `connectors-hu` CLI csomagok, amelyek külső API-kat csomagolnak, plus a hozzájuk tartozó Claude Code skill fájlok.
+- **Szerepe**: generátor eszközként használható külső API-kat csomagoló CLI-k és a hozzájuk tartozó Claude Code skillek létrehozásához.
 
-## Koncepcionális hatás (nem becsomagolt kód)
+## Koncepcionális hatások
 
-### Mark Kashef -- Claude Code-alapú AI-asszisztens architektúra
+### Mark Kashef — Claude Code-alapú AI-asszisztens architektúra
 - **Forrás**: https://youtube.com/@mark_kashef
-- **Hol a Webinár Mágusban**: a Marveen alapkoncepciója (Claude Code mint folyamatosan futó AI-asszisztens, saját Telegram-csatornával, tmux-session-alapú headless működéssel, scheduled-task-okkal). A közösség a megközelítést "Claude Claw" / "ClaudeClaw" néven hivatkozza; a Marveen első verziója is ezen a néven indult (2026-04-08), nem fork, hanem a koncepció alapján nulláról felépített saját implementáció. A névváltás Marveen-re azután történt, hogy elegendő saját megoldás (memory tiers, kanban, channel-plugin, autonómia-config, multi-agent inter-agent messaging) került be ahhoz, hogy a projekt önálló identitást viseljen.
+- **Hatás**: hosszú életű Claude Code session, csatornás kommunikáció, tmux-alapú headless működés és ütemezett feladatok mint architekturális minta.
 
 ### Karpathy CLAUDE.md alapelvek
-- **Forrás**: Andrej Karpathy CLAUDE.md útmutatása (publikus)
-- **Hol a Webinár Mágusban**: a saját gyökér `CLAUDE.md` mintareferenciája. Nem másoltunk kódot; a felépítés és a szabály-stílus Karpathy mintájából inspirálódott.
+- **Forrás**: Andrej Karpathy nyilvánosan megosztott CLAUDE.md útmutatásai
+- **Hatás**: a gyökér `CLAUDE.md` felépítésének és szabály-stílusának egyik mintareferenciája. Kódátvétel nem történt.
 
-### Matt Pocock -- "/handoff is my new favourite skill"
+### Matt Pocock — handoff workflow
 - **Forrás**: https://youtu.be/dtAJ2dOd3ko
-- **Hol a Webinár Mágusban**: a "purpose" argumentum mint kötelező paraméter a `/handoff`-on, és a cross-agent portable design (hogy egy HANDOFF.md működjön Claude Code, Codex, Copilot CLI stb. között) Matt videós design-javaslataiból átvéve.
+- **Hatás**: a cél/purpose megadása a handoffnál és a cross-agent, hordozható HANDOFF.md szemlélet.
 
 ---
 
-Ha hiányzó attribúciót észlelsz vagy korrekciót szeretnél, nyiss egy issue-t vagy PR-t: https://github.com/tmisi76/webinar-magus.
+Ha hiányzó attribúciót észlelsz vagy korrekciót szeretnél, nyiss issue-t vagy PR-t a Webinár Mágus repóban: https://github.com/tmisi76/webinar-magus.
