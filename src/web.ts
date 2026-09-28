@@ -63,7 +63,7 @@ import { tryHandleAgentsSkills } from './web/routes/agents-skills.js'
 import { tryHandleSkills } from './web/routes/skills.js'
 import { tryHandleAgents } from './web/routes/agents.js'
 import { tryHandleClaudePlans } from './web/routes/claude-plans.js'
-import { tryHandleWebinarMagus } from './web/routes/marveen.js'
+import { tryHandleWebinarMagus } from './web/routes/webinar-magus.js'
 import { tryHandleRecall } from './web/routes/recall.js'
 import { tryHandleBackgroundTasks, sweepOrphanedBackgroundTasks } from './web/routes/background-tasks.js'
 import { tryHandleOverview } from './web/routes/overview.js'
@@ -524,7 +524,7 @@ setInterval(() => { try { sweepExpiredDesktopLock() } catch { /* never kill the 
   // channel-coordinator 409 cooldown hysteresis). That fix and this one are
   // complementary -- both 409 vectors must be addressed.
 
-  // Warm the Marveen bot username cache so /api/marveen returns @username on
+  // Warm the Marveen bot username cache so /api/webinar-magus returns @username on
   // the first dashboard load. Re-fetched lazily otherwise.
   refreshMarveenBotUsername().catch(() => {})
 
