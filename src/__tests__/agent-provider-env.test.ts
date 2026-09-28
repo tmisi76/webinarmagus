@@ -35,6 +35,14 @@ describe('resolveProviderEnv', () => {
     expect(r.exportsStr).toContain(`ANTHROPIC_MODEL='deepseek-v4-pro'`)
   })
 
+  it('uses DeepSeek Flash full-context runtime settings for Claude Code', () => {
+    const r = resolveProviderEnv('deepseek-flash', () => 'ds-secret')
+    expect(r.exportsStr).toContain(`ANTHROPIC_MODEL='deepseek-flash[1m]'`)
+    expect(r.exportsStr).toContain(`ANTHROPIC_DEFAULT_SONNET_MODEL='deepseek-flash[1m]'`)
+    expect(r.exportsStr).toContain('CLAUDE_CODE_SUBAGENT_MODEL=deepseek-flash')
+    expect(r.exportsStr).toContain('CLAUDE_CODE_AUTO_COMPACT_WINDOW=786432')
+  })
+
   it('routes minimax- models to the MiniMax Anthropic-compatible endpoint with MINIMAX_API_KEY', () => {
     const seen: string[] = []
     const r = resolveProviderEnv('minimax-m3', (id) => {
