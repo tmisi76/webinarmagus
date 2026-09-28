@@ -49,7 +49,7 @@ describe('resolveProviderEnv', () => {
     const r = resolveProviderEnv('gpt-6-sol', () => null)
     expect(r.provider).toBe('openai')
     expect(r.exportsStr).toContain('ANTHROPIC_BASE_URL=http://127.0.0.1:4010')
-    expect(r.exportsStr).toContain('ANTHROPIC_AUTH_TOKEN=sk-webinar-magus-local-bridge')
+    expect(r.exportsStr).toContain('.ai-provider-bridge-token')
     expect(r.exportsStr).toContain(`ANTHROPIC_MODEL='gpt-6-sol'`)
   })
 
