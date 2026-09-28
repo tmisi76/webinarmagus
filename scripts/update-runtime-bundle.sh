@@ -20,7 +20,7 @@ MESSAGE=""
 START_TS="$(date +%s)"
 
 json_escape() {
-  python3 -c 'import json,sys; print(json.dumps(sys.stdin.read()))' <<<"$1"
+  printf '%s' "$1" | python3 -c 'import json,sys; print(json.dumps(sys.stdin.read()))'
 }
 
 write_result() {
