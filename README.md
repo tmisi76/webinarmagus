@@ -4,7 +4,7 @@
 
 **Önálló AI marketing- és ügyfélszerző csapat webináriumhoz, saleshez, automatizáláshoz és kampányokhoz.**
 
-> Státusz: **v0.1 release candidate**
+> Státusz: **v0.1 CLI release candidate**
 
 A Webinár Mágus egy telepíthető, többügynökös AI rendszer az AutoWebinar ökoszisztémához. A cél, hogy egyetlen felületen lehessen kampányt tervezni, webináriumot elemezni, prezentációt és scriptet készíteni, hirdetést és emailt írni, funnelhibákat keresni, leadeket kezelni és feladatokat specialista AI ügynököknek delegálni.
 
@@ -18,7 +18,6 @@ A Webinár Mágus egy telepíthető, többügynökös AI rendszer az AutoWebinar
 - MCP connector katalógus
 - natív AutoWebinar MCP kapcsolat
 - több AI provider és modell
-- macOS / Windows desktop alkalmazás
 - terminálos telepítés macOS, Linux és Windows alatt
 - release-alapú önfrissítés
 - titkosított API-kulcs tárolás
@@ -69,13 +68,6 @@ irm https://autowebinar.hu/webinar-magus/install.ps1 | iex
 ```
 
 A Windows verzió WSL-t használ. Ha WSL még nincs telepítve, a telepítő elindítja a szükséges Windows komponenst.
-
-### Grafikus telepítő
-
-- **macOS:** DMG
-- **Windows:** EXE
-
-A grafikus és a CLI telepítő ugyanazt a runtime-ot és onboardingot használja.
 
 ## Első indítás
 
@@ -132,38 +124,20 @@ cd ~/webinar-magus
 bash update.sh
 ```
 
-A csomagolt DMG/EXE/CLI installok a saját AutoWebinar release channelből frissülnek. A letöltött runtime SHA-256 ellenőrzést kap, a felhasználói állapot és a titkok nem íródnak felül.
+A CLI installok a saját AutoWebinar release channelből frissülnek. A letöltött runtime SHA-256 ellenőrzést kap, a felhasználói állapot és a titkok nem íródnak felül.
 
 Fejlesztői Git checkout esetén a meglévő Git-alapú updater működik tovább.
 
 ## Release-ek
 
-A `v*` tagekhez a CI automatikusan készít:
+A jelenlegi publikus terjesztés **CLI-only**. A `v*` tagekhez a CI automatikusan készít:
 
-- macOS DMG
-- Windows EXE
-- CLI runtime bundle
-- SHA-256 checksumokat
+- CLI runtime bundle-t
+- SHA-256 checksumot
 - verzió metadata fájlt
+- verziózott és `latest` runtime publikációt az AutoWebinar release channelre
 
-A publikus desktop release csak sikeres signing/notarization után készülhet el.
-
-### macOS
-
-A release workflow támogatja:
-
-- Developer ID signing
-- hardened runtime
-- Apple notarization
-- `codesign` és Gatekeeper ellenőrzés
-
-### Windows
-
-A release workflow támogatja:
-
-- Authenticode signing
-- aláírás-ellenőrzés
-- SmartScreen-barát terjesztést
+A DMG és EXE terjesztés ideiglenesen ki van kapcsolva. A desktop build kód megmarad a repositoryban, és később kapcsoljuk vissza, amikor a macOS és Windows code-signing credentialök rendelkezésre állnak.
 
 ## Biztonság
 
@@ -196,7 +170,7 @@ main
 - `src/` — runtime és dashboard backend
 - `web/` — Mission Control frontend
 - `scripts/` — install, update, agent és rendszer helper-ek
-- `desktop/` — Electron DMG/EXE shell
+- `desktop/` — Electron shell (publikus DMG/EXE terjesztés jelenleg szünetel)
 - `cli/` — publikus one-command bootstrapok
 - `seed-skills/` — alap skillek
 - `seed-scheduled-tasks/` — alap automatizmusok
