@@ -1,5 +1,5 @@
 import {
-  readFileSync, writeFileSync, mkdirSync, openSync, closeSync, statSync, unlinkSync,
+  readFileSync, writeFileSync, mkdirSync, openSync, closeSync, statSync, unlinkSync, existsSync,
 } from 'node:fs'
 import { join } from 'node:path'
 import { spawn, execFileSync } from 'node:child_process'
@@ -210,6 +210,7 @@ export async function tryHandleUpdates(ctx: RouteContext): Promise<boolean> {
         return Number.isFinite(n) ? n : 0
       } catch { return 0 }
     }
+    const bundleInstall = !existsSync(join(PROJECT_ROOT, '.git'))
     const git: GitRunner = {
       currentBranch: () => execFileSync(
         '/usr/bin/git',
@@ -223,11 +224,6 @@ export async function tryHandleUpdates(ctx: RouteContext): Promise<boolean> {
       ),
       aheadCount: () => countRevs('@{u}..HEAD'),
       behindCount: () => countRevs('HEAD..@{u}'),
-      // Mirrors update.sh guard 2. `git ls-remote --exit-code --heads` exits
-      // 2 for "no such branch" and 128 for a transport/auth failure -- the
-      // difference matters: only 2 is evidence, 128 is an unknown we must not
-      // block on. status is undefined when the spawn itself failed (timeout,
-      // git missing), which is likewise unknown.
       originHasBranch: (branch: string) => {
         try {
           execFileSync(
@@ -242,16 +238,18 @@ export async function tryHandleUpdates(ctx: RouteContext): Promise<boolean> {
         }
       },
     }
-    let preflight
-    try {
-      preflight = checkUpdatePreflight(git)
-    } catch (err) {
-      releaseLock()
-      json(res, {
-        error: 'Pre-check failed: ' + (err instanceof Error ? err.message : String(err)),
-        reason: 'precheck-crashed',
-      }, 500)
-      return true
+    let preflight: ReturnType<typeof checkUpdatePreflight> = { ok: true }
+    if (!bundleInstall) {
+      try {
+        preflight = checkUpdatePreflight(git)
+      } catch (err) {
+        releaseLock()
+        json(res, {
+          error: 'Pre-check failed: ' + (err instanceof Error ? err.message : String(err)),
+          reason: 'precheck-crashed',
+        }, 500)
+        return true
+      }
     }
     if (!preflight.ok) {
       // dirty-tree + autoStash=true: skip the dashboard-side block and let

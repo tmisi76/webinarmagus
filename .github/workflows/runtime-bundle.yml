@@ -6,6 +6,10 @@ on:
     paths:
       - 'cli/**'
       - 'scripts/build-runtime-bundle.sh'
+      - 'scripts/update-runtime-bundle.sh'
+      - 'update.sh'
+      - 'src/web/update-checker.ts'
+      - 'src/web/routes/updates.ts'
       - '.github/workflows/runtime-bundle.yml'
   push:
     tags:
@@ -21,7 +25,10 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Validate shell installer syntax
-        run: bash -n cli/install.sh
+        run: |
+          bash -n cli/install.sh
+          bash -n scripts/update-runtime-bundle.sh
+          bash -n update.sh
 
       - name: Validate PowerShell installer syntax
         shell: pwsh
@@ -45,12 +52,15 @@ jobs:
         run: |
           test -s release-cli/webinar-magus-runtime.tar.gz
           test -s release-cli/webinar-magus-runtime.tar.gz.sha256
+          test -s release-cli/version.json
+          node -e "const v=require('./release-cli/version.json').version; if (!v) process.exit(1)"
           mkdir -p /tmp/wm-check
           tar -xzf release-cli/webinar-magus-runtime.tar.gz -C /tmp/wm-check
           test -f /tmp/wm-check/install.sh
           test -f /tmp/wm-check/install-macos.sh
           test -f /tmp/wm-check/install-linux.sh
           test -f /tmp/wm-check/package.json
+          test -f /tmp/wm-check/scripts/update-runtime-bundle.sh
           ! test -e /tmp/wm-check/.git
           ! test -e /tmp/wm-check/.env
           ! test -e /tmp/wm-check/node_modules
@@ -64,7 +74,7 @@ jobs:
           test -n "$RELEASE_TOKEN" || (echo "Missing WEBINAR_MAGUS_RELEASE_TOKEN" && exit 1)
           VERSION="${GITHUB_REF_NAME}"
           BASE="https://tukdmrhhyutiiwpvzsjp.supabase.co/functions/v1/webinar-magus-release"
-          for NAME in webinar-magus-runtime.tar.gz webinar-magus-runtime.tar.gz.sha256; do
+          for NAME in webinar-magus-runtime.tar.gz webinar-magus-runtime.tar.gz.sha256 version.json; do
             curl --fail-with-body --retry 3 \
               -X PUT \
               -H "Authorization: Bearer $RELEASE_TOKEN" \
@@ -83,3 +93,4 @@ jobs:
           path: |
             release-cli/webinar-magus-runtime.tar.gz
             release-cli/webinar-magus-runtime.tar.gz.sha256
+            release-cli/version.json
