@@ -1,10 +1,10 @@
 #!/bin/bash
 # Install script i18n helper — sourced by install-macos.sh and install-linux.sh
-# MARVEEN_LANG=hu (default) or MARVEEN_LANG=en
+# WEBINAR_MAGUS_LANG=hu (default) or WEBINAR_MAGUS_LANG=en
 
 _t() {
   local key="$1"
-  local lang="${MARVEEN_LANG:-hu}"
+  local lang="${WEBINAR_MAGUS_LANG:-hu}"
   case "${lang}:${key}" in
     # ── Sections ──────────────────────────────────────────────────────
     en:section_1) echo "[1/7] Checking prerequisites..." ;;
