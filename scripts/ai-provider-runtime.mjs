@@ -175,6 +175,7 @@ async function runtimeEnv() {
   }
 
   if (provider === 'deepseek') {
+    const runtimeModel = model === 'deepseek-flash' ? 'deepseek-flash[1m]' : model
     return {
       provider,
       model,
@@ -182,7 +183,13 @@ async function runtimeEnv() {
         'unset ANTHROPIC_API_KEY',
         'export ANTHROPIC_AUTH_TOKEN=' + q(value),
         'export ANTHROPIC_BASE_URL=' + q('https://api.deepseek.com/anthropic'),
-        'export ANTHROPIC_MODEL=' + q(model),
+        'export ANTHROPIC_MODEL=' + q(runtimeModel),
+        'export ANTHROPIC_DEFAULT_OPUS_MODEL=' + q(runtimeModel),
+        'export ANTHROPIC_DEFAULT_SONNET_MODEL=' + q(runtimeModel),
+        'export ANTHROPIC_DEFAULT_HAIKU_MODEL=' + q('deepseek-flash'),
+        'export CLAUDE_CODE_SUBAGENT_MODEL=' + q('deepseek-flash'),
+        'export CLAUDE_CODE_EFFORT_LEVEL=max',
+        'export CLAUDE_CODE_AUTO_COMPACT_WINDOW=786432',
       ].join('; ') + '; ',
     }
   }
