@@ -47,9 +47,38 @@ A Webinár Mágus ugyanabba a termékcsaládba tartozik, mint az AutoWebinar.
 - Headings: Poppins
 - UI/body: Inter
 
-## Desktop cél
+## Telepítés
 
-A végfelhasználó nem terminálból fogja használni.
+A Webinár Mágus háromféleképpen telepíthető:
+
+### Terminálból – macOS / Linux
+
+```bash
+curl -fsSL https://autowebinar.hu/webinar-magus/install | bash
+```
+
+A bootstrap egy verziózott runtime csomagot tölt le az AutoWebinar letöltési végpontjáról, SHA-256-tal ellenőrzi, majd elindítja az interaktív Webinár Mágus onboardingot. A végfelhasználónak nem kell GitHub account vagy hozzáférés a privát repositoryhoz.
+
+### Terminálból – Windows
+
+PowerShellben:
+
+```powershell
+irm https://autowebinar.hu/webinar-magus/install.ps1 | iex
+```
+
+A Windows telepítés WSL-t használ. Ha WSL még nincs telepítve, a bootstrap elindítja a telepítését, majd újraindítás után folytatható.
+
+### Grafikus telepítő
+
+- macOS: DMG
+- Windows: EXE
+
+A grafikus és CLI telepítő ugyanazt a Webinár Mágus runtime-ot és onboardingot használja.
+
+> A két publikus URL az AutoWebinar oldali publikálás után válik élessé. A repository már tartalmazza a `cli/install.sh`, `cli/install.ps1` és a release runtime bundle builder fájlokat.
+
+## Desktop cél
 
 - macOS: `WebinarMagus.dmg`
 - Windows: `WebinarMagus-Setup.exe`

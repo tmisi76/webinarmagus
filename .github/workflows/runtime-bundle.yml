@@ -1,0 +1,85 @@
+name: runtime-bundle
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'cli/**'
+      - 'scripts/build-runtime-bundle.sh'
+      - '.github/workflows/runtime-bundle.yml'
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: read
+
+jobs:
+  bundle:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate shell installer syntax
+        run: bash -n cli/install.sh
+
+      - name: Validate PowerShell installer syntax
+        shell: pwsh
+        run: |
+          $tokens = $null
+          $errors = $null
+          [System.Management.Automation.Language.Parser]::ParseFile(
+            (Resolve-Path 'cli/install.ps1'),
+            [ref]$tokens,
+            [ref]$errors
+          ) | Out-Null
+          if ($errors.Count -gt 0) {
+            $errors | ForEach-Object { Write-Error $_.Message }
+            exit 1
+          }
+
+      - name: Build runtime bundle
+        run: bash scripts/build-runtime-bundle.sh
+
+      - name: Validate installer payload
+        run: |
+          test -s release-cli/webinar-magus-runtime.tar.gz
+          test -s release-cli/webinar-magus-runtime.tar.gz.sha256
+          mkdir -p /tmp/wm-check
+          tar -xzf release-cli/webinar-magus-runtime.tar.gz -C /tmp/wm-check
+          test -f /tmp/wm-check/install.sh
+          test -f /tmp/wm-check/install-macos.sh
+          test -f /tmp/wm-check/install-linux.sh
+          test -f /tmp/wm-check/package.json
+          ! test -e /tmp/wm-check/.git
+          ! test -e /tmp/wm-check/.env
+          ! test -e /tmp/wm-check/node_modules
+          ! test -e /tmp/wm-check/store
+
+      - name: Publish runtime bundle
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+        env:
+          RELEASE_TOKEN: ${{ secrets.WEBINAR_MAGUS_RELEASE_TOKEN }}
+        run: |
+          test -n "$RELEASE_TOKEN" || (echo "Missing WEBINAR_MAGUS_RELEASE_TOKEN" && exit 1)
+          VERSION="${GITHUB_REF_NAME}"
+          BASE="https://tukdmrhhyutiiwpvzsjp.supabase.co/functions/v1/webinar-magus-release"
+          for NAME in webinar-magus-runtime.tar.gz webinar-magus-runtime.tar.gz.sha256; do
+            curl --fail-with-body --retry 3 \
+              -X PUT \
+              -H "Authorization: Bearer $RELEASE_TOKEN" \
+              --upload-file "release-cli/$NAME" \
+              "$BASE/$VERSION/$NAME"
+            curl --fail-with-body --retry 3 \
+              -X PUT \
+              -H "Authorization: Bearer $RELEASE_TOKEN" \
+              --upload-file "release-cli/$NAME" \
+              "$BASE/latest/$NAME"
+          done
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: webinar-magus-runtime
+          path: |
+            release-cli/webinar-magus-runtime.tar.gz
+            release-cli/webinar-magus-runtime.tar.gz.sha256
