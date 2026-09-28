@@ -41,12 +41,12 @@ SQL
 # --- fake HOME with the installer's unit set ----------------------------------
 FAKE_HOME="$TMP/home"
 UNITS="$FAKE_HOME/.config/systemd/user"
-mkdir -p "$UNITS/marveen-dashboard.service.d" "$UNITS/marveen-channels.service.d"
+mkdir -p "$UNITS/marveen-dashboard.service.d" "$UNITS/webinar-magus-channels.service.d"
 for unit in dashboard.service channels.service morning.service morning.timer host-watchdog.service 'notify@.service'; do
   printf '[Unit]\nDescription=Marveen %s\n' "$unit" > "$UNITS/marveen-${unit}"
 done
-printf '[Unit]\nOnFailure=marveen-notify@%%n.service\n' > "$UNITS/marveen-dashboard.service.d/onfailure.conf"
-printf '[Unit]\nOnFailure=marveen-notify@%%n.service\n' > "$UNITS/marveen-channels.service.d/onfailure.conf"
+printf '[Unit]\nOnFailure=webinar-magus-notify@%%n.service\n' > "$UNITS/marveen-dashboard.service.d/onfailure.conf"
+printf '[Unit]\nOnFailure=webinar-magus-notify@%%n.service\n' > "$UNITS/webinar-magus-channels.service.d/onfailure.conf"
 
 # --- PATH shim ----------------------------------------------------------------
 BIN="$TMP/bin"
@@ -104,7 +104,7 @@ grep -q 'test-bot-notify@%n.service' "$UNITS/test-bot-dashboard.service.d/onfail
   && pass "OnFailure drop-in renamed AND patched to the new notifier" \
   || fail "OnFailure drop-in renamed AND patched (dashboard)"
 
-grep -q 'stop marveen-channels.service' "$LOG" \
+grep -q 'stop webinar-magus-channels.service' "$LOG" \
   && pass "old units were stopped before the rename" || fail "old units were stopped"
 
 grep -q 'daemon-reload' "$LOG" \
@@ -129,12 +129,12 @@ fi
 # --- failure honesty: a failed start must not end in Done. --------------------
 # Rebuild the pre-migration state and make enabling the channels unit fail.
 rm -rf "$UNITS"
-mkdir -p "$UNITS/marveen-dashboard.service.d" "$UNITS/marveen-channels.service.d"
+mkdir -p "$UNITS/marveen-dashboard.service.d" "$UNITS/webinar-magus-channels.service.d"
 for unit in dashboard.service channels.service morning.service morning.timer host-watchdog.service 'notify@.service'; do
   printf '[Unit]\nDescription=Marveen %s\n' "$unit" > "$UNITS/marveen-${unit}"
 done
-printf '[Unit]\nOnFailure=marveen-notify@%%n.service\n' > "$UNITS/marveen-dashboard.service.d/onfailure.conf"
-printf '[Unit]\nOnFailure=marveen-notify@%%n.service\n' > "$UNITS/marveen-channels.service.d/onfailure.conf"
+printf '[Unit]\nOnFailure=webinar-magus-notify@%%n.service\n' > "$UNITS/marveen-dashboard.service.d/onfailure.conf"
+printf '[Unit]\nOnFailure=webinar-magus-notify@%%n.service\n' > "$UNITS/webinar-magus-channels.service.d/onfailure.conf"
 sqlite3 "$INSTALL/store/claudeclaw.db" "UPDATE kanban_cards SET assignee='marveen'"
 sed -i.bak '/^MAIN_AGENT_ID=/d' "$INSTALL/.env"
 : > "$LOG"
