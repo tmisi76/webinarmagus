@@ -110,7 +110,7 @@ describe('shipped templates carry no hardcoded identity', () => {
 
   // web/app.js is the dashboard bundle, shipped verbatim to every install. It
   // must carry no deployment-specific operator identity: the owner display name
-  // flows from the backend (OWNER_NAME -> /api/marveen -> window._marveen.ownerName,
+  // flows from the backend (OWNER_NAME -> /api/webinar-magus -> window._marveen.ownerName,
   // read via chatOwnerName()), never a hardcoded "Szabolcs"/"Szabi" literal, so a
   // renamed install labels its real owner. This is the exact regression #369
   // fixed -- the chat sidebar used to pin/label the owner thread off a
