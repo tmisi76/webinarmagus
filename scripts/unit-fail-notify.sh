@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # unit-fail-notify.sh <unit-name>
 #
-# Called by marveen-notify@.service via `OnFailure=marveen-notify@%n.service`
-# drop-ins on marveen-dashboard.service / marveen-channels.service. Sends ONE
+# Called by webinar-magus-notify@.service via `OnFailure=webinar-magus-notify@%n.service`
+# drop-ins on marveen-dashboard.service / webinar-magus-channels.service. Sends ONE
 # Telegram notice that a specific APP/service unit failed -- as opposed to a
 # host/WSL-VM restart, which is reported by host-restart-watchdog.sh. Keeping
 # the two paths separate is what lets a fleet-wide silence be classified.
