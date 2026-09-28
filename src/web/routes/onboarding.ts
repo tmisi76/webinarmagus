@@ -67,6 +67,13 @@ function saveAiProviderSelection(providerId: string, modelId: string, apiKey: st
     JSON.stringify({ provider: provider.id, model: model.id }, null, 2) + '\n',
     { mode: 0o600 },
   )
+
+  // Fresh-install defaults: main agent + newly created specialists inherit the
+  // chosen provider model. Existing agents with explicit model configs remain
+  // untouched by design.
+  setEnvKey('AI_PROVIDER', provider.id)
+  setEnvKey('DEFAULT_AGENT_MODEL', model.id)
+  setEnvKey('MAIN_AGENT_MODEL', model.id)
 }
 
 function readEnvValue(key: string): string | null {
@@ -329,6 +336,7 @@ export async function tryHandleOnboarding(ctx: RouteContext): Promise<boolean> {
   // Onboarding state so the frontend knows which step to show.
   if (path === '/api/onboarding/status' && method === 'GET') {
     const claude = claudeAuthPresent()
+    const aiConfigured = aiProviderConfigured()
     const running = agentsRunning()
     const ch = channelConfigured()
     const pr = paired()
@@ -364,6 +372,8 @@ export async function tryHandleOnboarding(ctx: RouteContext): Promise<boolean> {
       currentAgentName: readEnvValue('BRAND_NAME') || readEnvValue('BOT_NAME') || 'Marveen',
       currentOwnerName: readEnvValue('OWNER_NAME') || '',
       claudeAuthPresent: claude,
+      aiProviderConfigured: aiConfigured,
+      aiProviderSelection: readAiProviderSelection(),
       agentsRunning: running,
       channelConfigured: ch,
       channelLive,
@@ -376,7 +386,7 @@ export async function tryHandleOnboarding(ctx: RouteContext): Promise<boolean> {
       paired: pr,
       // The identity step never re-opens the wizard on an already-configured
       // install: it only participates while first-run setup is incomplete.
-      needsOnboarding: !claude || !running || !ch || !pr,
+      needsOnboarding: (!aiConfigured && !claude) || !running || !ch || !pr,
     })
     return true
   }
