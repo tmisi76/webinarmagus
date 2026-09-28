@@ -33,28 +33,16 @@ jobs:
           fi
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
 
-      - name: Verify release credentials are configured
+      - name: Verify CLI release publish credential
         shell: bash
         env:
-          MAC_CSC_LINK: ${{ secrets.MAC_CSC_LINK }}
-          MAC_CSC_KEY_PASSWORD: ${{ secrets.MAC_CSC_KEY_PASSWORD }}
-          APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-          WIN_CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
-          WIN_CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
           WEBINAR_MAGUS_RELEASE_TOKEN: ${{ secrets.WEBINAR_MAGUS_RELEASE_TOKEN }}
         run: |
           set -euo pipefail
-          missing=0
-          for name in             MAC_CSC_LINK             MAC_CSC_KEY_PASSWORD             APPLE_ID             APPLE_APP_SPECIFIC_PASSWORD             APPLE_TEAM_ID             WIN_CSC_LINK             WIN_CSC_KEY_PASSWORD             WEBINAR_MAGUS_RELEASE_TOKEN
-          do
-            if [ -z "${!name:-}" ]; then
-              echo "::error::Missing required release secret: $name"
-              missing=1
-            fi
-          done
-          [ "$missing" -eq 0 ]
+          if [ -z "${WEBINAR_MAGUS_RELEASE_TOKEN:-}" ]; then
+            echo "::error::Missing required CLI release secret: WEBINAR_MAGUS_RELEASE_TOKEN"
+            exit 1
+          fi
 
       - name: Refuse duplicate tag
         env:
