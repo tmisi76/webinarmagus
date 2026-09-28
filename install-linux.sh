@@ -2250,9 +2250,15 @@ echo -e "  ${DIM}  Majd: systemctl --user restart ${DASH_UNIT}${NC}"
 echo -e "  ${BOLD}Telegram:${NC} Irj a botodnak!"
 echo ""
 echo -e "  ${DIM}Kovetkezo lepesek:${NC}"
-echo -e "  ${DIM}1. Nyisd meg a dashboardot a fenti URL-lel${NC}"
-echo -e "  ${DIM}2. Irj a botodnak Telegramon -- mar valaszolnia kell${NC}"
-echo -e "  ${DIM}3. A Csapat oldalon hozhatsz letre tobb agenst${NC}"
+if [ "${WEBINAR_MAGUS_CLI_BOOTSTRAP:-0}" = "1" ]; then
+  echo -e "  ${DIM}1. Nyisd meg a dashboardot a fenti URL-lel${NC}"
+  echo -e "  ${DIM}2. Az onboardingban valaszd ki: DeepSeek / Claude / OpenAI / Gemini${NC}"
+  echo -e "  ${DIM}3. Add meg az API kulcsot; sikeres ellenorzes utan indul az AI csapat${NC}"
+else
+  echo -e "  ${DIM}1. Nyisd meg a dashboardot a fenti URL-lel${NC}"
+  echo -e "  ${DIM}2. Irj a botodnak Telegramon -- mar valaszolnia kell${NC}"
+  echo -e "  ${DIM}3. A Csapat oldalon hozhatsz letre tobb agenst${NC}"
+fi
 echo ""
 echo -e "  ${DIM}Hasznos parancsok:${NC}"
 echo -e "  ${DIM}  systemctl --user status ${DASH_UNIT} ${CHAN_UNIT} --no-pager${NC}"
@@ -2269,13 +2275,16 @@ echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━
 # credential. A green frame must not be the final thing a broken install says.
 if [ "${INSTALL_AUTH_STATE:-UNKNOWN}" != "OK" ]; then
   echo ""
-  if [ "${INSTALL_AUTH_STATE:-}" = "UNKNOWN" ]; then
+  if [ "${WEBINAR_MAGUS_CLI_BOOTSTRAP:-0}" = "1" ]; then
+    echo -e "  ${BLUE}→ Következő lépés: nyisd meg a Webinár Mágus dashboardot, és válassz AI szolgáltatót.${NC}"
+    echo -e "  ${DIM}  A rendszer szándékosan csak az onboardingban kér API kulcsot.${NC}"
+  elif [ "${INSTALL_AUTH_STATE:-}" = "UNKNOWN" ]; then
     echo -e "  ${ORANGE}! FIGYELEM: az auth-ot nem sikerult ellenoriznunk.${NC}"
     echo -e "  ${DIM}  Lehet hogy mukodik, de nem igazoltuk. Ha a bot nem valaszol:${NC}"
+    echo -e "  ${BOLD}  Javitas: ${BLUE}bash \"$INSTALL_DIR/scripts/auth.sh\"${NC}${BOLD} majd ${BLUE}bash \"$INSTALL_DIR/scripts/channels.sh\" restart${NC}"
   else
     echo -e "  ${RED}✗ AZ UGYNOKOK MEG NEM FOGNAK VALASZOLNI: hianyzik a mukodo auth kulcs.${NC}"
-    echo -e "  ${DIM}  A fenti 2. lepes (\"irj a botodnak\") addig NEM fog mukodni.${NC}"
+    echo -e "  ${BOLD}  Javitas: ${BLUE}bash \"$INSTALL_DIR/scripts/auth.sh\"${NC}${BOLD} majd ${BLUE}bash \"$INSTALL_DIR/scripts/channels.sh\" restart${NC}"
   fi
-  echo -e "  ${BOLD}  Javitas: ${BLUE}bash \"$INSTALL_DIR/scripts/auth.sh\"${NC}${BOLD} majd ${BLUE}bash \"$INSTALL_DIR/scripts/channels.sh\" restart${NC}"
   echo ""
 fi
