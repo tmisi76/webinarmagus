@@ -148,12 +148,17 @@ ipcMain.handle('webinar-magus:install-runtime', async () => {
     if (!existsSync(script)) return { ok: false, reason: 'bootstrap-missing' }
     file = '/bin/bash'
     args = [script]
-    env = { ...env, WEBINAR_MAGUS_RUNTIME: DEFAULT_RUNTIME_DIR }
+    env = {
+      ...env,
+      WEBINAR_MAGUS_RUNTIME: DEFAULT_RUNTIME_DIR,
+      WEBINAR_MAGUS_BUNDLED_RUNTIME: join(process.resourcesPath, 'runtime-src'),
+    }
   } else if (process.platform === 'win32') {
     const script = join(import.meta.dirname, 'bootstrap', 'windows.ps1')
     if (!existsSync(script)) return { ok: false, reason: 'bootstrap-missing' }
     file = 'powershell.exe'
     args = ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', script]
+    env = { ...env, WEBINAR_MAGUS_BUNDLED_RUNTIME: join(process.resourcesPath, 'runtime-src') }
   } else {
     return { ok: false, reason: 'unsupported-platform' }
   }

@@ -6,11 +6,12 @@
   "main": "main.mjs",
   "scripts": {
     "start": "electron .",
+    "prepare:runtime": "node prepare-runtime.mjs",
     "dist:mac": "electron-builder --mac dmg",
     "dist:win": "electron-builder --win nsis",
     "icons": "node prepare-icons.mjs",
-    "predist:mac": "npm run icons",
-    "predist:win": "npm run icons"
+    "predist:mac": "npm run prepare:runtime && npm run icons",
+    "predist:win": "npm run prepare:runtime && npm run icons"
   },
   "devDependencies": {
     "electron": "^39.0.0",
@@ -32,6 +33,12 @@
       "renderer/**/*",
       "build/**/*",
       "bootstrap/**/*"
+    ],
+    "extraResources": [
+      {
+        "from": "runtime-src",
+        "to": "runtime-src"
+      }
     ],
     "mac": {
       "category": "public.app-category.business",

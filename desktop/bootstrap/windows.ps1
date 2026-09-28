@@ -2,6 +2,12 @@ $ErrorActionPreference = "Stop"
 
 function Say([string]$Message) { Write-Output "[Webinár Mágus] $Message" }
 
+$bundledRuntime = $env:WEBINAR_MAGUS_BUNDLED_RUNTIME
+if ([string]::IsNullOrWhiteSpace($bundledRuntime) -or -not (Test-Path (Join-Path $bundledRuntime "package.json"))) {
+  Say "A beépített runtime nem található."
+  exit 21
+}
+
 try {
   $status = (& wsl.exe --status 2>&1 | Out-String) -replace [char]0, ""
 } catch {
@@ -12,6 +18,12 @@ try {
 if ($LASTEXITCODE -ne 0 -and $status -notmatch "Default Distribution") {
   Say "NEEDS_WSL"
   exit 30
+}
+
+$wslBundledRuntime = (& wsl.exe wslpath -a $bundledRuntime 2>$null | Out-String).Trim()
+if ([string]::IsNullOrWhiteSpace($wslBundledRuntime)) {
+  Say "A beépített runtime WSL útvonala nem határozható meg."
+  exit 22
 }
 
 Say "Windows runtime előkészítése WSL-ben…"
@@ -35,7 +47,6 @@ if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 $userScript = @'
 set -e
 RUNTIME_DIR="$HOME/webinar-magus"
-REPO_URL="https://github.com/tmisi76/webinar-magus.git"
 export PATH="$HOME/.local/bin:$HOME/.bun/bin:$PATH"
 
 if ! command -v bun >/dev/null 2>&1; then
@@ -43,12 +54,9 @@ if ! command -v bun >/dev/null 2>&1; then
   export PATH="$HOME/.bun/bin:$PATH"
 fi
 
-if [ ! -d "$RUNTIME_DIR/.git" ]; then
-  git clone --depth 1 --branch main "$REPO_URL" "$RUNTIME_DIR"
-else
-  git -C "$RUNTIME_DIR" fetch origin main
-  git -C "$RUNTIME_DIR" checkout main
-  git -C "$RUNTIME_DIR" pull --ff-only origin main
+if [ ! -f "$RUNTIME_DIR/package.json" ]; then
+  mkdir -p "$(dirname "$RUNTIME_DIR")"
+  cp -R "$WEBINAR_MAGUS_BUNDLED_RUNTIME_WSL" "$RUNTIME_DIR"
 fi
 
 cd "$RUNTIME_DIR"
@@ -71,5 +79,5 @@ fi
 
 echo "[Webinár Mágus] READY"
 '@
-& wsl.exe bash -lc $userScript
+& wsl.exe env "WEBINAR_MAGUS_BUNDLED_RUNTIME_WSL=$wslBundledRuntime" bash -lc $userScript
 exit $LASTEXITCODE
