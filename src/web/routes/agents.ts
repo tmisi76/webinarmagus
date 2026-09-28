@@ -1131,7 +1131,7 @@ export async function tryHandleAgents(ctx: RouteContext, webDir: string): Promis
   if (avatarUploadMatch && method === 'GET') {
     const name = decodeURIComponent(avatarUploadMatch[1])
     const avatarPath = findAvatarForAgent(name)
-    // 1h client cache: see /api/marveen/avatar for the staleness trade-off.
+    // 1h client cache: see /api/webinar-magus/avatar for the staleness trade-off.
     if (avatarPath) { serveFile(req, res, avatarPath, { cacheSeconds: 3600 }); return true }
     res.writeHead(404); res.end()
     return true
@@ -1960,7 +1960,7 @@ export async function tryHandleAgents(ctx: RouteContext, webDir: string): Promis
   if (startMatch && method === 'POST') {
     const name = decodeURIComponent(startMatch[1])
     if (isMainChannelsAgent(name)) {
-      json(res, { error: 'Main agent lifecycle is service-managed; use /api/marveen/restart for recovery' }, 400)
+      json(res, { error: 'Main agent lifecycle is service-managed; use /api/webinar-magus/restart for recovery' }, 400)
       return true
     }
     if (!existsSync(agentDir(name))) { json(res, { error: 'Agent not found' }, 404); return true }
@@ -1982,7 +1982,7 @@ export async function tryHandleAgents(ctx: RouteContext, webDir: string): Promis
   if (stopMatch && method === 'POST') {
     const name = decodeURIComponent(stopMatch[1])
     if (isMainChannelsAgent(name)) {
-      json(res, { error: 'Main agent lifecycle is service-managed; use /api/marveen/restart for recovery' }, 400)
+      json(res, { error: 'Main agent lifecycle is service-managed; use /api/webinar-magus/restart for recovery' }, 400)
       return true
     }
     // Explicit stop clears intent so the monitor will not resurrect it -- and
