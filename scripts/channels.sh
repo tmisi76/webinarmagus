@@ -1103,7 +1103,7 @@ unset _bot_name
 
 # Reset the keep-alive watchdog baseline so a session that was just restarted
 # is not immediately judged stale by the dashboard's checkMainKeepaliveStaleness
-# (channel-monitor.ts, ~18min threshold). The dashboard's hardRestartMarveenChannels
+# (channel-monitor.ts, ~18min threshold). The dashboard's hardRestartWebinarMagusChannels
 # path writes both files when it triggers the restart, but a manual
 # `launchctl kickstart -k com.marveen.channels` (or the launchd KeepAlive's own
 # restart after a crash) bypasses the dashboard - those code paths never touched
