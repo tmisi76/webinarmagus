@@ -715,7 +715,7 @@ if [ "$MAIN_AGENT_ID" != "marveen" ]; then
   echo -e "  ${DIM}$(_t macos.agent_id_info)${MAIN_AGENT_ID}${NC}"
 fi
 
-# Product / system brand. Per Szabi's decision the installer does NOT prompt for
+# Product / system brand. Product rule: the installer does NOT prompt for
 # a brand -- the product is always named after the main agent. BRAND_NAME and
 # SERVICE_ID remain as fields (config.ts keeps the env support as a dormant
 # capability, default = the agent name), but the install flow hardcodes them to
@@ -932,7 +932,7 @@ else
   # Probe the way a SERVICE runs: isolated config dir (so the Keychain and the
   # operator's shell cannot make a broken install look healthy) carrying ONLY
   # the credential the launchd units will get.
-  _probe_cfg="$(mktemp -d 2>/dev/null || echo /tmp/marveen-authprobe.$$)"
+  _probe_cfg="$(mktemp -d 2>/dev/null || echo /tmp/webinar-magus-authprobe.$)"
   # A 401 here is the VERDICT this gate exists to report, not an installer
   # error. Unguarded, the capture reached the ERR trap and on_error() exited 1 --
   # blaming the enclosing `fi` -- so the BROKEN branch below (and its
