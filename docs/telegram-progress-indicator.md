@@ -73,7 +73,7 @@ Loop-safe: a per-session `enforce-<sid>.marker` guarantees at most one block, an
   Code merges additively) it can never post a double placeholder.
 - **Fleet-wide**: the hooks live in the global `~/.claude/settings.json`, so
   every existing and future agent gets it automatically; the watchdog scans all
-  agents under `$MARVEEN_ROOT` (default `~/marveen`).
+  agents under `$WEBINAR_MAGUS_ROOT` (default `~/marveen`).
 
 ## Install
 
@@ -96,7 +96,7 @@ repo checkout.
 - `telegram_progress_watchdog.py`: `DOWN_GRACE_SEC` (default 120s — agent down +
   placeholder older than this -> error) and `WEDGED_SEC` (default 15m — agent up
   but placeholder this old -> error).
-- `MARVEEN_ROOT` env var overrides the fleet root the watchdog scans.
+- `WEBINAR_MAGUS_ROOT` env var overrides the fleet root the watchdog scans.
 
 ## Remove
 
