@@ -107,7 +107,15 @@ if ! command -v node &>/dev/null; then
 fi
 echo "  ✓ Node.js \$(node -v)"
 
-# Python + pipx (AI Provider Bridge)\nif ! command -v pipx &>/dev/null; then\n    sudo apt-get update -qq\n    sudo apt-get install -y python3 pipx\nfi\necho '  ✓ Python + pipx'\n\n# tmux\nif ! command -v tmux &>/dev/null; then
+# Python + pipx (AI Provider Bridge)
+if ! command -v pipx &>/dev/null; then
+    sudo apt-get update -qq
+    sudo apt-get install -y python3 pipx
+fi
+echo '  ✓ Python + pipx'
+
+# tmux
+if ! command -v tmux &>/dev/null; then
     echo '  tmux telepítése...'
     sudo apt-get install -y tmux
 fi
@@ -181,7 +189,10 @@ npm run build --silent
 echo '  ✓ TypeScript lefordítva'
 
 # AutoWebinar MCP alapkapcsolat seedelése
-node scripts/seed-autowebinar-mcp.mjs || echo '  ! AutoWebinar MCP automatikus beállítása kimaradt'\n\n# OpenAI/Gemini provider bridge\nbash scripts/install-ai-provider-bridge.sh || echo '  ! AI Provider Bridge telepítése kimaradt; Claude/DeepSeek továbbra is használható'
+node scripts/seed-autowebinar-mcp.mjs || echo '  ! AutoWebinar MCP automatikus beállítása kimaradt'
+
+# OpenAI/Gemini provider bridge
+bash scripts/install-ai-provider-bridge.sh || echo '  ! AI Provider Bridge telepítése kimaradt; Claude/DeepSeek továbbra is használható'
 
 # Ollama models
 if command -v ollama &>/dev/null; then
