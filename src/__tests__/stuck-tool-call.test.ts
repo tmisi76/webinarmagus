@@ -356,7 +356,7 @@ describe('stuck-tool-call-watcher wiring contract', () => {
     expect(watcherSrc).toMatch(/resumeMarveenSession\(\)/)
     // Import-level (comment-proof): the launchctl hard-restart is no longer
     // wired into the watcher, so it cannot kick an attached client.
-    expect(watcherSrc).not.toMatch(/import[^\n]*hardRestartMarveenChannels/)
+    expect(watcherSrc).not.toMatch(/import[^\n]*hardRestartWebinarMagusChannels/)
   })
 
   it('confirms the idle wedge profile before recovering (CPU-load false-positive guard, #248)', () => {
