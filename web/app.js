@@ -12560,7 +12560,9 @@ async function waitForChannelLive(fetchStatus, delayMs, maxTries) {
 // WIZFLOW809 END waitForChannelLive
 function onboardingCurrentStep(s) {
   if (!s.identityConfirmed) return 1
-  if (!s.claudeAuthPresent || !s.agentsRunning) return 2
+  // New installs select an API provider. Existing Claude-authenticated installs
+  // remain valid so upgrading never strands an already-working system.
+  if ((!s.aiProviderConfigured && !s.claudeAuthPresent) || !s.agentsRunning) return 2
   if (!s.channelConfigured) return 3
   if (!s.paired) return 4
   return 0
@@ -12594,7 +12596,7 @@ let onboardingAgentId = null
 // to the Telegram wording on every language switch, so both call sites re-apply the provider-specific text here.
 function applyOnboardingProviderTab() {
   const el = document.querySelector('#onboardingSteps .onboarding-step[data-ostep="3"] span:last-child')
-  if (el) el.textContent = onboardingChannelProvider === 'slack' ? t('onboarding.step2.tab_slack') : t('onboarding.step2.tab')
+  if (el) el.textContent = 'Csatorna'
 }
 function renderOnboarding(s) {
   if (onboardingDismissed()) return
@@ -12624,6 +12626,7 @@ function renderOnboarding(s) {
   else if (step === 3) body.innerHTML = onbStep2Html(s)
   else body.innerHTML = onbStep3Html(s)
   wireOnboarding(step)
+  if (step === 2) loadOnboardingAiProviders()
   // Step 3, token already on disk, managed-settings.json still missing: the status GET already knows this (no probe/write/restart triggered),
   // so show the sudo command right away instead of waiting for a Save click. Retry just re-polls status -- no token POST, no channel restart.
   if (step === 3 && s.sudoCommand) showSudoModal(s.sudoCommand, () => refreshOnboarding())
@@ -12643,17 +12646,10279 @@ function onbIdentityHtml(s) {
     + `<div id="onbMsg" class="onb-msg"></div>`
 }
 function onbStep1Html(s) {
-  return `<p>${escapeHtml(t('onboarding.step1.desc'))}</p>`
-    + (s.claudeAuthPresent
-      ? `<p class="onb-ok-line">${escapeHtml(t('onboarding.step1.auth_done'))}</p>`
-      : `<label class="form-label-sm">${escapeHtml(t('onboarding.step1.token_label'))}</label>`
-        + `<input id="onbToken" type="password" class="onb-input" placeholder="sk-ant-oat01-..." autocomplete="off">`
-        + `<div class="onb-hint">${escapeHtml(t('onboarding.step1.token_hint'))}</div>`
-        + `<button class="btn-primary btn-compact" id="onbAuthBtn">${escapeHtml(t('onboarding.step1.save_btn'))}</button>`)
-    + (s.claudeAuthPresent && !s.agentsRunning
-      ? `<button class="btn-primary btn-compact" id="onbLaunchBtn">${escapeHtml(t('onboarding.step1.launch_btn'))}</button>`
+  const legacy = s.claudeAuthPresent && !s.aiProviderConfigured
+    ? `<div class="onb-ai-legacy">Már van működő Claude-hitelesítés ezen a gépen. Használhatod tovább, vagy választhatsz saját API szolgáltatót.</div>`
+    : ''
+  return `<div class="onb-ai-intro">
+      <h3>Válaszd ki, melyik AI dolgozzon a Webinár Mágusban</h3>
+      <p>Az API-kulcs a titkosított Vaultba kerül. Később ügynökönként is választhatsz más modellt.</p>
+    </div>`
+    + legacy
+    + `<div id="onbAiProviderPicker" class="onb-ai-provider-grid"><div class="onb-ai-loading">AI szolgáltatók betöltése...</div></div>`
+    + `<div id="onbAiModelPanel" class="onb-ai-model-panel" hidden></div>`
+    + (s.aiProviderConfigured && !s.agentsRunning
+      ? `<button class="btn-primary btn-compact" id="onbLaunchBtn">AI csapat indítása</button>`
       : '')
     + `<div id="onbMsg" class="onb-msg"></div>`
+}
+
+let onboardingAiCatalog = null
+let onboardingAiSelectedProvider = null
+
+function aiPriceText(model) {
+  const input = model.inputUsdPerM == null ? '—' : '
+function onbStep2Html(s) {
+  const isSlack = onboardingChannelProvider === 'slack'
+  const desc = isSlack ? t('onboarding.step2.desc_slack') : t('onboarding.step2.desc')
+  const tokenLabel = isSlack ? t('onboarding.step2.token_label_slack') : t('onboarding.step2.token_label')
+  const tokenHint = isSlack ? t('onboarding.step2.token_hint_slack') : t('onboarding.step2.token_hint')
+  const placeholder = isSlack ? 'xoxb-...' : '123456:ABC...'
+  // Pre-fill from a token already on disk (e.g. a prior save that stopped at the managed-settings.json gate) so the operator isn't forced to dig it
+  // back out of ~/.claude/channels/<provider>/.env and repaste it. Saving still re-runs the managed-settings check server-side either way.
+  const existingBotToken = (s && s.existingBotToken) || ''
+  const existingAppToken = (s && s.existingAppToken) || ''
+  const appTokenFields = isSlack
+    ? `<label class="form-label-sm">${escapeHtml(t('onboarding.step2.app_token_label_slack'))}</label>`
+      + `<input id="onbSlackAppToken" type="password" class="onb-input" placeholder="xapp-..." value="${escapeHtml(existingAppToken)}" autocomplete="off" required>`
+      + `<div class="onb-hint">${escapeHtml(t('onboarding.step2.app_token_hint_slack'))}</div>`
+    : ''
+  return `<p>${escapeHtml(desc)}</p>`
+    + `<label class="form-label-sm">${escapeHtml(tokenLabel)}</label>`
+    + `<input id="onbBotToken" type="password" class="onb-input" placeholder="${placeholder}" value="${escapeHtml(existingBotToken)}" autocomplete="off">`
+    + `<div class="onb-hint">${escapeHtml(tokenHint)}</div>`
+    + appTokenFields
+    + `<button class="btn-primary btn-compact" id="onbBotBtn">${escapeHtml(t('onboarding.step2.save_btn'))}</button>`
+    + `<div id="onbMsg" class="onb-msg"></div>`
+}
+function onbStep3Html(s) {
+  // Pairing needs the channels session up (the wizard restarted it after the
+  // bot-token save) -- show its state so a not-yet-up service reads as
+  // "starting", not as the user's failure.
+  const svcLine = s && s.agentsRunning
+    ? `<p class="onb-ok-line">${escapeHtml(t('onboarding.step3.svc_up'))}</p>`
+    : `<p class="onb-hint">${escapeHtml(t('onboarding.step3.svc_starting'))}</p>`
+  return `<p>${escapeHtml(t('onboarding.step3.desc'))}</p>`
+    + svcLine
+    + `<ol class="onb-list"><li>${escapeHtml(t('onboarding.step3.li1'))}</li><li>${escapeHtml(t('onboarding.step3.li2'))}</li></ol>`
+    + `<div id="onbPending" class="onb-pending"></div>`
+    + `<button class="btn-secondary btn-compact" id="onbRefreshBtn">${escapeHtml(t('onboarding.step3.refresh_btn'))}</button>`
+    + `<div id="onbMsg" class="onb-msg"></div>`
+}
+function wireOnboarding(step) {
+  if (step === 1) {
+    const idBtn = document.getElementById('onbIdentityBtn')
+    if (idBtn) idBtn.addEventListener('click', async () => {
+      const agentName = (document.getElementById('onbAgentName').value || '').trim()
+      const ownerName = (document.getElementById('onbOwnerName').value || '').trim()
+      if (!agentName || !ownerName) { onbMsg(t('onboarding.identity.empty'), true); return }
+      idBtn.disabled = true; onbMsg(t('onboarding.saving'))
+      try {
+        const res = await fetch('/api/onboarding/identity', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ agentName, ownerName }) })
+        const d = await res.json().catch(() => ({}))
+        if (!res.ok) { idBtn.disabled = false; onbMsg(d.error || t('onboarding.error'), true); return }
+        // The name is live in the .env now -- repaint the chrome from
+        // /api/marveen so the sidebar/title reflect it immediately, and
+        // surface the automatic channels restart (same pattern as the
+        // claude-auth step) instead of silently advancing.
+        if (typeof initSidebarBrand === 'function') initSidebarBrand()
+        if (d.restartError) { idBtn.disabled = false; onbMsg(t('onboarding.identity.saved_restart_failed'), true); setTimeout(refreshOnboarding, 6000); return }
+        if (d.restarted) { onbMsg(t('onboarding.identity.saved_restarted')); setTimeout(refreshOnboarding, 2500); return }
+        if (d.restartNeeded) { onbMsg(t('onboarding.identity.saved_restart_needed')); await refreshOnboarding(); return }
+        onbMsg(t('onboarding.identity.saved'))
+        await refreshOnboarding()
+      } catch (e) { idBtn.disabled = false; onbMsg((e && e.message) || t('onboarding.error'), true) }
+    })
+    return
+  }
+  if (step === 2) {
+    const launchBtn = document.getElementById('onbLaunchBtn')
+    if (launchBtn) launchBtn.addEventListener('click', () => launchOnboardingFleet(launchBtn))
+  } else if (step === 3) {
+    const botBtn = document.getElementById('onbBotBtn')
+    if (botBtn) botBtn.addEventListener('click', async () => {
+      const botToken = (document.getElementById('onbBotToken').value || '').trim()
+      if (!botToken) { onbMsg(t('onboarding.step2.token_empty'), true); return }
+      const payload = { botToken }
+      if (onboardingChannelProvider === 'slack') {
+        const appToken = (document.getElementById('onbSlackAppToken')?.value || '').trim()
+        // Required, not optional: without SLACK_APP_TOKEN the channel session starts but Socket Mode never connects,
+        // so "saved" would read as success while Slack silently never comes online.
+        if (!appToken) { onbMsg(t('onboarding.step2.app_token_empty_slack'), true); return }
+        payload.appToken = appToken
+      }
+      botBtn.disabled = true; onbMsg(t('onboarding.saving'))
+      try {
+        const res = await fetch(`/api/agents/${encodeURIComponent(onboardingAgentId || mainAgentId())}/channels/${onboardingChannelProvider}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
+        const d = await res.json().catch(() => ({}))
+        if (res.status === 409 && d.error === 'managed-settings-missing') {
+          botBtn.disabled = false
+          showSudoModal(d.sudoCommand, () => botBtn.click())
+          return
+        }
+        if (!res.ok) { botBtn.disabled = false; onbMsg(d.error || t('onboarding.error'), true); return }
+        // The server restarts the channels session so the new bot token goes
+        // live. Do NOT advance on a timer: the restart response is a dispatch
+        // receipt, and the cold start is ~minutes. Wait for the MEASURED
+        // channelLive signal, tell the user the channel is starting meanwhile,
+        // and on timeout stay on this step with an honest "still starting"
+        // message -- the old fixed 4s opened the pairing step against a
+        // booting session, which looked done-and-empty (WIZFLOW809).
+        onbMsg(d.restarted ? t('onboarding.step2.saved_restarted') : t('onboarding.step2.saved'))
+        onbMsg(t('onboarding.step2.waiting_channel'))
+        const outcome = await waitForChannelLive(fetchOnboardingStatus, 3000, 40)  // ~2 min bound
+        if (outcome === 'live') { await refreshOnboarding() }
+        else { botBtn.disabled = false; onbMsg(t('onboarding.step2.channel_slow'), true) }
+      } catch (e) { botBtn.disabled = false; onbMsg((e && e.message) || t('onboarding.error'), true) }
+    })
+  } else if (step === 4) {
+    const refreshBtn = document.getElementById('onbRefreshBtn')
+    // One sink for both failure paths. The box alone was not enough: it renders
+    // in the same muted onb-hint slot as "no pending", so the very distinction
+    // this fix is about -- "nobody is waiting" vs "I could not ask" -- stayed
+    // invisible. onbMsg is the error channel this function already uses for the
+    // approve step a few lines below.
+    const showPendingError = (msg) => {
+      const box = document.getElementById('onbPending')
+      if (box) box.innerHTML = `<span class="onb-hint">${escapeHtml(msg)}</span>`
+      onbMsg(msg, true)
+    }
+    const loadPending = async () => {
+      try {
+        // Same boot race the Messages page already guards against (see
+        // ensureWebinár MágusLoaded): until /api/marveen resolves window._marveen,
+        // mainAgentId() returns the literal 'marveen' fallback. On a renamed
+        // install that is not the main agent, so the backend takes the
+        // sub-agent branch, finds no such agent dir and answers 404 -- and the
+        // wizard rendered that as "no pending pairing" while the Channel view,
+        // which uses the selected agent, listed the very same request.
+        await ensureWebinár MágusLoaded()
+        const res = await fetch(`/api/agents/${encodeURIComponent(onboardingAgentId || mainAgentId())}/channels/${onboardingChannelProvider}/pending`)
+        // Surface the failure instead of rendering it as an empty list. This is
+        // a separate defect from the id race: without it a 404 or an auth error
+        // reads as "nobody is waiting for approval", which is the one answer the
+        // user cannot act on. A NETWORK failure does not land here at all -- the
+        // fetch rejects -- so the outer catch carries the same message; see the
+        // end of this function. The two together are what make the comment true.
+        if (!res.ok) {
+          const d = await res.json().catch(() => ({}))
+          showPendingError(d.error || t('onboarding.error'))
+          return
+        }
+        const p = await res.json()
+        // Backend contract: [{code, senderId, chatId, createdAt, expiresAt}].
+        // `code` is the approve key (the same code the bot sent the user) --
+        // POSTing anything else gets a 400 and the pairing never completes.
+        const now = Date.now()
+        const list = (Array.isArray(p) ? p : (p.pending || [])).filter((x) => x && x.code && (!x.expiresAt || x.expiresAt > now))
+        const box = document.getElementById('onbPending')
+        if (!box) return
+        if (!list.length) { box.innerHTML = `<span class="onb-hint">${escapeHtml(t('onboarding.step3.no_pending'))}</span>`; return }
+        box.innerHTML = list.map((x) => {
+          const code = escapeHtml(String(x.code))
+          const label = escapeHtml(String(x.senderId || x.chatId || '?')) + ' · ' + code
+          return `<div class="onb-pending-row"><span>${label}</span><button class="btn-primary btn-compact onb-approve" data-code="${code}">${escapeHtml(t('onboarding.step3.approve_btn'))}</button></div>`
+        }).join('')
+        box.querySelectorAll('.onb-approve').forEach((b) => b.addEventListener('click', async () => {
+          b.disabled = true
+          try {
+            const res = await fetch(`/api/agents/${encodeURIComponent(onboardingAgentId || mainAgentId())}/channels/${onboardingChannelProvider}/approve`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code: b.dataset.code }) })
+            const d = await res.json().catch(() => ({}))
+            if (!res.ok) { b.disabled = false; onbMsg(d.error || t('onboarding.error'), true); return }
+            onbMsg(t('onboarding.step3.approved'))
+            setTimeout(refreshOnboarding, 1500)
+          } catch (e) { b.disabled = false; onbMsg((e && e.message) || t('onboarding.error'), true) }
+        }))
+      } catch (e) {
+        // Network-level failure: the fetch rejected, so the !res.ok branch never
+        // ran. Without this the box stays empty and the user reads it as "nobody
+        // is waiting" -- the exact defect this change is about.
+        showPendingError((e && e.message) || t('onboarding.error'))
+      }
+    }
+    if (refreshBtn) refreshBtn.addEventListener('click', () => { refreshOnboarding() })
+    loadPending()
+  }
+}
+
+// === Init ===
+populateAvatarGrid()
+loadMemAgents()
+loadOverview()
+loadAvailableModels()
+loadOllamaModels()
+{
+  const onbClose = document.getElementById('onboardingClose')
+  if (onbClose) onbClose.addEventListener('click', dismissOnboarding)
+}
+initOnboarding()
+
+// "DeepSeek API kulcs hozzáadása" link az agent edit panel-en --
+// a Vault page-re visz, ahol a felhasználó egy DEEPSEEK_API_KEY
+// secret-et tud felvenni, és visszatérve frissítjük a model listát.
+document.getElementById('deepseekConfigLink')?.addEventListener('click', (e) => {
+  e.preventDefault()
+  location.hash = 'vault'
+})
+
+// === Sudo modal for managed-settings.json (Slack setup pre-flight) ===
+function showSudoModal(sudoCommand, onRetry) {
+  let overlay = document.getElementById('sudoModalOverlay')
+  if (overlay) overlay.remove()
+  overlay = document.createElement('div')
+  overlay.id = 'sudoModalOverlay'
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:10001;display:flex;align-items:center;justify-content:center'
+  const card = document.createElement('div')
+  card.style.cssText = 'background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:24px;max-width:560px;width:90%'
+  card.innerHTML = `
+    <h3 style="margin:0 0 12px">${t('channel.sudo_modal.title')}</h3>
+    <p style="font-size:13px;color:var(--text-muted);margin:0 0 16px">${t('channel.sudo_modal.desc')}</p>
+    <div style="position:relative">
+      <pre id="sudoCmdPre" style="background:var(--bg-main);border:1px solid var(--border);border-radius:8px;padding:12px;font-size:12px;overflow-x:auto;white-space:pre-wrap;word-break:break-all">${escapeHtml(sudoCommand)}</pre>
+      <button id="sudoCopyBtn" style="position:absolute;top:6px;right:6px;padding:4px 10px;font-size:11px;border-radius:6px;border:1px solid var(--border);background:var(--bg-card);cursor:pointer">${t('common.copy')}</button>
+    </div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px">
+      <button id="sudoCancelBtn" class="btn btn-secondary" style="padding:6px 16px;font-size:13px">${t('channel.sudo_modal.cancel')}</button>
+      <button id="sudoDoneBtn" class="btn btn-primary" style="padding:6px 16px;font-size:13px">${t('channel.sudo_modal.retry')}</button>
+    </div>
+  `
+  overlay.appendChild(card)
+  document.body.appendChild(overlay)
+
+  document.getElementById('sudoCopyBtn').addEventListener('click', () => {
+    navigator.clipboard.writeText(sudoCommand).then(() => {
+      document.getElementById('sudoCopyBtn').textContent = t('common.copied')
+      setTimeout(() => { document.getElementById('sudoCopyBtn').textContent = t('common.copy') }, 1500)
+    })
+  })
+  document.getElementById('sudoCancelBtn').addEventListener('click', () => overlay.remove())
+  document.getElementById('sudoDoneBtn').addEventListener('click', () => {
+    overlay.remove()
+    if (onRetry) onRetry()
+    else document.getElementById('chConnectBtn').click()
+  })
+  overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove() })
+}
+
+// === Clipboard fallback (non-secure context / legacy browser) ===
+function fallbackCopyToClipboard(text, btn) {
+  const ta = document.createElement('textarea')
+  ta.value = text
+  ta.style.cssText = 'position:fixed;left:-9999px'
+  document.body.appendChild(ta)
+  ta.select()
+  try {
+    const ok = document.execCommand('copy')
+    if (ok) {
+      btn.textContent = t('common.copied')
+      setTimeout(() => { btn.textContent = t('common.copy') }, 1500)
+    } else {
+      showToast(t('common.toast.copy_failed'))
+    }
+  } catch {
+    showToast(t('common.toast.copy_failed'))
+  }
+  document.body.removeChild(ta)
+}
+
+// === Slack App manifest modal ===
+function showSlackManifestModal(manifest, instructions) {
+  let overlay = document.getElementById('slackManifestOverlay')
+  if (overlay) overlay.remove()
+  overlay = document.createElement('div')
+  overlay.id = 'slackManifestOverlay'
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9999;display:flex;align-items:center;justify-content:center'
+  const card = document.createElement('div')
+  card.style.cssText = 'background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:24px;max-width:640px;width:95%;max-height:85vh;overflow-y:auto'
+
+  const stepsHtml = instructions.map((s, i) => `<li style="margin-bottom:6px">${escapeHtml(s)}</li>`).join('')
+
+  card.innerHTML = `
+    <h3 style="margin:0 0 16px">${t('channel.slack_manifest.title')}</h3>
+    <p style="font-size:13px;color:var(--text-muted);margin:0 0 12px">${t('channel.slack_manifest.desc')}</p>
+    <div style="position:relative;margin-bottom:16px">
+      <pre id="slackManifestPre" style="background:var(--bg-main);border:1px solid var(--border);border-radius:8px;padding:12px;font-size:12px;overflow-x:auto;white-space:pre-wrap;word-break:break-all;max-height:240px;overflow-y:auto">${escapeHtml(manifest)}</pre>
+      <button id="slackManifestCopyBtn" style="position:absolute;top:6px;right:6px;padding:4px 10px;font-size:11px;border-radius:6px;border:1px solid var(--border);background:var(--bg-card);cursor:pointer">${t('common.copy')}</button>
+    </div>
+    <h4 style="margin:0 0 8px;font-size:14px">${t('channel.slack_manifest.steps_title')}</h4>
+    <ol style="font-size:13px;padding-left:20px;margin:0 0 16px">${stepsHtml}</ol>
+    <div style="display:flex;gap:8px;justify-content:flex-end">
+      <button id="slackManifestCloseBtn" class="btn btn-secondary" style="padding:6px 16px;font-size:13px">${t('common.btn.close')}</button>
+      <a href="https://api.slack.com/apps" target="_blank" rel="noopener" class="btn btn-primary" style="padding:6px 16px;font-size:13px;text-decoration:none;display:inline-flex;align-items:center;gap:4px">
+        ${t('channel.slack_manifest.open_btn')}
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+      </a>
+    </div>
+  `
+  overlay.appendChild(card)
+  document.body.appendChild(overlay)
+
+  document.getElementById('slackManifestCopyBtn').addEventListener('click', () => {
+    const copyBtn = document.getElementById('slackManifestCopyBtn')
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(manifest).then(() => {
+        copyBtn.textContent = t('common.copied')
+        setTimeout(() => { copyBtn.textContent = t('common.copy') }, 1500)
+      }).catch(() => {
+        fallbackCopyToClipboard(manifest, copyBtn)
+      })
+    } else {
+      fallbackCopyToClipboard(manifest, copyBtn)
+    }
+  })
+  document.getElementById('slackManifestCloseBtn').addEventListener('click', () => overlay.remove())
+  overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove() })
+}
+
+document.getElementById('chSlackManifestBtn').addEventListener('click', async () => {
+  if (!currentAgent) return
+  const btn = document.getElementById('chSlackManifestBtn')
+  btn.disabled = true
+  try {
+    const res = await fetch(`/api/agents/${encodeURIComponent(currentAgent.name)}/channels/slack/manifest`)
+    if (!res.ok) throw new Error()
+    const data = await res.json()
+    showSlackManifestModal(data.manifest, data.instructions)
+  } catch {
+    showToast(t('channel.toast.manifest_failed'))
+  } finally {
+    btn.disabled = false
+  }
+})
+
+// ============================================================
+// === Recall / Napló ===
+// ============================================================
+
+let recallInitialized = false
+let recallSortDesc = true
+
+async function loadRecallPage() {
+  if (!recallInitialized) {
+    recallInitialized = true
+    const today = new Date().toISOString().split('T')[0]
+    document.getElementById('recallDate').value = today
+
+    try {
+      // /api/schedules/agents includes the main agent (jarvis); /api/agents lists sub-agents only
+      const res = await fetch('/api/schedules/agents')
+      if (res.ok) {
+        const agents = await res.json()
+        const sel = document.getElementById('recallAgent')
+        agents.forEach(a => {
+          const opt = document.createElement('option')
+          opt.value = a.name
+          opt.textContent = a.label || a.name
+          sel.appendChild(opt)
+        })
+      }
+    } catch {}
+
+    document.getElementById('recallBtn').addEventListener('click', doRecall)
+    document.getElementById('recallExpr').addEventListener('keydown', e => { if (e.key === 'Enter') doRecall() })
+    document.getElementById('recallSearch').addEventListener('keydown', e => { if (e.key === 'Enter') doRecall() })
+    // Re-fetch per-agent log dates when the agent filter changes; without this
+    // the date hint stayed stuck on the agent active at first page load.
+    document.getElementById('recallAgent').addEventListener('change', loadRecallDates)
+    // #53: sort order toggle
+    document.getElementById('recallSortToggle').addEventListener('click', () => {
+      recallSortDesc = !recallSortDesc
+      const btn = document.getElementById('recallSortToggle')
+      btn.textContent = recallSortDesc ? '↓' : '↑'
+      btn.title = recallSortDesc ? t('recall.sort.tooltip.desc') : t('recall.sort.tooltip.asc')
+      doRecall()
+    })
+
+    loadRecallDates()
+  }
+  doRecall()
+}
+
+async function loadRecallDates() {
+  try {
+    const agentVal = document.getElementById('recallAgent').value
+    const params = agentVal ? `?agent=${encodeURIComponent(agentVal)}&limit=90` : '?limit=90'
+    const res = await fetch('/api/recall/dates' + params)
+    if (!res.ok) return
+    const dates = await res.json()
+    const dateInput = document.getElementById('recallDate')
+    if (dates.length && !dateInput.value) {
+      dateInput.value = dates[0]
+    }
+    dateInput.setAttribute('title', t('recall.date.n_days', { n: dates.length }))
+  } catch {}
+}
+
+async function doRecall() {
+  const dateInput = document.getElementById('recallDate').value
+  const exprInput = document.getElementById('recallExpr').value.trim()
+  const searchInput = document.getElementById('recallSearch').value.trim()
+  const agentInput = document.getElementById('recallAgent').value
+
+  const params = new URLSearchParams()
+  if (exprInput) {
+    params.set('date', exprInput)
+  } else if (dateInput) {
+    params.set('date', dateInput)
+  }
+  if (searchInput) params.set('q', searchInput)
+  if (agentInput) params.set('agent', agentInput)
+
+  const timeline = document.getElementById('recallTimeline')
+  const summary = document.getElementById('recallSummary')
+  timeline.innerHTML = `<p class="recall-loading">${t('recall.loading')}</p>`
+  summary.innerHTML = ''
+
+  try {
+    const res = await fetch('/api/recall?' + params.toString())
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}))
+      timeline.innerHTML = `<p class="recall-error">${esc(err.error || t('recall.error'))}</p>`
+      return
+    }
+    const data = await res.json()
+    renderRecallSummary(summary, data)
+    renderRecallTimeline(timeline, data)
+  } catch (err) {
+    timeline.innerHTML = `<p style="color:var(--danger)">${t('recall.load_error')}</p>`
+  }
+}
+
+function renderRecallSummary(el, data) {
+  const { dateRange, summary: s } = data
+  const parts = []
+  if (dateRange.from === dateRange.to) {
+    parts.push(`<strong>${esc(dateRange.from)}</strong>`)
+  } else if (dateRange.from && dateRange.to) {
+    parts.push(`<strong>${esc(dateRange.from)}</strong> &ndash; <strong>${esc(dateRange.to)}</strong>`)
+  }
+  parts.push(t('recall.summary.log_count', { n: s.logCount }))
+  parts.push(t('recall.summary.memory_count', { n: s.memoryCount }))
+  if (s.agents.length) parts.push(`${t('recall.summary.agents')}: ${s.agents.map(esc).join(', ')}`)
+  el.innerHTML = `<div class="recall-summary-row">${parts.map(p => `<span>${p}</span>`).join('')}</div>`
+}
+
+function renderRecallTimeline(el, data) {
+  const { logs, memories } = data
+  if (!logs.length && !memories.length) {
+    el.innerHTML = `<p class="recall-empty">${t('recall.empty_period')}</p>`
+    return
+  }
+
+  const items = []
+  logs.forEach(l => items.push({ type: 'log', ts: l.created_at, agent: l.agent_id, date: l.date, content: l.content, label: l.created_label }))
+  memories.forEach(m => items.push({ type: 'memory', ts: m.created_at, agent: m.agent_id, category: m.category, content: m.content, keywords: m.keywords, label: m.created_label }))
+  // #52/#53: apply sort order (desc = newest first, default)
+  items.sort((a, b) => recallSortDesc ? b.ts - a.ts : a.ts - b.ts)
+
+  let currentDate = ''
+  let html = ''
+  for (const item of items) {
+    const dateStr = item.date || new Date(item.ts * 1000).toISOString().split('T')[0]
+    if (dateStr !== currentDate) {
+      currentDate = dateStr
+      html += `<div class="recall-date-header">${esc(dateStr)}</div>`
+    }
+    if (item.type === 'log') {
+      html += `<div class="recall-item recall-log">
+        <div class="recall-item-header">
+          <span class="recall-item-label">${esc(item.label)}</span>
+          <div class="recall-item-badges">
+            <span class="recall-badge recall-badge-agent">${esc(item.agent)}</span>
+          </div>
+        </div>
+        <div class="recall-item-content">${esc(item.content)}</div>
+      </div>`
+    } else {
+      const cat = item.category || 'warm'
+      html += `<div class="recall-item recall-memory" data-cat="${esc(cat)}">
+        <div class="recall-item-header">
+          <span class="recall-item-label">${esc(item.label)}</span>
+          <div class="recall-item-badges">
+            <span class="recall-badge recall-badge-cat" data-cat="${esc(cat)}">${esc(item.category)}</span>
+            <span class="recall-badge recall-badge-agent">${esc(item.agent)}</span>
+          </div>
+        </div>
+        <div class="recall-item-content">${esc(item.content)}</div>
+        ${item.keywords ? `<div class="recall-item-keywords">Kulcsszavak: ${esc(item.keywords)}</div>` : ''}
+      </div>`
+    }
+  }
+  el.innerHTML = html
+}
+
+function esc(s) {
+  if (!s) return ''
+  const d = document.createElement('div')
+  d.textContent = String(s)
+  return d.innerHTML
+}
+
+// ============================================================
+// === Background Tasks ===
+// ============================================================
+
+let bgInitialized = false
+let bgRefreshTimer = null
+
+async function loadBgTasksPage() {
+  if (!bgInitialized) {
+    bgInitialized = true
+    try {
+      // Use /api/schedules/agents (not /api/agents) so the main agent is a
+      // selectable background-task target too -- /api/agents lists sub-agents
+      // only, while the backend (spawnBackgroundTask) accepts any agent_id.
+      const res = await fetch('/api/schedules/agents')
+      if (res.ok) {
+        const agents = await res.json()
+        const sel = document.getElementById('bgAgent')
+        agents.forEach(a => {
+          const opt = document.createElement('option')
+          opt.value = a.name
+          opt.textContent = a.label || a.name
+          sel.appendChild(opt)
+        })
+        if (agents.length === 1) sel.value = agents[0].name
+      }
+    } catch {}
+
+    document.getElementById('bgStartBtn').addEventListener('click', startBgTask)
+    document.getElementById('bgPrompt').addEventListener('keydown', e => { if (e.key === 'Enter') startBgTask() })
+    document.getElementById('bgShowAll').addEventListener('change', loadBgTasks)
+  }
+  loadBgTasks()
+  if (bgRefreshTimer) clearInterval(bgRefreshTimer)
+  bgRefreshTimer = setInterval(loadBgTasks, 10000)
+}
+
+async function startBgTask() {
+  const agent = document.getElementById('bgAgent').value
+  const prompt = document.getElementById('bgPrompt').value.trim()
+  if (!agent) { showToast(t('bgTasks.select_agent')); return }
+  if (!prompt) { showToast(t('bgTasks.enter_task')); return }
+
+  const btn = document.getElementById('bgStartBtn')
+  btn.disabled = true
+  try {
+    const res = await fetch('/api/background-tasks', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ agent_id: agent, prompt }),
+    })
+    const data = await res.json()
+    if (!res.ok) {
+      showToast(data.error || t('common.error'))
+      return
+    }
+    document.getElementById('bgPrompt').value = ''
+    showToast(t('bgTasks.toast.started'))
+    loadBgTasks()
+  } catch {
+    showToast(t('bgTasks.toast.start_error'))
+  } finally {
+    btn.disabled = false
+  }
+}
+
+async function loadBgTasks() {
+  const list = document.getElementById('bgTasksList')
+  const showAll = document.getElementById('bgShowAll').checked
+  const agentVal = document.getElementById('bgAgent')?.value || ''
+
+  try {
+    const params = new URLSearchParams()
+    if (agentVal) params.set('agent', agentVal)
+    if (showAll) params.set('all', 'true')
+    const res = await fetch('/api/background-tasks?' + params.toString())
+    if (!res.ok) { list.innerHTML = `<p style="color:var(--danger)">${t('bgTasks.error')}</p>`; return }
+    const tasks = await res.json()
+
+    if (!tasks.length) {
+      list.innerHTML = `<p style="color:var(--text-muted)">${t('bgTasks.empty')}</p>`
+      return
+    }
+
+    list.innerHTML = tasks.map(t => {
+      const statusColors = { running: '#f59e0b', done: '#22c55e', failed: '#ef4444', timeout: '#6b7280' }
+      const statusLabels = { running: () => t('bgTasks.status.running'), done: () => t('bgTasks.status.done'), failed: () => t('bgTasks.status.failed'), timeout: () => t('bgTasks.status.timeout') }
+      const color = statusColors[t.status] || '#6b7280'
+      const labelRaw = statusLabels[t.status]; const label = labelRaw ? (typeof labelRaw === 'function' ? labelRaw() : labelRaw) : t.status
+      const output = t.output ? `<pre style="margin-top:8px;padding:8px;background:var(--bg);border-radius:6px;font-size:12px;max-height:200px;overflow:auto;white-space:pre-wrap;">${esc(t.output.slice(-2000))}</pre>` : ''
+      return `<div style="margin-bottom:12px;padding:12px 16px;border-radius:8px;background:var(--surface);border:1px solid var(--border);border-left:3px solid ${color};">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+          <div style="display:flex;gap:8px;align-items:center;">
+            <span style="font-weight:600;font-size:13px;">${esc(t.id)}</span>
+            <span class="badge" style="font-size:11px;background:${color};color:#fff;padding:2px 8px;border-radius:12px;">${label}</span>
+            <span class="badge" style="font-size:11px;background:var(--primary);color:#fff;padding:2px 8px;border-radius:12px;">${esc(t.agent_id)}</span>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <span style="font-size:12px;color:var(--text-muted)">${esc(t.started_label)}</span>
+            ${t.status === 'running' ? `<button class="btn btn-sm" onclick="viewBgTask('${esc(t.id)}')" style="font-size:11px;padding:2px 8px;">${t('bgTasks.output_btn')}</button><button class="btn btn-sm" onclick="cancelBgTask('${esc(t.id)}')" style="font-size:11px;padding:2px 8px;color:var(--danger)">${t('bgTasks.stop_btn')}</button>` : ''}
+          </div>
+        </div>
+        <div style="font-size:13px;color:var(--text-primary);margin-bottom:4px;">${esc(t.prompt)}</div>
+        ${t.finished_label ? `<div style="font-size:12px;color:var(--text-muted);">${t('bgTasks.finished_label')} ${esc(t.finished_label)}</div>` : ''}
+        ${output}
+      </div>`
+    }).join('')
+  } catch {
+    list.innerHTML = `<p style="color:var(--danger)">${t('bgTasks.load_error')}</p>`
+  }
+}
+
+async function viewBgTask(id) {
+  try {
+    const res = await fetch(`/api/background-tasks/${id}`)
+    if (!res.ok) { showToast(t('bgTasks.load_error')); return }
+    const task = await res.json()
+    const output = task.liveOutput || task.output || t('bgTasks.no_output')
+    const modal = document.createElement('div')
+    modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:1000;display:flex;align-items:center;justify-content:center;'
+    modal.innerHTML = `<div style="background:var(--surface);border-radius:12px;padding:20px;max-width:800px;width:90%;max-height:80vh;overflow:auto;">
+      <div style="display:flex;justify-content:space-between;margin-bottom:12px;">
+        <h3 style="margin:0;">${t('bgTasks.modal.title', { id: esc(id) })}</h3>
+        <button class="btn btn-sm" id="bgModalClose" style="font-size:13px;">${t('bgTasks.modal.close_btn')}</button>
+      </div>
+      <pre style="white-space:pre-wrap;font-size:12px;line-height:1.4;">${esc(output)}</pre>
+    </div>`
+    document.body.appendChild(modal)
+    modal.addEventListener('click', e => { if (e.target === modal) modal.remove() })
+    document.getElementById('bgModalClose').addEventListener('click', () => modal.remove())
+  } catch {
+    showToast('Hiba')
+  }
+}
+
+async function cancelBgTask(id) {
+  if (!confirm(t('bgTasks.cancel.confirm'))) return
+  try {
+    const res = await fetch(`/api/background-tasks/${id}`, { method: 'DELETE' })
+    if (res.ok) {
+      showToast(t('bgTasks.toast.stopped'))
+      loadBgTasks()
+    } else {
+      showToast(t('bgTasks.toast.stop_error'))
+    }
+  } catch {
+    showToast('Hiba')
+  }
+}
+
+// ============================================================
+// === Autonomy ===
+// ============================================================
+
+async function renderAutonomyContent(gridEl, footerEl) {
+  gridEl.innerHTML = `<p style="color:var(--text-muted);font-size:13px">${t('autonomy.loading')}</p>`
+
+  try {
+    const res = await fetch('/api/autonomy')
+    if (!res.ok) throw new Error('fetch failed')
+    const config = await res.json()
+
+    gridEl.innerHTML = ''
+    for (const cat of config.categories) {
+      const isCapped = !cat.locked && cat.maxLevel < 3
+      const row = document.createElement('div')
+      row.className = 'autonomy-row' + (cat.locked ? ' locked' : '') + (isCapped ? ' capped' : '')
+
+      const label = document.createElement('div')
+      label.className = 'autonomy-row-label'
+      label.textContent = cat.label
+
+      const levels = document.createElement('div')
+      levels.className = 'autonomy-levels'
+
+      for (let l = 1; l <= 3; l++) {
+        const btn = document.createElement('button')
+        const isOver = l > cat.maxLevel
+        btn.className = 'autonomy-level-btn' + (l === cat.level ? ' active' : '') + (isOver ? ' over-cap' : '')
+        btn.dataset.level = String(l)
+        btn.textContent = String(l)
+        btn.disabled = cat.locked || isOver
+        if (!cat.locked && !isOver) {
+          btn.addEventListener('click', () => setAutonomyLevel(cat.key, l))
+        }
+        levels.appendChild(btn)
+      }
+
+      row.appendChild(label)
+      if (cat.locked) {
+        const lock = document.createElement('div')
+        lock.className = 'autonomy-row-lock'
+        lock.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg> ${t('autonomy.lock_label')}`
+        row.appendChild(lock)
+      } else if (isCapped) {
+        const cap = document.createElement('div')
+        cap.className = 'autonomy-row-cap'
+        cap.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg> ${t('autonomy.cap_label', { n: cat.maxLevel })}`
+        row.appendChild(cap)
+      }
+      row.appendChild(levels)
+      gridEl.appendChild(row)
+    }
+
+    if (footerEl) {
+      if (config.updated_at > 0) {
+        const d = new Date(config.updated_at * 1000)
+        footerEl.textContent = t('autonomy.last_modified', { date: d.toLocaleString('hu-HU') })
+      } else {
+        footerEl.textContent = t('autonomy.not_modified')
+      }
+    }
+  } catch (err) {
+    gridEl.innerHTML = `<p style="color:var(--danger)">${t('autonomy.error')}</p>`
+    if (footerEl) footerEl.textContent = ''
+  }
+}
+
+async function setAutonomyLevel(key, level) {
+  try {
+    const res = await fetch('/api/autonomy', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ key, level }),
+    })
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}))
+      showToast(data.error || 'Hiba')
+      return
+    }
+    // Refresh the settings tab autonomy grid if it is visible
+    const tabGrid = document.getElementById('settingsAutonomyGrid')
+    const tabFooter = document.getElementById('settingsAutonomyUpdatedAt')
+    if (tabGrid) renderAutonomyContent(tabGrid, tabFooter)
+  } catch {
+    showToast(t('kanban.toast.save_error'))
+  }
+}
+
+// ============================================================
+// === Approvals ===
+// ============================================================
+
+const APPROVALS_PAGE_LIMIT = 50
+
+let _approvalsCountdownInterval = null
+const _approvalsState = { status: '', agent: '', category: '', offset: 0 }
+
+document.getElementById('refreshApprovalsBtn').addEventListener('click', loadApprovalsPage)
+document.getElementById('approvalsFilterStatus').addEventListener('change', (e) => {
+  _approvalsState.status = e.target.value
+  _approvalsState.offset = 0
+  _renderApprovalsTable()
+})
+document.getElementById('approvalsFilterAgent').addEventListener('input', (e) => {
+  _approvalsState.agent = e.target.value.trim()
+  _approvalsState.offset = 0
+  _renderApprovalsTable()
+})
+document.getElementById('approvalsFilterCategory').addEventListener('input', (e) => {
+  _approvalsState.category = e.target.value.trim()
+  _approvalsState.offset = 0
+  _renderApprovalsTable()
+})
+
+let _approvalsAll = []
+
+async function loadApprovalsPage() {
+  const tbody = document.getElementById('approvalsTbody')
+  const statsEl = document.getElementById('approvalsStats')
+  tbody.innerHTML = `<tr><td colspan="7" style="color:var(--text-muted);padding:24px;text-align:center">${t('approvals.loading')}</td></tr>`
+  statsEl.innerHTML = ''
+  if (_approvalsCountdownInterval) { clearInterval(_approvalsCountdownInterval); _approvalsCountdownInterval = null }
+
+  try {
+    const res = await fetch('/api/approvals?limit=500')
+    if (!res.ok) throw new Error('HTTP ' + res.status)
+    _approvalsAll = await res.json()
+    _renderApprovalsStats()
+    _renderApprovalsTable()
+    _approvalsCountdownInterval = setInterval(_updateCountdowns, 1000)
+  } catch (err) {
+    tbody.innerHTML = `<tr><td colspan="7" style="color:var(--danger);padding:24px;text-align:center">${t('approvals.error')}</td></tr>`
+  }
+}
+
+function _renderApprovalsStats() {
+  const counts = { pending: 0, approved: 0, rejected: 0, timeout: 0 }
+  for (const a of _approvalsAll) counts[a.status] = (counts[a.status] || 0) + 1
+  const statsEl = document.getElementById('approvalsStats')
+  statsEl.innerHTML = `
+    <div class="stat-card"><div class="stat-value" style="color:var(--warning)">${counts.pending}</div><div class="stat-label">${t('approvals.stat.pending')}</div></div>
+    <div class="stat-card"><div class="stat-value" style="color:var(--success)">${counts.approved}</div><div class="stat-label">${t('approvals.stat.approved')}</div></div>
+    <div class="stat-card"><div class="stat-value" style="color:var(--danger)">${counts.rejected}</div><div class="stat-label">${t('approvals.stat.rejected')}</div></div>
+    <div class="stat-card"><div class="stat-value" style="color:var(--text-muted)">${counts.timeout}</div><div class="stat-label">${t('approvals.stat.timeout')}</div></div>
+  `
+
+  // Sidebar badge: show pending count, hidden when zero
+  const badge = document.getElementById('approvalsPendingBadge')
+  if (badge) {
+    badge.textContent = counts.pending
+    badge.hidden = counts.pending === 0
+  }
+
+  // Pending notice banner above stat cards
+  const banner = document.getElementById('approvalsPendingBanner')
+  if (banner) {
+    if (counts.pending === 0) {
+      banner.hidden = true
+    } else {
+      const pendingRows = _approvalsAll.filter(a => a.status === 'pending')
+      const oldest = pendingRows.reduce((min, a) => a.requested_at < min.requested_at ? a : min, pendingRows[0])
+      const ageMin = Math.round((Date.now() / 1000 - oldest.requested_at) / 60)
+      const timeoutMin = oldest.timeout_at ? Math.max(0, Math.round((oldest.timeout_at - Date.now() / 1000) / 60)) : null
+      const timeoutPart = timeoutMin !== null ? ` ${t('approvals.banner.timeout', { n: timeoutMin })}` : ''
+      banner.hidden = false
+      banner.textContent = `${t('approvals.banner.notice', { n: counts.pending, age: ageMin, agent: oldest.agent_id, category: oldest.category })}${timeoutPart}`
+    }
+  }
+}
+
+function _filterApprovals() {
+  const { status, agent, category } = _approvalsState
+  return _approvalsAll.filter(a => {
+    if (status && a.status !== status) return false
+    if (agent && !a.agent_id.includes(agent)) return false
+    if (category && !a.category.includes(category)) return false
+    return true
+  })
+}
+
+function _renderApprovalsTable() {
+  const filtered = _filterApprovals()
+  const { offset } = _approvalsState
+  const page = filtered.slice(offset, offset + APPROVALS_PAGE_LIMIT)
+  const tbody = document.getElementById('approvalsTbody')
+
+  if (!page.length) {
+    tbody.innerHTML = `<tr><td colspan="7" style="color:var(--text-muted);padding:24px;text-align:center">${t('approvals.empty')}</td></tr>`
+    _renderApprovalsPagination(filtered.length)
+    return
+  }
+
+  tbody.innerHTML = page.map(a => {
+    const isPending = a.status === 'pending'
+    const rowStyle = isPending ? 'background:color-mix(in srgb, var(--warning) 8%, transparent)' : ''
+    const time = a.requested_at ? new Date(a.requested_at * 1000).toLocaleString('hu-HU', { dateStyle: 'short', timeStyle: 'short' }) : '-'
+    const badge = _approvalBadge(a.status)
+    const countdown = isPending && a.timeout_at ? `<span class="approvals-countdown" data-timeout="${a.timeout_at}" id="cd-${a.id}"></span>` : (a.timeout_at ? '-' : '')
+    const actions = isPending
+      ? `<div style="display:flex;gap:4px">
+           <button class="btn-primary btn-compact approvals-decide" data-id="${escapeAttr(a.id)}" data-decision="approved" style="font-size:11px">${t('approvals.btn.approve')}</button>
+           <button class="btn-danger btn-compact approvals-decide" data-id="${escapeAttr(a.id)}" data-decision="rejected" style="font-size:11px">${t('approvals.btn.reject')}</button>
+         </div>`
+      : (() => {
+          const resolvedBy = escapeHtml(a.resolved_by || '')
+          if (!a.resolved_at) return `<span style="font-size:12px;color:var(--text-muted)">${resolvedBy}</span>`
+          const resolvedDate = new Date(a.resolved_at * 1000)
+          const requestedDate = a.requested_at ? new Date(a.requested_at * 1000) : null
+          const sameDay = requestedDate && resolvedDate.toDateString() === requestedDate.toDateString()
+          const resolvedStr = resolvedDate.toLocaleString('hu-HU', sameDay ? { timeStyle: 'short' } : { dateStyle: 'short', timeStyle: 'short' })
+          return `<span style="font-size:12px;color:var(--text-muted)">${resolvedBy}<br><span style="font-size:11px;opacity:0.7">${escapeHtml(resolvedStr)}</span></span>`
+        })()
+    return `<tr style="${rowStyle}">
+      <td style="white-space:nowrap;font-size:12px">${escapeHtml(time)}</td>
+      <td><code style="font-size:12px">${escapeHtml(a.agent_id)}</code></td>
+      <td style="font-size:12px">${escapeHtml(a.category)}</td>
+      <td style="max-width:280px;font-size:12px" title="${escapeAttr(a.action_description)}">${escapeHtml(a.action_description.length > 80 ? a.action_description.slice(0, 80) + '...' : a.action_description)}</td>
+      <td>${badge}</td>
+      <td style="font-size:12px;white-space:nowrap">${countdown}</td>
+      <td>${actions}</td>
+    </tr>`
+  }).join('')
+
+  _updateCountdowns()
+  _renderApprovalsPagination(filtered.length)
+
+  tbody.querySelectorAll('.approvals-decide').forEach(btn => {
+    btn.addEventListener('click', () => _resolveApproval(btn.dataset.id, btn.dataset.decision))
+  })
+}
+
+function _approvalBadge(status) {
+  const colors = { pending: 'var(--warning)', approved: 'var(--success)', rejected: 'var(--danger)', timeout: 'var(--text-muted)' }
+  const color = colors[status] || 'var(--text-muted)'
+  return `<span style="display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600;background:color-mix(in srgb,${color} 15%,transparent);color:${color}">${t('approvals.status.' + status) || status}</span>`
+}
+
+function _updateCountdowns() {
+  const now = Math.floor(Date.now() / 1000)
+  document.querySelectorAll('.approvals-countdown[data-timeout]').forEach(el => {
+    const timeout = parseInt(el.dataset.timeout, 10)
+    const diff = timeout - now
+    if (diff <= 0) {
+      el.textContent = t('approvals.countdown.expired')
+      el.style.color = 'var(--danger)'
+    } else {
+      const h = Math.floor(diff / 3600)
+      const m = Math.floor((diff % 3600) / 60)
+      const s = diff % 60
+      el.textContent = h > 0 ? `${h}h ${m}m` : `${m}m ${s}s`
+      el.style.color = diff < 300 ? 'var(--danger)' : 'var(--text-muted)'
+    }
+  })
+}
+
+function _renderApprovalsPagination(total) {
+  const pager = document.getElementById('approvalsPagination')
+  if (total <= APPROVALS_PAGE_LIMIT) { pager.innerHTML = ''; return }
+  const { offset } = _approvalsState
+  const hasPrev = offset > 0
+  const hasNext = offset + APPROVALS_PAGE_LIMIT < total
+  pager.innerHTML = `
+    <button class="btn-secondary btn-compact" ${hasPrev ? '' : 'disabled'} id="approvalsPrev">&#8592; Előző</button>
+    <span style="font-size:12px;color:var(--text-muted)">${offset + 1}-${Math.min(offset + APPROVALS_PAGE_LIMIT, total)} / ${total}</span>
+    <button class="btn-secondary btn-compact" ${hasNext ? '' : 'disabled'} id="approvalsNext">Következő &#8594;</button>
+  `
+  pager.querySelector('#approvalsPrev')?.addEventListener('click', () => {
+    _approvalsState.offset = Math.max(0, offset - APPROVALS_PAGE_LIMIT)
+    _renderApprovalsTable()
+  })
+  pager.querySelector('#approvalsNext')?.addEventListener('click', () => {
+    _approvalsState.offset = offset + APPROVALS_PAGE_LIMIT
+    _renderApprovalsTable()
+  })
+}
+
+async function _resolveApproval(id, decision) {
+  try {
+    const res = await fetch(`/api/approvals/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: decision, resolved_by: 'dashboard' }),
+    })
+    const data = await res.json()
+    if (!res.ok) { showToast(t('approvals.toast.error', { msg: data.error || ('HTTP ' + res.status) })); return }
+    showToast(t(decision === 'approved' ? 'approvals.toast.approved' : 'approvals.toast.rejected'))
+    // Update in-place to avoid full reload flicker
+    const idx = _approvalsAll.findIndex(a => a.id === id)
+    if (idx !== -1) _approvalsAll[idx] = data
+    _renderApprovalsStats()
+    _renderApprovalsTable()
+  } catch (err) {
+    showToast(t('approvals.toast.error', { msg: String(err.message || err) }))
+  }
+}
+
+// ============================================================
+// === Settings (central config registry) ===
+// ============================================================
+
+document.getElementById('refreshSettingsBtn').addEventListener('click', loadSettings)
+window.addEventListener('beforeunload', (e) => {
+  if (settingsDirty.size > 0) { e.preventDefault(); e.returnValue = '' }
+})
+
+// Human label for a registry "module" -- falls back to a capitalised key for
+// any future module the UI doesn't know about yet, so adding a registry
+// entry never requires a frontend change just to render a sane heading.
+function settingsModuleLabel(mod) {
+  const key = `settings.module.${mod}`
+  const known = { kanban: true, system: true, heartbeat: true, audit: true, ideabox: true, channels: true, security: true, autonomy: true, 'claude-plans': true }
+  return known[mod] ? t(key) : (mod.charAt(0).toUpperCase() + mod.slice(1))
+}
+
+// Track dirty state: key -> { input, originalValue, type, errorEl }
+const settingsDirty = new Map()
+
+function updateSettingsSaveBar() {
+  const bar = document.getElementById('settingsSaveBar')
+  const countEl = document.getElementById('settingsDirtyCount')
+  if (!bar) return
+  const n = settingsDirty.size
+  bar.style.display = n > 0 ? 'flex' : 'none'
+  if (countEl) countEl.textContent = t('settings.dirty_count', {n})
+}
+
+// Read the current editor value in the canonical form the API expects. A
+// boolean setting renders as a checkbox, so its value is derived from .checked
+// as the canonical "1"/"0" string (not the element's .value, which is "on").
+function settingInputValue(input, type) {
+  if (type === 'boolean') return input.checked ? '1' : '0'
+  return input.value
+}
+
+function markSettingDirty(key, input, originalValue, type, errorEl) {
+  const currentVal = settingInputValue(input, type)
+  if (currentVal === String(originalValue)) {
+    settingsDirty.delete(key)
+  } else {
+    settingsDirty.set(key, { input, originalValue, type, errorEl })
+  }
+  updateSettingsSaveBar()
+}
+
+const SETTINGS_ACTIVE_TAB_KEY = 'settings-active-tab'
+
+// === Dashboard browser login (optional) ===
+// The card in the Settings page lets the operator opt into a username+password
+// login (in addition to the always-available access token). All copy is framed
+// around the existing public remote-access surfaces (Tailscale Serve, LAN,
+// mobile QR) -- no other transport is referenced.
+
+async function fetchAuthStatus() {
+  try {
+    const r = await fetch('/api/auth/status')
+    return r.ok ? await r.json() : null
+  } catch {
+    return null
+  }
+}
+
+async function renderAuthCard() {
+  const body = document.getElementById('authCardBody')
+  if (!body) return
+  const status = await fetchAuthStatus()
+  if (!status) { body.innerHTML = `<p class="auth-muted">${t('auth.card.unavailable')}</p>`; return }
+  if (status.setup_required) { renderCreateLoginForm(body) }
+  else if (status.method === 'session') { renderSessionPanel(body, status) }
+  else renderTokenModePanel(body)
+  // Device keys are managed by token/session operators only (a device key
+  // itself gets 403 from the management endpoints, so don't render the panel).
+  if (status.method === 'token' || status.method === 'session') {
+    renderDeviceKeysSection(body)
+    renderBridgeEnrollSection(body)
+  }
+}
+
+// === Bridge pairing (AUTHPLAN1 #2) ===
+// Paste the public-key line shown by the Bridge app -> one confirm -> the
+// server writes the restricted SSH entry + mints a per-device key -> the
+// returned bundle (shown once, copyable) goes back into the Bridge.
+
+function renderBridgeEnrollSection(body) {
+  const wrap = document.createElement('div')
+  wrap.className = 'auth-device-keys auth-bridge-enroll'
+  wrap.id = 'authBridgeEnroll'
+  wrap.innerHTML =
+    `<div class="auth-sessions-title">${t('auth.bridge.title')}</div>` +
+    `<p class="auth-muted">${t('auth.bridge.desc')}</p>` +
+    `<div class="auth-form">` +
+      `<input id="authBridgeKeyLine" type="text" autocapitalize="off" spellcheck="false" placeholder="${t('auth.bridge.key_placeholder')}">` +
+      `<input id="authBridgeName" type="text" autocapitalize="off" spellcheck="false" maxlength="64" placeholder="${t('auth.bridge.name_placeholder')}">` +
+      `<input id="authBridgeHost" type="text" autocapitalize="off" spellcheck="false" maxlength="253" placeholder="${t('auth.bridge.host_placeholder')}">` +
+      // The placeholder alone cannot carry this: it is clipped by the input's
+      // width, and it disappears the moment the user types. The Tailscale trap
+      // (account email vs 100.x address) has to stay readable while they type.
+      `<p class="auth-muted">${t('auth.bridge.host_hint')}</p>` +
+      `<button class="btn-secondary" id="authBridgeEnrollBtn">${t('auth.bridge.enroll')}</button>` +
+      `<div class="auth-form-msg" id="authBridgeMsg"></div>` +
+      `<div id="authBridgeBundle" hidden></div>` +
+    `</div>`
+  body.appendChild(wrap)
+  document.getElementById('authBridgeEnrollBtn').addEventListener('click', bridgeEnrollFromUi)
+}
+
+// The pairing endpoint answers with a stable `code` beside its English
+// `error` sentence. Translate on the code, never on the sentence: the wording
+// is free to change, the code is the contract. An unknown code falls back to
+// the server's own sentence rather than to a blank line or a raw key, so a
+// server error added later degrades to English instead of disappearing.
+function bridgeEnrollErrorText(data) {
+  const code = data && typeof data.code === 'string' ? data.code : ''
+  if (code) {
+    const key = `auth.bridge.err.${code}`
+    const translated = t(key, (data && data.params) || {})
+    if (translated !== key) return translated
+  }
+  return (data && data.error) || t('auth.card.err_generic')
+}
+
+async function bridgeEnrollFromUi() {
+  const msg = document.getElementById('authBridgeMsg')
+  const out = document.getElementById('authBridgeBundle')
+  const keyLine = (document.getElementById('authBridgeKeyLine').value || '').trim()
+  const name = (document.getElementById('authBridgeName').value || '').trim()
+  const hostOverride = (document.getElementById('authBridgeHost').value || '').trim()
+  msg.className = 'auth-form-msg'
+  msg.textContent = ''
+  out.hidden = true
+  if (!keyLine || !name) { msg.classList.add('err'); msg.textContent = t('auth.bridge.err_empty'); return }
+  // The confirm step: pairing grants the device SSH-tunnel + dashboard access.
+  if (!confirm(t('auth.bridge.confirm', { name }))) return
+  msg.textContent = t('auth.bridge.working')
+  try {
+    const r = await fetch('/api/security/bridge-enroll', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(hostOverride ? { key_line: keyLine, name, host: hostOverride } : { key_line: keyLine, name }),
+    })
+    const data = await r.json().catch(() => ({}))
+    if (!r.ok) { msg.classList.add('err'); msg.textContent = bridgeEnrollErrorText(data); return }
+    msg.classList.add('ok')
+    msg.textContent = (data.action === 'replaced' ? t('auth.bridge.repaired') : t('auth.bridge.paired')) +
+      (data.warnings && data.warnings.length ? ` (${data.warnings.join('; ')})` : '')
+    document.getElementById('authBridgeKeyLine').value = ''
+    document.getElementById('authBridgeName').value = ''
+    document.getElementById('authBridgeHost').value = ''
+    out.hidden = false
+    out.innerHTML =
+      `<p class="auth-muted">${t('auth.bridge.bundle_hint', { host: escapeHtml(data.host || '') })}</p>` +
+      `<div class="auth-form auth-device-minted-row">` +
+        `<input id="authBridgeBundleVal" type="text" readonly value="${escapeHtml(data.bundle)}" onclick="this.select()">` +
+        `<button class="btn-secondary btn-compact" id="authBridgeCopyBtn">${t('auth.devices.copy')}</button>` +
+      `</div>`
+    document.getElementById('authBridgeCopyBtn').addEventListener('click', async () => {
+      try {
+        await navigator.clipboard.writeText(data.bundle)
+        document.getElementById('authBridgeCopyBtn').textContent = t('auth.devices.copied')
+      } catch { document.getElementById('authBridgeBundleVal').select() }
+    })
+    refreshDeviceKeyList()
+  } catch { msg.classList.add('err'); msg.textContent = t('auth.login.err_network') }
+}
+
+// === Per-device keys (mint/list/revoke) ===
+// A device key is a revocable per-device credential (Bridge, phone). The raw
+// key is displayed exactly once, right after minting.
+
+function renderDeviceKeysSection(body) {
+  const wrap = document.createElement('div')
+  wrap.className = 'auth-device-keys'
+  wrap.id = 'authDeviceKeys'
+  wrap.innerHTML =
+    `<div class="auth-sessions-title">${t('auth.devices.title')}</div>` +
+    `<p class="auth-muted">${t('auth.devices.desc')}</p>` +
+    `<div class="auth-form-msg err auth-device-warn" id="authDeviceKeyWarn" hidden></div>` +
+    `<div id="authDeviceKeyList"></div>` +
+    `<div class="auth-form auth-device-mint">` +
+      `<input id="authDevName" type="text" autocapitalize="off" spellcheck="false" maxlength="64" placeholder="${t('auth.devices.name_placeholder')}">` +
+      `<input id="authDevExpiry" type="number" min="1" max="3650" placeholder="${t('auth.devices.expiry_placeholder')}">` +
+      `<button class="btn-secondary" id="authDevMintBtn">${t('auth.devices.mint')}</button>` +
+      `<div class="auth-form-msg" id="authDevMsg"></div>` +
+      `<div id="authDevMinted" hidden></div>` +
+    `</div>`
+  body.appendChild(wrap)
+  document.getElementById('authDevMintBtn').addEventListener('click', mintDeviceKey)
+  refreshDeviceKeyList()
+}
+
+async function refreshDeviceKeyList() {
+  const el = document.getElementById('authDeviceKeyList')
+  if (!el) return
+  try {
+    const r = await fetch('/api/auth/device-keys')
+    if (!r.ok) { el.innerHTML = ''; return }
+    const { keys } = await r.json()
+    if (!keys || !keys.length) { el.innerHTML = `<p class="auth-muted">${t('auth.devices.empty')}</p>`; return }
+    el.innerHTML = keys.map((k) => {
+      const created = new Date(k.createdAt * 1000).toLocaleDateString()
+      const lastUsed = k.lastUsedAt ? new Date(k.lastUsedAt * 1000).toLocaleString() : t('auth.devices.never_used')
+      const expires = k.expiresAt ? ` &middot; ${t('auth.devices.expires', { date: new Date(k.expiresAt * 1000).toLocaleDateString() })}` : ''
+      const bridge = k.installId ? ` <span class="auth-device-bridge-badge">${t('auth.devices.bridge_badge')}</span>` : ''
+      return `<div class="auth-session-row auth-device-row" data-key-id="${k.id}">` +
+        `<span class="auth-device-name">${escapeHtml(k.name)}${bridge}</span>` +
+        `<span class="auth-device-meta">${created} &middot; ${t('auth.devices.last_used', { date: lastUsed })}${expires}</span>` +
+        `<button class="btn-secondary btn-compact auth-device-revoke" data-key-id="${k.id}">${t('auth.devices.revoke')}</button>` +
+      `</div>`
+    }).join('')
+    el.querySelectorAll('.auth-device-revoke').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        if (!confirm(t('auth.devices.revoke_confirm'))) return
+        // A Bridge-paired revoke means BOTH halves (dashboard key + ssh line).
+        // The key is dead either way, but ssh_removed:false means the
+        // authorized_keys line survived (fs error) and the device can still
+        // open the tunnel -- the ONE outcome the UI must never hide.
+        const warnBefore = document.getElementById('authDeviceKeyWarn')
+        if (warnBefore) warnBefore.hidden = true
+        let sshWarn = false
+        try {
+          const r = await fetch(`/api/auth/device-keys/${btn.dataset.keyId}`, { method: 'DELETE' })
+          const data = await r.json().catch(() => ({}))
+          if (r.ok && data.ssh_removed === false) sshWarn = true
+        } catch { /* ignore -- the list refresh below shows the real state */ }
+        await refreshDeviceKeyList()
+        const warnEl = document.getElementById('authDeviceKeyWarn')
+        if (warnEl && sshWarn) {
+          warnEl.hidden = false
+          warnEl.textContent = t('auth.devices.revoke_ssh_warning')
+        }
+      })
+    })
+  } catch { el.innerHTML = '' }
+}
+
+async function mintDeviceKey() {
+  const msg = document.getElementById('authDevMsg')
+  const minted = document.getElementById('authDevMinted')
+  const name = (document.getElementById('authDevName').value || '').trim()
+  const expiryRaw = document.getElementById('authDevExpiry').value
+  msg.className = 'auth-form-msg'
+  minted.hidden = true
+  if (!name) { msg.classList.add('err'); msg.textContent = t('auth.devices.err_name'); return }
+  const payload = { name }
+  if (expiryRaw) payload.expires_in_days = Number(expiryRaw)
+  try {
+    const r = await fetch('/api/auth/device-keys', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    })
+    const data = await r.json().catch(() => ({}))
+    if (!r.ok) { msg.classList.add('err'); msg.textContent = data.error || t('auth.card.err_generic'); return }
+    document.getElementById('authDevName').value = ''
+    document.getElementById('authDevExpiry').value = ''
+    minted.hidden = false
+    minted.innerHTML =
+      `<p class="auth-muted">${t('auth.devices.minted_hint')}</p>` +
+      `<div class="auth-form auth-device-minted-row">` +
+        `<input id="authDevMintedKey" type="text" readonly value="${escapeHtml(data.key)}" onclick="this.select()">` +
+        `<button class="btn-secondary btn-compact" id="authDevCopyBtn">${t('auth.devices.copy')}</button>` +
+      `</div>`
+    document.getElementById('authDevCopyBtn').addEventListener('click', async () => {
+      try {
+        await navigator.clipboard.writeText(data.key)
+        document.getElementById('authDevCopyBtn').textContent = t('auth.devices.copied')
+      } catch { document.getElementById('authDevMintedKey').select() }
+    })
+    refreshDeviceKeyList()
+  } catch { msg.classList.add('err'); msg.textContent = t('auth.login.err_network') }
+}
+
+function renderCreateLoginForm(body) {
+  body.innerHTML =
+    `<p class="auth-muted">${t('auth.card.setup_desc')}</p>` +
+    `<div class="auth-form">` +
+      `<input id="authNewUser" type="text" autocomplete="username" autocapitalize="off" spellcheck="false" placeholder="${t('auth.login.username')}">` +
+      `<input id="authNewPass" type="password" autocomplete="new-password" placeholder="${t('auth.card.new_password')}">` +
+      `<input id="authNewPass2" type="password" autocomplete="new-password" placeholder="${t('auth.card.repeat_password')}">` +
+      `<button class="btn-primary" id="authCreateBtn">${t('auth.card.create')}</button>` +
+      `<div class="auth-form-msg" id="authCreateMsg"></div>` +
+    `</div>`
+  document.getElementById('authCreateBtn').addEventListener('click', async () => {
+    const msg = document.getElementById('authCreateMsg')
+    const username = (document.getElementById('authNewUser').value || '').trim()
+    const p1 = document.getElementById('authNewPass').value || ''
+    const p2 = document.getElementById('authNewPass2').value || ''
+    msg.className = 'auth-form-msg'
+    if (!username || !p1) { msg.classList.add('err'); msg.textContent = t('auth.login.err_empty'); return }
+    if (p1 !== p2) { msg.classList.add('err'); msg.textContent = t('auth.card.err_mismatch'); return }
+    try {
+      const r = await fetch('/api/auth/users', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password: p1 }),
+      })
+      const data = await r.json().catch(() => ({}))
+      if (r.ok) { msg.classList.add('ok'); msg.textContent = t('auth.card.created'); renderAuthCard(); initAuthBanner() }
+      else { msg.classList.add('err'); msg.textContent = data.error || t('auth.card.err_generic') }
+    } catch { msg.classList.add('err'); msg.textContent = t('auth.login.err_network') }
+  })
+}
+
+function renderSessionPanel(body, status) {
+  body.innerHTML =
+    `<p class="auth-muted">${t('auth.card.signed_in_as', { user: escapeHtml(status.user) })}</p>` +
+    `<div class="auth-form">` +
+      `<input id="authCurPass" type="password" autocomplete="current-password" placeholder="${t('auth.card.current_password')}">` +
+      `<input id="authChgPass" type="password" autocomplete="new-password" placeholder="${t('auth.card.new_password')}">` +
+      `<input id="authChgPass2" type="password" autocomplete="new-password" placeholder="${t('auth.card.repeat_password')}">` +
+      `<button class="btn-primary" id="authChgBtn">${t('auth.card.change_password')}</button>` +
+      `<div class="auth-form-msg" id="authChgMsg"></div>` +
+    `</div>` +
+    `<div class="auth-sessions" id="authSessions"></div>` +
+    `<div class="auth-actions">` +
+      `<button class="btn-secondary btn-compact" id="authLogoutAllBtn">${t('auth.card.logout_all')}</button>` +
+      `<button class="btn-secondary btn-compact" id="authLogoutBtn">${t('auth.card.logout')}</button>` +
+    `</div>`
+  document.getElementById('authChgBtn').addEventListener('click', async () => {
+    const msg = document.getElementById('authChgMsg')
+    const cur = document.getElementById('authCurPass').value || ''
+    const p1 = document.getElementById('authChgPass').value || ''
+    const p2 = document.getElementById('authChgPass2').value || ''
+    msg.className = 'auth-form-msg'
+    if (p1 !== p2) { msg.classList.add('err'); msg.textContent = t('auth.card.err_mismatch'); return }
+    try {
+      const r = await fetch('/api/auth/password', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ current_password: cur, new_password: p1 }),
+      })
+      const data = await r.json().catch(() => ({}))
+      if (r.ok) { msg.classList.add('ok'); msg.textContent = t('auth.card.password_changed') }
+      else { msg.classList.add('err'); msg.textContent = data.error || t('auth.card.err_generic') }
+    } catch { msg.classList.add('err'); msg.textContent = t('auth.login.err_network') }
+  })
+  document.getElementById('authLogoutBtn').addEventListener('click', async () => {
+    try { await fetch('/api/auth/logout', { method: 'POST' }) } catch { /* ignore */ }
+    window.location.reload()
+  })
+  document.getElementById('authLogoutAllBtn').addEventListener('click', async () => {
+    try { await fetch('/api/auth/logout-all', { method: 'POST' }) } catch { /* ignore */ }
+    window.location.reload()
+  })
+  renderAuthSessions()
+}
+
+async function renderAuthSessions() {
+  const el = document.getElementById('authSessions')
+  if (!el) return
+  try {
+    const r = await fetch('/api/auth/sessions')
+    if (!r.ok) { el.innerHTML = ''; return }
+    const { sessions } = await r.json()
+    if (!sessions || !sessions.length) { el.innerHTML = ''; return }
+    el.innerHTML = `<div class="auth-sessions-title">${t('auth.card.active_sessions')}</div>` +
+      sessions.map((s) => {
+        const last = new Date(s.lastSeenAt * 1000).toLocaleString()
+        const ua = escapeHtml(s.userAgent || '-')
+        return `<div class="auth-session-row"><code>${escapeHtml(s.idHashPrefix)}</code><span>${last}</span><span class="auth-session-ua">${ua}</span></div>`
+      }).join('')
+  } catch { el.innerHTML = '' }
+}
+
+function renderTokenModePanel(body) {
+  body.innerHTML =
+    `<p class="auth-muted">${t('auth.card.token_mode')}</p>`
+}
+
+// Dismissible setup banner: shown only when the operator is authed via the token
+// and has not yet created a browser login. Dismissal persists per browser.
+const AUTH_BANNER_DISMISS_KEY = 'marveen.auth-banner-dismissed'
+
+async function initAuthBanner() {
+  const banner = document.getElementById('authSetupBanner')
+  if (!banner) return
+  let dismissed = false
+  try { dismissed = localStorage.getItem(AUTH_BANNER_DISMISS_KEY) === '1' } catch { /* storage blocked */ }
+  const status = await fetchAuthStatus()
+  const show = !!status && status.authenticated && status.method === 'token' && status.setup_required && !dismissed
+  banner.hidden = !show
+}
+
+function wireAuthBanner() {
+  const banner = document.getElementById('authSetupBanner')
+  if (!banner) return
+  const dismiss = document.getElementById('authBannerDismiss')
+  const go = document.getElementById('authBannerGoBtn')
+  if (dismiss) dismiss.addEventListener('click', () => {
+    try { localStorage.setItem(AUTH_BANNER_DISMISS_KEY, '1') } catch { /* storage blocked */ }
+    banner.hidden = true
+  })
+  if (go) go.addEventListener('click', () => {
+    // Land on the Security tab, where the auth card lives now.
+    try { localStorage.setItem(SETTINGS_ACTIVE_TAB_KEY, 'security') } catch { /* storage blocked */ }
+    if (typeof switchPage === 'function') switchPage('settings')
+    const link = document.querySelector('.sb-link[data-page="settings"]')
+    if (link) { document.querySelectorAll('.sb-link').forEach((l) => l.classList.remove('active')); link.classList.add('active') }
+  })
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  wireAuthBanner()
+  initAuthBanner()
+  wireBranchDriftBanner()
+})
+
+async function loadSettings() {
+  const tabNav = document.getElementById('settingsTabNav')
+  const tabPanels = document.getElementById('settingsTabPanels')
+  if (!tabNav || !tabPanels) return
+
+  // Park the auth card back outside the panels before wiping them: a previous
+  // loadSettings run moved it INTO the Security panel, and clearing
+  // tabPanels.innerHTML with the card still inside would destroy the node.
+  const parkedAuthCard = document.getElementById('authCard')
+  if (parkedAuthCard) {
+    parkedAuthCard.hidden = true
+    tabNav.parentElement.insertBefore(parkedAuthCard, tabNav)
+  }
+
+  tabNav.innerHTML = `<span style="color:var(--text-muted);font-size:13px;padding:12px 0;display:inline-block">${t('settings.loading')}</span>`
+  tabPanels.innerHTML = ''
+  settingsDirty.clear()
+  updateSettingsSaveBar()
+
+  renderAuthCard()
+
+  try {
+    const res = await fetch('/api/settings')
+    if (!res.ok) throw new Error('fetch failed')
+    const { settings } = await res.json()
+
+    const byModule = new Map()
+    for (const s of settings) {
+      if (!byModule.has(s.module)) byModule.set(s.module, [])
+      byModule.get(s.module).push(s)
+    }
+
+    tabNav.innerHTML = ''
+    tabPanels.innerHTML = ''
+
+    if (byModule.size === 0) {
+      tabPanels.innerHTML = `<p style="padding:24px;color:var(--text-muted);font-size:13px">${t('settings.empty')}</p>`
+      // No tabs to host the Security panel: fall back to showing the auth card
+      // in its static spot above the (empty) tab area.
+      const orphanAuthCard = document.getElementById('authCard')
+      if (orphanAuthCard) orphanAuthCard.hidden = false
+      return
+    }
+
+    // Registry keys declared with module:'security' render inside the synthetic
+    // Security tab (below the auth card) instead of getting their own tab.
+    const securityDefs = byModule.get('security') ?? []
+    byModule.delete('security')
+
+    // module:'claude-plans' is just the CLAUDE_ROTATION_ENABLED toggle (PR2b)
+    // -- it renders below the plan-list widget in the synthetic Claude Plans
+    // tab, same pattern as securityDefs above.
+    const claudePlansDefs = byModule.get('claude-plans') ?? []
+    byModule.delete('claude-plans')
+
+    const allModules = [...byModule.keys(), 'security', 'autonomy', 'claude-plans']
+    const savedTab = localStorage.getItem(SETTINGS_ACTIVE_TAB_KEY) || allModules[0]
+    const activeTab = allModules.includes(savedTab) ? savedTab : allModules[0]
+
+    // Build a tab button + panel for each settings module
+    for (const [mod, defs] of byModule) {
+      const btn = document.createElement('button')
+      btn.className = 'tab-btn' + (mod === activeTab ? ' active' : '')
+      btn.dataset.tab = mod
+      btn.textContent = settingsModuleLabel(mod)
+      btn.addEventListener('click', () => activateSettingsTab(mod))
+      tabNav.appendChild(btn)
+
+      const panel = document.createElement('div')
+      panel.className = 'tab-panel'
+      panel.id = `settings-panel-${mod}`
+      panel.hidden = mod !== activeTab
+
+      const group = document.createElement('div')
+      group.className = 'settings-group'
+      for (const def of defs) {
+        group.appendChild(buildSettingRow(def))
+      }
+      panel.appendChild(group)
+      tabPanels.appendChild(panel)
+    }
+
+    // Security tab (synthetic, like autonomy: exists even with zero registry
+    // entries). Hosts the auth card -- browser login, password change, device
+    // keys -- plus any module:'security' registry keys.
+    {
+      const mod = 'security'
+      const btn = document.createElement('button')
+      btn.className = 'tab-btn' + (mod === activeTab ? ' active' : '')
+      btn.dataset.tab = mod
+      btn.textContent = settingsModuleLabel(mod)
+      btn.addEventListener('click', () => activateSettingsTab(mod))
+      tabNav.appendChild(btn)
+
+      const panel = document.createElement('div')
+      panel.className = 'tab-panel'
+      panel.id = `settings-panel-${mod}`
+      panel.hidden = mod !== activeTab
+
+      const authCard = document.getElementById('authCard')
+      if (authCard) {
+        panel.appendChild(authCard)
+        authCard.hidden = false
+      }
+
+      if (securityDefs.length) {
+        const group = document.createElement('div')
+        group.className = 'settings-group'
+        for (const def of securityDefs) {
+          group.appendChild(buildSettingRow(def))
+        }
+        panel.appendChild(group)
+      }
+      tabPanels.appendChild(panel)
+    }
+
+    // Autonomy tab
+    {
+      const mod = 'autonomy'
+      const btn = document.createElement('button')
+      btn.className = 'tab-btn' + (mod === activeTab ? ' active' : '')
+      btn.dataset.tab = mod
+      btn.textContent = settingsModuleLabel(mod)
+      btn.addEventListener('click', () => activateSettingsTab(mod))
+      tabNav.appendChild(btn)
+
+      const panel = document.createElement('div')
+      panel.className = 'tab-panel'
+      panel.id = `settings-panel-${mod}`
+      panel.hidden = mod !== activeTab
+
+      const legend = document.createElement('div')
+      legend.className = 'autonomy-legend'
+      legend.innerHTML = `
+        <div class="autonomy-legend-item"><span class="autonomy-level-dot" style="background:var(--text-muted)"></span><span><strong>1</strong> ${t('autonomy.level.1')}</span></div>
+        <div class="autonomy-legend-item"><span class="autonomy-level-dot" style="background:var(--accent)"></span><span><strong>2</strong> ${t('autonomy.level.2')}</span></div>
+        <div class="autonomy-legend-item"><span class="autonomy-level-dot" style="background:var(--success)"></span><span><strong>3</strong> ${t('autonomy.level.3')}</span></div>
+      `
+      panel.appendChild(legend)
+
+      const grid = document.createElement('div')
+      grid.className = 'autonomy-grid'
+      grid.id = 'settingsAutonomyGrid'
+      panel.appendChild(grid)
+
+      const footer = document.createElement('p')
+      footer.className = 'autonomy-footer'
+      footer.id = 'settingsAutonomyUpdatedAt'
+      panel.appendChild(footer)
+
+      const refreshBtn = document.createElement('button')
+      refreshBtn.className = 'btn-secondary btn-compact'
+      refreshBtn.textContent = t('common.btn.refresh')
+      refreshBtn.addEventListener('click', () => renderAutonomyContent(grid, footer))
+      panel.appendChild(refreshBtn)
+
+      tabPanels.appendChild(panel)
+
+      if (mod === activeTab) {
+        renderAutonomyContent(grid, footer)
+      }
+    }
+
+    // Claude Plans tab (PR2b): synthetic like autonomy/security -- a hand-built
+    // plan-list + add-form widget, with the CLAUDE_ROTATION_ENABLED toggle
+    // (claudePlansDefs) appended below it exactly like security appends its
+    // registry keys after the auth card.
+    {
+      const mod = 'claude-plans'
+      const btn = document.createElement('button')
+      btn.className = 'tab-btn' + (mod === activeTab ? ' active' : '')
+      btn.dataset.tab = mod
+      btn.textContent = settingsModuleLabel(mod)
+      btn.addEventListener('click', () => activateSettingsTab(mod))
+      tabNav.appendChild(btn)
+
+      const panel = document.createElement('div')
+      panel.className = 'tab-panel'
+      panel.id = `settings-panel-${mod}`
+      panel.hidden = mod !== activeTab
+
+      const body = document.createElement('div')
+      body.className = 'settings-group'
+      body.id = 'claudePlansBody'
+      panel.appendChild(body)
+
+      if (claudePlansDefs.length) {
+        const group = document.createElement('div')
+        group.className = 'settings-group'
+        for (const def of claudePlansDefs) {
+          group.appendChild(buildSettingRow(def))
+        }
+        panel.appendChild(group)
+      }
+
+      tabPanels.appendChild(panel)
+
+      if (mod === activeTab) {
+        renderClaudePlansPanel(body)
+      }
+    }
+  } catch (err) {
+    tabPanels.innerHTML = `<p style="padding:24px;color:var(--danger)">${t('settings.error')}</p>`
+  }
+}
+
+function activateSettingsTab(mod) {
+  document.querySelectorAll('#settingsTabNav .tab-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.tab === mod)
+  })
+  document.querySelectorAll('#settingsTabPanels .tab-panel').forEach(panel => {
+    panel.hidden = panel.id !== `settings-panel-${mod}`
+  })
+  localStorage.setItem(SETTINGS_ACTIVE_TAB_KEY, mod)
+
+  if (mod === 'autonomy') {
+    const grid = document.getElementById('settingsAutonomyGrid')
+    const footer = document.getElementById('settingsAutonomyUpdatedAt')
+    if (grid && !grid.innerHTML.trim()) renderAutonomyContent(grid, footer)
+  }
+
+  if (mod === 'claude-plans') {
+    const body = document.getElementById('claudePlansBody')
+    if (body && !body.innerHTML.trim()) renderClaudePlansPanel(body)
+  }
+}
+
+// Claude Plans tab (PR2b): plan-list + add-form widget over
+// store/claude-plans.json, plus GET /api/claude-plans/state for the
+// active-plan / last-known-usage badges. The "active" dot reflects the MAIN
+// agent's entry in activePlanByAgent (PR2c, design decision #1: the state is
+// per-agent, but this tab only shows the one that also drives the dashboard
+// header). There is still no manual rotate button here: this tab lets the
+// operator view and hand-edit the registry, the same way it already lets
+// them for store/claude-plans.json by hand; actual rotation is triggered by
+// the heartbeat script or POST /api/claude-plans/rotate directly.
+async function renderClaudePlansPanel(body) {
+  body.innerHTML = `
+    <p style="color:var(--text-muted);font-size:13px;margin:0 0 16px">${t('settings.claude_plans.intro')}</p>
+    <div id="claudePlansList"></div>
+    <div class="claude-plans-add-form">
+      <div class="form-row">
+        <div class="form-group" style="flex:1">
+          <label>${t('settings.claude_plans.form.id')}</label>
+          <input class="input" id="cpFormId" placeholder="personal-2">
+        </div>
+        <div class="form-group" style="flex:1">
+          <label>${t('settings.claude_plans.form.label')}</label>
+          <input class="input" id="cpFormLabel" placeholder="Second Pro">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group" style="flex:2">
+          <label>${t('settings.claude_plans.form.config_dir')}</label>
+          <input class="input" id="cpFormConfigDir" placeholder="~/.claude-second">
+        </div>
+        <div class="form-group" style="flex:1">
+          <label>${t('settings.claude_plans.form.type')}</label>
+          <select class="input" id="cpFormType">
+            <option value="personal">${t('settings.claude_plans.form.type_personal')}</option>
+            <option value="team">${t('settings.claude_plans.form.type_team')}</option>
+          </select>
+        </div>
+      </div>
+      <label class="claude-plans-checkbox-row">
+        <input type="checkbox" id="cpFormChannelsAllowed" checked>
+        <span>${t('settings.claude_plans.form.channels_allowed')}</span>
+      </label>
+      <div id="cpFormError" class="settings-row-error" hidden></div>
+      <button class="btn-secondary btn-compact" id="cpFormAddBtn" style="margin-top:12px">${t('settings.claude_plans.form.add_btn')}</button>
+    </div>
+  `
+
+  document.getElementById('cpFormAddBtn').addEventListener('click', () => addClaudePlan())
+  for (const id of ['cpFormId', 'cpFormLabel', 'cpFormConfigDir']) {
+    document.getElementById(id).addEventListener('keydown', (e) => { if (e.key === 'Enter') addClaudePlan() })
+  }
+
+  await loadClaudePlansList()
+}
+
+async function addClaudePlan() {
+  const errEl = document.getElementById('cpFormError')
+  errEl.hidden = true
+  const id = document.getElementById('cpFormId').value.trim()
+  const label = document.getElementById('cpFormLabel').value.trim()
+  const configDir = document.getElementById('cpFormConfigDir').value.trim()
+  const planType = document.getElementById('cpFormType').value
+  const channelsAllowed = document.getElementById('cpFormChannelsAllowed').checked
+
+  if (!id || !label || !configDir) {
+    errEl.textContent = t('settings.claude_plans.form.error_required')
+    errEl.hidden = false
+    return
+  }
+
+  try {
+    const res = await fetch('/api/claude-plans', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id, label, configDir, planType, channelsAllowed }),
+    })
+    const data = await res.json()
+    if (!res.ok) {
+      errEl.textContent = data.error || t('settings.claude_plans.form.error_generic')
+      errEl.hidden = false
+      return
+    }
+    document.getElementById('cpFormId').value = ''
+    document.getElementById('cpFormLabel').value = ''
+    document.getElementById('cpFormConfigDir').value = ''
+    document.getElementById('cpFormChannelsAllowed').checked = true
+    await loadClaudePlansList()
+  } catch {
+    errEl.textContent = t('settings.claude_plans.form.error_generic')
+    errEl.hidden = false
+  }
+}
+
+async function deleteClaudePlan(id) {
+  if (!confirm(t('settings.claude_plans.confirm_delete', { id }))) return
+  await fetch(`/api/claude-plans/${encodeURIComponent(id)}`, { method: 'DELETE' })
+  await loadClaudePlansList()
+}
+
+async function loadClaudePlansList() {
+  const list = document.getElementById('claudePlansList')
+  if (!list) return
+  list.innerHTML = `<p style="color:var(--text-muted);font-size:13px">${t('common.loading')}</p>`
+  try {
+    const [plansRes, stateRes] = await Promise.all([
+      fetch('/api/claude-plans'),
+      fetch('/api/claude-plans/state'),
+    ])
+    const plans = plansRes.ok ? await plansRes.json() : []
+    const state = stateRes.ok ? await stateRes.json() : { activePlanByAgent: {}, plans: {} }
+
+    if (!plans.length) {
+      list.innerHTML = `<p style="color:var(--text-muted);font-size:13px">${t('settings.claude_plans.empty')}</p>`
+      return
+    }
+
+    list.innerHTML = ''
+    for (const plan of plans) {
+      const observed = state.plans?.[plan.id]
+      const fiveHour = observed?.windows?.five_hour
+      const isActive = state.activePlanByAgent?.[mainAgentId()] === plan.id
+
+      const row = document.createElement('div')
+      row.className = 'claude-plan-row'
+
+      const main = document.createElement('div')
+      main.style.flex = '1'
+      const mainLine = document.createElement('div')
+      mainLine.className = 'claude-plan-row-main'
+      mainLine.innerHTML = `
+        ${isActive ? `<span class="claude-plan-active-dot" title="${t('settings.claude_plans.active')}"></span>` : ''}
+        <strong>${escapeHtml(plan.label)}</strong>
+        <span class="claude-plan-badge">${plan.planType === 'team' ? t('settings.claude_plans.form.type_team') : t('settings.claude_plans.form.type_personal')}</span>
+        ${!plan.channelsAllowed ? `<span class="claude-plan-badge claude-plan-badge-muted">${t('settings.claude_plans.no_channels')}</span>` : ''}
+        ${fiveHour ? `<span class="claude-plan-badge">${t('settings.claude_plans.last_known', { pct: Math.round(fiveHour.usedPercent) })}</span>` : ''}
+      `
+      main.appendChild(mainLine)
+
+      const meta = document.createElement('div')
+      meta.className = 'claude-plan-row-meta'
+      meta.textContent = `${plan.id} · ${plan.configDir}`
+      main.appendChild(meta)
+
+      row.appendChild(main)
+
+      const delBtn = document.createElement('button')
+      delBtn.className = 'claude-plan-delete'
+      delBtn.title = t('common.btn.delete')
+      delBtn.textContent = '×'
+      delBtn.addEventListener('click', () => deleteClaudePlan(plan.id))
+      row.appendChild(delBtn)
+
+      list.appendChild(row)
+    }
+  } catch {
+    list.innerHTML = `<p style="color:var(--danger);font-size:13px">${t('settings.error')}</p>`
+  }
+}
+
+function buildSettingRow(def) {
+  const row = document.createElement('div')
+  row.className = 'settings-row'
+
+  const info = document.createElement('div')
+  info.className = 'settings-row-info'
+
+  const title = document.createElement('div')
+  title.className = 'settings-row-key'
+  title.textContent = def.key
+  if (def.requiresRestart) {
+    const badge = document.createElement('span')
+    badge.className = 'settings-restart-badge'
+    badge.textContent = t('settings.restart_badge')
+    title.appendChild(badge)
+  }
+  info.appendChild(title)
+
+  const desc = document.createElement('div')
+  desc.className = 'settings-row-desc'
+  desc.textContent = t('settings.desc.' + def.key) || def.description
+  info.appendChild(desc)
+
+  const meta = document.createElement('div')
+  meta.className = 'settings-row-meta'
+  const metaParts = []
+  if (Array.isArray(def.valueSet) && def.valueSet.length) metaParts.push(t('settings.meta.values') + ': ' + def.valueSet.join(', '))
+  if (def.type === 'int' && (def.min !== undefined || def.max !== undefined)) {
+    metaParts.push(t('settings.meta.range') + ': ' + (def.min ?? '–') + '–' + (def.max ?? '–'))
+  }
+  if (def.type === 'color') metaParts.push(t('settings.meta.format') + ': #rrggbb')
+  metaParts.push(t('settings.meta.default') + ': ' + def.default)
+  meta.textContent = metaParts.join(' · ')
+  info.appendChild(meta)
+
+  row.appendChild(info)
+
+  const editor = document.createElement('div')
+  editor.className = 'settings-row-editor'
+
+  const originalValue = String(def.value)
+  let valueInput
+  if (Array.isArray(def.valueSet) && def.valueSet.length) {
+    valueInput = document.createElement('select')
+    valueInput.className = 'input'
+    for (const opt of def.valueSet) {
+      const o = document.createElement('option')
+      o.value = opt
+      o.textContent = opt
+      valueInput.appendChild(o)
+    }
+    valueInput.value = originalValue
+  } else if (def.type === 'boolean') {
+    valueInput = document.createElement('input')
+    valueInput.type = 'checkbox'
+    valueInput.className = 'settings-toggle'
+    valueInput.checked = String(def.value) === '1'
+  } else if (def.type === 'color') {
+    valueInput = document.createElement('input')
+    valueInput.type = 'color'
+    valueInput.className = 'settings-color-input'
+    valueInput.value = def.value
+  } else if (def.type === 'int') {
+    valueInput = document.createElement('input')
+    valueInput.type = 'number'
+    valueInput.className = 'input'
+    if (def.min !== undefined) valueInput.min = def.min
+    if (def.max !== undefined) valueInput.max = def.max
+    valueInput.value = def.value
+  } else {
+    valueInput = document.createElement('input')
+    valueInput.type = 'text'
+    valueInput.className = 'input'
+    valueInput.value = def.value
+  }
+  valueInput.dataset.settingKey = def.key
+  valueInput.dataset.settingType = def.type
+  valueInput.dataset.originalValue = originalValue
+  editor.appendChild(valueInput)
+
+  const errorEl = document.createElement('div')
+  errorEl.className = 'settings-row-error'
+  editor.appendChild(errorEl)
+
+  valueInput.addEventListener('input', () => markSettingDirty(def.key, valueInput, originalValue, def.type, errorEl))
+  valueInput.addEventListener('change', () => markSettingDirty(def.key, valueInput, originalValue, def.type, errorEl))
+
+  row.appendChild(editor)
+  return row
+}
+
+async function saveAllSettings() {
+  if (settingsDirty.size === 0) return
+  const btn = document.getElementById('settingsSaveAllBtn')
+  if (btn) { btn.disabled = true; btn.textContent = t('settings.save_btn.saving') }
+
+  const errors = []
+  let needsRestart = false
+
+  for (const [key, { input, type, errorEl }] of settingsDirty) {
+    errorEl.textContent = ''
+    const raw = type === 'int' ? Number(input.value) : settingInputValue(input, type)
+    try {
+      const res = await fetch('/api/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ key, value: raw }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        errorEl.textContent = data.error || 'Hiba'
+        errors.push(`${key}: ${data.error || 'hiba'}`)
+      } else {
+        input.dataset.originalValue = String(raw)
+        if (data.requiresRestart) needsRestart = true
+      }
+    } catch {
+      errorEl.textContent = 'Kapcsolati hiba'
+      errors.push(`${key}: kapcsolati hiba`)
+    }
+  }
+
+  // Remove successfully saved keys from dirty map
+  for (const [key, { input, type }] of settingsDirty) {
+    if (settingInputValue(input, type) === input.dataset.originalValue) settingsDirty.delete(key)
+  }
+  updateSettingsSaveBar()
+
+  if (btn) { btn.disabled = false; btn.textContent = t('settings.btn.save') }
+  if (errors.length) {
+    showToast(t('settings.toast.partial_error'), 'error')
+  } else {
+    showToast(needsRestart ? t('settings.toast.saved_restart') : t('settings.toast.saved'))
+  }
+}
+
+function resetAllSettings() {
+  for (const [key, { input, originalValue }] of settingsDirty) {
+    input.value = originalValue
+    const errorEl = document.querySelector(`[data-setting-key="${key}"]`)?.closest('.settings-row')?.querySelector('.settings-row-error')
+    if (errorEl) errorEl.textContent = ''
+  }
+  settingsDirty.clear()
+  updateSettingsSaveBar()
+}
+
+document.getElementById('settingsSaveAllBtn')?.addEventListener('click', saveAllSettings)
+document.getElementById('settingsResetBtn')?.addEventListener('click', resetAllSettings)
+
+// === connectors.hu install banner ===
+;(function () {
+  const DISMISSED_KEY = 'cxhu_banner_dismissed'
+  const banner = document.getElementById('cxhuBanner')
+  const closeBtn = document.getElementById('cxhuBannerClose')
+  if (!banner || !closeBtn) return
+  if (localStorage.getItem(DISMISSED_KEY) === '1') { banner.hidden = true; return }
+
+  // dismiss with animation
+  closeBtn.addEventListener('click', () => {
+    banner.style.transition = 'opacity 0.2s ease, max-height 0.3s ease'
+    banner.style.overflow = 'hidden'
+    banner.style.opacity = '0'
+    banner.style.maxHeight = banner.offsetHeight + 'px'
+    requestAnimationFrame(() => { banner.style.maxHeight = '0' })
+    setTimeout(() => { banner.hidden = true }, 300)
+    localStorage.setItem(DISMISSED_KEY, '1')
+  })
+
+  // --- state machine ---
+  const states = ['Loading','Done','Install','Installing','Token','Configuring','Error']
+  function showState(name) {
+    states.forEach(s => {
+      const el = document.getElementById('cxhuState' + s)
+      if (el) el.hidden = (s !== name)
+    })
+  }
+
+  let lastError = null
+
+  async function checkStatus() {
+    showState('Loading')
+    try {
+      const res = await fetch('/api/connectors-hu/status')
+      if (!res.ok) throw new Error('HTTP ' + res.status)
+      const data = await res.json()
+      if (data.installed && data.configured) {
+        showState('Done')
+      } else if (data.installed) {
+        showState('Token')
+      } else {
+        showState('Install')
+      }
+    } catch (e) {
+      showError(e.message || t('status.error.fetch'), checkStatus)
+    }
+  }
+
+  function showError(msg, retryFn) {
+    document.getElementById('cxhuErrorMsg').textContent = msg
+    showState('Error')
+    const retryBtn = document.getElementById('cxhuRetryBtn')
+    retryBtn.onclick = retryFn || checkStatus
+  }
+
+  // Telepítés gomb
+  const installBtn = document.getElementById('cxhuInstallBtn')
+  if (installBtn) {
+    installBtn.addEventListener('click', async () => {
+      showState('Installing')
+      try {
+        const res = await fetch('/api/connectors-hu/install', { method: 'POST' })
+        const data = await res.json().catch(() => ({}))
+        if (!res.ok || !data.ok) throw new Error(data.error || t('connectors.error.install'))
+        showState('Token')
+      } catch (e) {
+        showError(e.message, () => { showState('Install') })
+      }
+    })
+  }
+
+  // Mentés és szinkron gomb
+  const configureBtn = document.getElementById('cxhuConfigureBtn')
+  if (configureBtn) {
+    configureBtn.addEventListener('click', async () => {
+      const token = (document.getElementById('cxhuTokenInput') || {}).value || ''
+      if (!token.trim()) {
+        document.getElementById('cxhuTokenInput').focus()
+        return
+      }
+      showState('Configuring')
+      try {
+        const res = await fetch('/api/connectors-hu/configure', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token: token.trim() }),
+        })
+        const data = await res.json().catch(() => ({}))
+        if (!res.ok || !data.ok) throw new Error(data.error || t('connectors.error.configure'))
+        showState('Done')
+      } catch (e) {
+        showError(e.message, () => { showState('Token') })
+      }
+    })
+  }
+
+  // Enter key a token inputban
+  const tokenInput = document.getElementById('cxhuTokenInput')
+  if (tokenInput) {
+    tokenInput.addEventListener('keydown', e => { if (e.key === 'Enter') configureBtn && configureBtn.click() })
+  }
+
+  checkStatus()
+})()
+
+// === Token Usage Monitor ===
+const TU_COLORS = {
+  marveen: '#6366f1',
+  codi: '#f59e0b',
+  dexi: '#ec4899',
+  finci: '#10b981',
+  hilti: '#ef4444',
+  szurcsi: '#8b5cf6',
+}
+let tuSelectedAgent = ''
+let tuChartState = null
+
+// Model pricing in USD per million tokens (input / output / cache-write / cache-read).
+// Fallback row is used when model is unknown or not yet captured.
+// cache-write is 1.25x input, cache-read is 0.1x input -- keep the derived
+// columns consistent with `in` when editing a row.
+// Sonnet 5 launched on introductory pricing (2 / 10) that ends 2026-08-31;
+// the standard rate (3 / 15) applies from 2026-09-01. Resolved by date at load
+// time instead of pinned to one of the two, so the table neither understates
+// spend today nor silently overstates it the morning the intro rate expires.
+const TU_SONNET5_INTRO_END = Date.parse('2026-09-01T00:00:00Z')
+const TU_SONNET5_PRICE = Date.now() < TU_SONNET5_INTRO_END
+  ? { in: 2.0, out: 10.0, cw: 2.50, cr: 0.20 }
+  : { in: 3.0, out: 15.0, cw: 3.75, cr: 0.30 }
+
+const TU_MODEL_PRICING = {
+  // INFERRED, not from the published catalogue: Opus 5 is not listed in the
+  // model reference this table was checked against. The value follows the rest
+  // of the current Opus tier (4.6/4.7/4.8 at 5 / 25); treat it as an estimate
+  // until a published rate confirms it.
+  'claude-opus-5':       { in: 5.0,   out: 25.0,  cw: 6.25,  cr: 0.50 },
+  'claude-opus-4-8':     { in: 5.0,   out: 25.0,  cw: 6.25,  cr: 0.50 },
+  'claude-opus-4-7':     { in: 5.0,   out: 25.0,  cw: 6.25,  cr: 0.50 },
+  'claude-opus-4-6':     { in: 5.0,   out: 25.0,  cw: 6.25,  cr: 0.50 },
+  // Opus 4.0 / 4.1 -- the last generation still on the old Opus pricing.
+  'claude-opus-4':       { in: 15.0,  out: 75.0,  cw: 18.75, cr: 1.50 },
+  'claude-sonnet-5':     TU_SONNET5_PRICE,
+  'claude-sonnet-4-6':   { in: 3.0,   out: 15.0,  cw: 3.75,  cr: 0.30 },
+  'claude-sonnet-4-5':   { in: 3.0,   out: 15.0,  cw: 3.75,  cr: 0.30 },
+  'claude-fable-5':      { in: 10.0,  out: 50.0,  cw: 12.50, cr: 1.00 },
+  'claude-mythos-5':     { in: 10.0,  out: 50.0,  cw: 12.50, cr: 1.00 },
+  'claude-haiku-4-5':    { in: 1.0,   out: 5.0,   cw: 1.25,  cr: 0.10 },
+  default:               { in: 3.0,   out: 15.0,  cw: 3.75,  cr: 0.30 },
+}
+
+// Longest-prefix wins. A plain first-match loop is order-dependent and silently
+// wrong here: 'claude-opus-4-8' also startsWith 'claude-opus-4', so whichever
+// key the object happens to list first decides the price -- that is how Opus 4.8
+// was billed at the Opus 4.1 rate even once it had its own row.
+function tuPriceForModel(model) {
+  if (!model) return TU_MODEL_PRICING.default
+  const keys = Object.keys(TU_MODEL_PRICING)
+    .filter((k) => k !== 'default')
+    .sort((a, b) => b.length - a.length)
+  for (const key of keys) {
+    if (model.startsWith(key)) return TU_MODEL_PRICING[key]
+  }
+  return TU_MODEL_PRICING.default
+}
+
+function tuCalcCostUSD(inputTokens, outputTokens, cacheReadTokens, cacheCreationTokens, model) {
+  const p = tuPriceForModel(model)
+  return (
+    (inputTokens || 0) * p.in +
+    (outputTokens || 0) * p.out +
+    (cacheCreationTokens || 0) * p.cw +
+    (cacheReadTokens || 0) * p.cr
+  ) / 1_000_000
+}
+
+function tuFormatCostUSD(usd) {
+  if (usd < 0.001) return '<$0.001'
+  if (usd < 1) return '$' + usd.toFixed(3)
+  return '$' + usd.toFixed(2)
+}
+
+// Pie chart color palette for model distribution (distinct from agent colors)
+const TU_MODEL_COLORS = ['#6366f1','#06b6d4','#f59e0b','#22c55e','#ef4444','#8b5cf6','#ec4899','#10b981']
+
+function tuGetModelColor(idx) { return TU_MODEL_COLORS[idx % TU_MODEL_COLORS.length] }
+
+function tuGetColor(agent) {
+  return TU_COLORS[agent] || '#64748b'
+}
+
+function tuMcpServerFromTool(toolName) {
+  if (!toolName || !toolName.startsWith('mcp__')) return null
+  const parts = toolName.split('__')
+  // parts: ['mcp', '<server>', '<tool>'] for a full tool name, or
+  // ['mcp', '<server>'] for a tuMcpGroupKey() group key -- without accepting
+  // the 2-part form, every grouped MCP row would be mislabelled as builtin.
+  return parts.length >= 2 && parts[1] ? parts[1] : null
+}
+
+function tuMcpGroupKey(toolName) {
+  if (!toolName || !toolName.startsWith('mcp__')) return toolName
+  const parts = toolName.split('__')
+  return parts.length >= 3 ? 'mcp__' + parts[1] : toolName
+}
+
+function tuFormatTokens(n) {
+  if (n == null || isNaN(n)) return '0'
+  if (n >= 1e9) return (n / 1e9).toFixed(1) + 'B'
+  if (n >= 1e6) return (n / 1e6).toFixed(1) + 'M'
+  if (n >= 1e3) return (n / 1e3).toFixed(1) + 'K'
+  return String(n)
+}
+
+function tuGetTimeRange() {
+  const period = document.getElementById('tuPeriod')?.value || '7d'
+  const now = Math.floor(Date.now() / 1000)
+  if (period === '1h') return { from: now - 3600, to: now }
+  if (period === '24h') return { from: now - 86400, to: now }
+  if (period === '7d') return { from: now - 7 * 86400, to: now }
+  if (period === '30d') return { from: now - 30 * 86400, to: now }
+  return { from: undefined, to: undefined }
+}
+
+async function loadTokenUsage() {
+  const { from, to } = tuGetTimeRange()
+  const agent = tuSelectedAgent
+
+  const params = new URLSearchParams()
+  if (from) params.set('from', from)
+  if (to) params.set('to', to)
+
+  const summaryRes = await fetch('/api/token-usage/summary?' + params)
+  if (!summaryRes.ok) return
+  const summary = await summaryRes.json()
+  summary.sort((a, b) => {
+    const aTotal = (a.totalInput || 0) + (a.totalCacheRead || 0) + (a.totalCacheCreation || 0)
+    const bTotal = (b.totalInput || 0) + (b.totalCacheRead || 0) + (b.totalCacheCreation || 0)
+    return bTotal - aTotal
+  })
+  renderTuSummary(summary)
+
+  const agentSelect = document.getElementById('tuAgent')
+  if (agentSelect && agentSelect.options.length <= 1) {
+    for (const s of summary) {
+      const opt = document.createElement('option')
+      opt.value = s.agent
+      opt.textContent = s.agent
+      agentSelect.appendChild(opt)
+    }
+  }
+  if (agentSelect) agentSelect.value = agent
+
+  const period = document.getElementById('tuPeriod')?.value || '7d'
+  const bucketMin = period === '1h' ? 5 : 60
+  const tlParams = new URLSearchParams(params)
+  tlParams.set('bucket', String(bucketMin))
+  const tlRes = await fetch('/api/token-usage/timeline?' + tlParams)
+  if (!tlRes.ok) return
+  const timeline = await tlRes.json()
+  renderTuTimeline(timeline, agent)
+  renderTuBudgetCards()
+
+  tuDetailSearch = ''
+  const searchEl = document.getElementById('tuSearchInput')
+  if (searchEl) searchEl.value = ''
+
+  const agentParam = agent ? '&agent=' + encodeURIComponent(agent) : ''
+  const baseQuery = params.toString()
+
+  const [modelDistRes, toolStatsRes] = await Promise.all([
+    fetch('/api/token-usage/model-dist?' + baseQuery + agentParam),
+    fetch('/api/token-usage/tool-stats?' + baseQuery + agentParam),
+  ])
+  if (modelDistRes.ok) renderTuModelDist(await modelDistRes.json())
+  if (toolStatsRes.ok) renderTuToolStats(await toolStatsRes.json())
+
+  await tuFetchDetails()
+}
+
+function renderTuSummary(summary) {
+  const el = document.getElementById('tuSummaryCards')
+  if (!el) return
+  if (!summary.length) {
+    el.innerHTML = `<div class="overview-stat"><div class="overview-stat-label">${t('tokenUsage.no_data')}</div><div class="overview-stat-value">0</div><div class="overview-stat-sub">${t('tokenUsage.collect_hint')}</div></div>`
+    return
+  }
+  el.innerHTML = summary.map(s => {
+    const totalIn = (s.totalInput || 0) + (s.totalCacheRead || 0) + (s.totalCacheCreation || 0)
+    const isActive = tuSelectedAgent === s.agent
+    const dimmed = tuSelectedAgent && !isActive
+    const costUSD = Array.isArray(s.perModel) && s.perModel.length
+      ? s.perModel.reduce((sum, m) => sum + tuCalcCostUSD(m.totalInput || 0, m.totalOutput || 0, m.totalCacheRead || 0, m.totalCacheCreation || 0, m.model && m.model !== '(unknown)' ? m.model : null), 0)
+      : tuCalcCostUSD(s.totalInput, s.totalOutput, s.totalCacheRead, s.totalCacheCreation, null)
+    const sessions = s.totalSessions || 0
+    const tokPerSession = sessions > 0 ? Math.round(totalIn / sessions) : 0
+    const costPerSession = sessions > 0 ? costUSD / sessions : 0
+    return `
+      <div class="overview-stat tu-agent-card${isActive ? ' tu-active' : ''}" data-agent="${escapeHtml(s.agent)}"
+        style="border-left:3px solid ${tuGetColor(s.agent)};cursor:pointer;${dimmed ? 'opacity:0.4;' : ''}transition:opacity 0.2s">
+        <div class="overview-stat-label">${escapeHtml(s.agent)}</div>
+        <div class="overview-stat-value">${tuFormatTokens(totalIn)}</div>
+        <div class="overview-stat-sub">${t('tokenUsage.calls_sub', { calls: (s.totalCalls || 0).toLocaleString(), out: tuFormatTokens(s.totalOutput) })}</div>
+        <div class="overview-stat-sub" style="margin-top:4px;color:var(--text-secondary)">${tuFormatCostUSD(costUSD)} &middot; ${sessions} sess</div>
+        <div class="overview-stat-sub" style="font-size:11px;color:var(--text-secondary)">${tuFormatTokens(tokPerSession)} tok/sess &middot; ${tuFormatCostUSD(costPerSession)}/sess</div>
+      </div>`
+  }).join('')
+
+  el.querySelectorAll('.tu-agent-card').forEach(card => {
+    card.addEventListener('click', () => {
+      const clickedAgent = card.dataset.agent
+      if (tuSelectedAgent === clickedAgent) {
+        tuSelectedAgent = ''
+      } else {
+        tuSelectedAgent = clickedAgent
+      }
+      const agentSelect = document.getElementById('tuAgent')
+      if (agentSelect) agentSelect.value = tuSelectedAgent
+      loadTokenUsage()
+    })
+  })
+}
+
+function tuGetResetLines(bucketStart, bucketEnd) {
+  const lines = []
+  // 5h session lines
+  const win5h = 5 * 3600
+  let t5 = bucketStart - (bucketStart % win5h) + win5h
+  while (t5 < bucketEnd) {
+    lines.push({ ts: t5, type: '5h', label: '5h' })
+    t5 += win5h
+  }
+  // Daily midnight + weekly Monday midnight
+  const d = new Date(bucketStart * 1000)
+  d.setHours(0, 0, 0, 0)
+  d.setDate(d.getDate() + 1)
+  while (d.getTime() / 1000 < bucketEnd) {
+    const ts = Math.floor(d.getTime() / 1000)
+    const isMonday = d.getDay() === 1
+    const near5h = lines.find(l => l.type === '5h' && Math.abs(l.ts - ts) < 1800)
+    if (!near5h) lines.push({ ts, type: isMonday ? 'weekly' : 'daily', label: isMonday ? t('tokenUsage.chart.week') : t('tokenUsage.chart.day') })
+    else if (isMonday) { near5h.type = 'weekly'; near5h.label = t('tokenUsage.chart.week') }
+    d.setDate(d.getDate() + 1)
+  }
+  return lines
+}
+
+function tuFillBuckets(data, bucketSeconds) {
+  if (!data.length) return data
+  const agents = [...new Set(data.map(d => d.agent))]
+  const bucketMap = {}
+  for (const d of data) {
+    const key = d.bucket + ':' + d.agent
+    bucketMap[key] = d
+  }
+  const minB = Math.min(...data.map(d => d.bucket))
+  const maxB = Math.max(...data.map(d => d.bucket))
+  const filled = []
+  for (let b = minB; b <= maxB; b += bucketSeconds) {
+    for (const agent of agents) {
+      const key = b + ':' + agent
+      filled.push(bucketMap[key] || { bucket: b, agent, calls: 0, inputTokens: 0, outputTokens: 0 })
+    }
+  }
+  return filled
+}
+
+function tuFormatLocalDate(ts) {
+  return new Date(ts * 1000).toLocaleString(undefined, { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })
+}
+
+function tuFormatLocalShort(ts) {
+  const d = new Date(ts * 1000)
+  const period = document.getElementById('tuPeriod')?.value || '7d'
+  if (period === '1h' || period === '24h') {
+    return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`
+  }
+  return `${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:00`
+}
+
+function tuIsPeakHour(ts) {
+  const d = new Date(ts * 1000)
+  if (d.getDay() === 0 || d.getDay() === 6) return false
+  try {
+    const ptHour = parseInt(d.toLocaleString('en-US', { timeZone: 'America/Los_Angeles', hour: 'numeric', hour12: false }))
+    return ptHour >= 5 && ptHour < 11
+  } catch { return false }
+}
+
+function tuCalcCumulativeWindows(buckets, bucketTotals, windowSeconds) {
+  const result = []
+  let windowStart = null
+  let cumulative = 0
+  for (const b of buckets) {
+    const total = bucketTotals[b] || 0
+    if (windowStart === null) {
+      if (total > 0) { windowStart = b; cumulative = total }
+      else { cumulative = 0 }
+    } else if (b >= windowStart + windowSeconds) {
+      if (total > 0) { windowStart = b; cumulative = total }
+      else { windowStart = null; cumulative = 0 }
+    } else {
+      cumulative += total
+    }
+    result.push({ bucket: b, cumulative })
+  }
+  return result
+}
+
+let tuBudgetView = ''
+
+function renderTuTimeline(data, filterAgent) {
+  const canvas = document.getElementById('tuCanvas')
+  if (!canvas) return
+  const container = canvas.parentElement
+  const dpr = window.devicePixelRatio || 1
+  const cssW = container.offsetWidth
+  const cssH = 360
+  canvas.width = cssW * dpr
+  canvas.height = cssH * dpr
+  canvas.style.width = cssW + 'px'
+  canvas.style.height = cssH + 'px'
+  const ctx = canvas.getContext('2d')
+  ctx.scale(dpr, dpr)
+  ctx.clearRect(0, 0, cssW, cssH)
+
+  const textSecondary = getComputedStyle(document.documentElement).getPropertyValue('--text-secondary').trim() || '#64748b'
+  const textPrimary = getComputedStyle(document.documentElement).getPropertyValue('--text-primary').trim() || '#1e293b'
+  const borderColor = getComputedStyle(document.documentElement).getPropertyValue('--border').trim() || '#e2e8f0'
+
+  if (!data.length) {
+    ctx.fillStyle = textSecondary
+    ctx.font = '14px sans-serif'
+    ctx.textAlign = 'center'
+    ctx.fillText(t('tokenUsage.no_period_data'), cssW / 2, 160)
+    tuChartState = null
+    return
+  }
+
+  renderTuTimeline.__lastData = data
+  renderTuTimeline.__lastAgent = filterAgent
+  const period = document.getElementById('tuPeriod')?.value || '7d'
+  const bucketSec = period === '1h' ? 300 : 3600
+  const filled = tuFillBuckets(data, bucketSec)
+  const agents = [...new Set(filled.map(d => d.agent))]
+  const buckets = [...new Set(filled.map(d => d.bucket))].sort((a, b) => a - b)
+  const pad = { top: 20, right: 65, bottom: 70, left: 70 }
+  const w = cssW - pad.left - pad.right
+  const h = cssH - pad.top - pad.bottom
+
+  const bucketMap = {}
+  for (const d of filled) {
+    if (!bucketMap[d.bucket]) bucketMap[d.bucket] = {}
+    bucketMap[d.bucket][d.agent] = (bucketMap[d.bucket][d.agent] || 0) + (d.inputTokens || 0)
+  }
+
+  const bucketTotals = {}
+  for (const b of buckets) {
+    let sum = 0
+    for (const a of agents) sum += (bucketMap[b]?.[a] || 0)
+    bucketTotals[b] = sum
+  }
+
+  let maxVal = 0
+  for (const b of buckets) {
+    if (filterAgent) {
+      const v = bucketMap[b]?.[filterAgent] || 0
+      if (v > maxVal) maxVal = v
+    } else {
+      if (bucketTotals[b] > maxVal) maxVal = bucketTotals[b]
+    }
+  }
+  if (maxVal === 0) maxVal = 1
+
+  const barW = Math.max(2, Math.min(20, w / buckets.length - 1))
+  const barGap = Math.max(0, (w / buckets.length) - barW)
+  const bucketRange = buckets[buckets.length - 1] - buckets[0] + bucketSec
+
+  // Peak hours shading
+  for (let i = 0; i < buckets.length; i++) {
+    if (tuIsPeakHour(buckets[i])) {
+      const x = pad.left + (i / buckets.length) * w
+      ctx.fillStyle = 'rgba(239, 68, 68, 0.06)'
+      ctx.fillRect(x, pad.top, barW + barGap, h)
+    }
+  }
+
+  // Day/week reset lines
+  const resetLines = tuGetResetLines(buckets[0], buckets[buckets.length - 1] + 3600)
+  for (const rl of resetLines) {
+    const frac = (rl.ts - buckets[0]) / bucketRange
+    if (frac < 0 || frac > 1) continue
+    const x = pad.left + frac * w
+    ctx.save()
+    ctx.strokeStyle = rl.type === 'weekly' ? '#ef444480' : rl.type === '5h' ? '#3b82f680' : '#f59e0b60'
+    ctx.lineWidth = rl.type === 'weekly' ? 1.5 : 1
+    ctx.setLineDash(rl.type === 'weekly' ? [6, 4] : rl.type === '5h' ? [3, 3] : [4, 4])
+    ctx.beginPath()
+    ctx.moveTo(x, pad.top)
+    ctx.lineTo(x, pad.top + h)
+    ctx.stroke()
+    ctx.restore()
+  }
+
+  // Bars (dimmed when budget view is active)
+  const barDimmed = tuBudgetView !== ''
+  const barRects = []
+  for (let i = 0; i < buckets.length; i++) {
+    const x = pad.left + (i / buckets.length) * w
+    let yOffset = 0
+    const segments = []
+    const drawAgents = filterAgent ? [filterAgent] : agents
+    for (const agent of drawAgents) {
+      const val = bucketMap[buckets[i]]?.[agent] || 0
+      const barH = (val / maxVal) * h
+      ctx.globalAlpha = barDimmed ? 0.2 : 1
+      ctx.fillStyle = tuGetColor(agent)
+      ctx.fillRect(x, pad.top + h - yOffset - barH, barW, barH)
+      ctx.globalAlpha = 1
+      if (val > 0) segments.push({ agent, val })
+      yOffset += barH
+    }
+    barRects.push({ x, w: barW + barGap, bucket: buckets[i], segments, totalH: yOffset })
+  }
+
+  // Cumulative budget lines
+  const win5h = tuCalcCumulativeWindows(buckets, bucketTotals, 5 * 3600)
+  const winWeekly = tuCalcCumulativeWindows(buckets, bucketTotals, 7 * 86400)
+  const maxCum = Math.max(
+    ...win5h.map(w => w.cumulative),
+    ...winWeekly.map(w => w.cumulative),
+    1
+  )
+
+  function drawCumLine(windows, color, lineW, active) {
+    ctx.save()
+    ctx.strokeStyle = color
+    ctx.lineWidth = active ? lineW + 1 : lineW
+    ctx.globalAlpha = active ? 1 : (tuBudgetView === '' ? 0.7 : 0.15)
+    ctx.setLineDash([])
+    ctx.beginPath()
+    let prevCum = 0
+    for (let i = 0; i < windows.length; i++) {
+      const x = pad.left + (i / buckets.length) * w + barW / 2
+      const y = pad.top + h - (windows[i].cumulative / maxCum) * h
+      if (i === 0) { ctx.moveTo(x, y) }
+      else if (windows[i].cumulative < prevCum) {
+        ctx.stroke()
+        ctx.beginPath()
+        ctx.moveTo(x, pad.top + h)
+        ctx.lineTo(x, y)
+      } else {
+        ctx.lineTo(x, y)
+      }
+      prevCum = windows[i].cumulative
+    }
+    ctx.stroke()
+    ctx.restore()
+  }
+
+  const is5hActive = tuBudgetView === '5h'
+  const isWeeklyActive = tuBudgetView === 'weekly'
+  drawCumLine(winWeekly, '#8b5cf6', 1.5, isWeeklyActive)
+  drawCumLine(win5h, '#06b6d4', 2, is5hActive)
+
+  // X axis
+  ctx.strokeStyle = borderColor
+  ctx.lineWidth = 1
+  ctx.setLineDash([])
+  ctx.beginPath()
+  ctx.moveTo(pad.left, pad.top + h)
+  ctx.lineTo(pad.left + w, pad.top + h)
+  ctx.stroke()
+
+  // X labels
+  ctx.fillStyle = textSecondary
+  ctx.font = '11px sans-serif'
+  ctx.textAlign = 'center'
+  const labelInterval = Math.max(1, Math.floor(buckets.length / 8))
+  for (let i = 0; i < buckets.length; i += labelInterval) {
+    const x = pad.left + (i / buckets.length) * w + barW / 2
+    ctx.fillText(tuFormatLocalShort(buckets[i]), x, pad.top + h + 18)
+  }
+
+  // Left Y axis (per-bucket)
+  ctx.textAlign = 'right'
+  ctx.fillStyle = textSecondary
+  ctx.font = '10px sans-serif'
+  for (let i = 0; i <= 4; i++) {
+    const val = (maxVal / 4) * i
+    const y = pad.top + h - (i / 4) * h
+    ctx.fillText(tuFormatTokens(val), pad.left - 8, y + 4)
+  }
+
+  // Right Y axis (cumulative)
+  ctx.textAlign = 'left'
+  ctx.fillStyle = '#06b6d4'
+  for (let i = 0; i <= 4; i++) {
+    const val = (maxCum / 4) * i
+    const y = pad.top + h - (i / 4) * h
+    ctx.fillText(tuFormatTokens(val), pad.left + w + 6, y + 4)
+  }
+
+  // Legend: single dynamic row with wrapping
+  let legendY = pad.top + h + 38
+  let legendX = pad.left
+  const maxLegW = cssW - pad.right
+  function legWrap(needed) { if (legendX + needed > maxLegW) { legendX = pad.left; legendY += 16 } }
+
+  ctx.font = '11px sans-serif'
+  ctx.textAlign = 'left'
+  for (const agent of agents) {
+    const tw = ctx.measureText(agent).width + 28
+    legWrap(tw)
+    ctx.fillStyle = tuGetColor(agent)
+    ctx.fillRect(legendX, legendY - 7, 10, 10)
+    ctx.fillStyle = textPrimary
+    ctx.fillText(agent, legendX + 14, legendY + 2)
+    legendX += tw
+  }
+
+  const legendHits = []
+  const lineItems = [
+    { label: t('tokenUsage.chart.window_5h'), color: '#06b6d4', lw: 2, dash: [], id: '5h', active: is5hActive },
+    { label: t('tokenUsage.chart.window_weekly'), color: '#8b5cf6', lw: 1.5, dash: [], id: 'weekly', active: isWeeklyActive },
+    { label: '5h', color: '#3b82f680', lw: 1, dash: [3, 3] },
+    { label: t('tokenUsage.chart.day'), color: '#f59e0b60', lw: 1, dash: [4, 4] },
+    { label: t('tokenUsage.chart.week'), color: '#ef444480', lw: 1.5, dash: [6, 4] },
+  ]
+  for (const li of lineItems) {
+    const tw = ctx.measureText(li.label).width + 34
+    legWrap(tw)
+    ctx.save()
+    ctx.strokeStyle = li.color; ctx.lineWidth = li.lw; ctx.setLineDash(li.dash)
+    ctx.beginPath(); ctx.moveTo(legendX, legendY - 1); ctx.lineTo(legendX + 16, legendY - 1); ctx.stroke()
+    ctx.restore()
+    ctx.fillStyle = li.active ? li.color : textSecondary
+    ctx.font = li.active ? 'bold 10px sans-serif' : '10px sans-serif'
+    ctx.fillText(li.label, legendX + 20, legendY + 2)
+    if (li.id) legendHits.push({ x: legendX, y: legendY - 10, w: tw, h: 16, id: li.id })
+    legendX += tw
+  }
+  legWrap(70)
+  ctx.fillStyle = 'rgba(239, 68, 68, 0.15)'
+  ctx.fillRect(legendX, legendY - 7, 10, 10)
+  ctx.fillStyle = textSecondary; ctx.font = '10px sans-serif'
+  ctx.fillText('csúcsidő', legendX + 14, legendY + 2)
+
+  // Store legend hit areas for click handling
+  tuChartState = { barRects, pad, h, cssW, cssH, maxVal, maxCum, win5h, winWeekly, legendHits }
+}
+
+;(function setupTuTooltip() {
+  const canvas = document.getElementById('tuCanvas')
+  if (!canvas) return
+  let tooltip = document.getElementById('tuTooltip')
+  if (!tooltip) {
+    tooltip = document.createElement('div')
+    tooltip.id = 'tuTooltip'
+    tooltip.style.cssText = 'position:absolute;background:var(--bg-elevated,#1e293b);color:var(--text-primary,#f8fafc);padding:8px 12px;border-radius:6px;font-size:12px;pointer-events:none;z-index:100;display:none;box-shadow:0 4px 12px rgba(0,0,0,0.3);max-width:240px;line-height:1.5'
+    canvas.parentElement.appendChild(tooltip)
+  }
+
+  canvas.addEventListener('mousemove', e => {
+    if (!tuChartState) return
+    const rect = canvas.getBoundingClientRect()
+    const mx = e.clientX - rect.left
+    const my = e.clientY - rect.top
+    const { barRects, pad, h } = tuChartState
+
+    let hit = null
+    for (const br of barRects) {
+      if (mx >= br.x && mx < br.x + br.w) { hit = br; break }
+    }
+
+    if (hit && my >= pad.top && my <= pad.top + h) {
+      const isPeak = tuIsPeakHour(hit.bucket)
+      let html = `<div style="font-weight:600;margin-bottom:4px">${tuFormatLocalShort(hit.bucket)}${isPeak ? ` <span style="color:#ef4444;font-size:10px">${t('tokenUsage.chart.peak')}</span>` : ''}</div>`
+      let total = 0
+      for (const seg of hit.segments) {
+        html += `<div><span style="color:${tuGetColor(seg.agent)}">&#9632;</span> ${seg.agent}: ${tuFormatTokens(seg.val)}</div>`
+        total += seg.val
+      }
+      if (hit.segments.length > 1) html += `<div style="border-top:1px solid rgba(255,255,255,0.2);margin-top:4px;padding-top:4px;font-weight:600">${t('tokenUsage.total')} ${tuFormatTokens(total)}</div>`
+      if (tuChartState.win5h || tuChartState.winWeekly) {
+        const idx = barRects.indexOf(hit)
+        if (idx >= 0) {
+          const c5 = tuChartState.win5h?.[idx]
+          const cw = tuChartState.winWeekly?.[idx]
+          html += '<div style="border-top:1px solid rgba(255,255,255,0.2);margin-top:4px;padding-top:4px;font-size:11px">'
+          if (c5) html += `<div><span style="color:#06b6d4">━</span> 5h ablak: ${tuFormatTokens(c5.cumulative)}</div>`
+          if (cw) html += `<div><span style="color:#8b5cf6">━</span> Heti ablak: ${tuFormatTokens(cw.cumulative)}</div>`
+          html += '</div>'
+        }
+      }
+      tooltip.innerHTML = html
+      tooltip.style.display = 'block'
+      const tx = Math.min(e.clientX - rect.left + 12, canvas.parentElement.offsetWidth - 250)
+      tooltip.style.left = tx + 'px'
+      tooltip.style.top = (my - 10) + 'px'
+    } else {
+      tooltip.style.display = 'none'
+    }
+  })
+
+  canvas.addEventListener('mouseleave', () => {
+    tooltip.style.display = 'none'
+  })
+
+  canvas.addEventListener('click', e => {
+    if (!tuChartState?.legendHits) return
+    const rect = canvas.getBoundingClientRect()
+    const mx = e.clientX - rect.left
+    const my = e.clientY - rect.top
+    for (const lh of tuChartState.legendHits) {
+      if (mx >= lh.x && mx <= lh.x + lh.w && my >= lh.y && my <= lh.y + lh.h) {
+        tuBudgetView = tuBudgetView === lh.id ? '' : lh.id
+        if (renderTuTimeline.__lastData) renderTuTimeline(renderTuTimeline.__lastData, renderTuTimeline.__lastAgent)
+        return
+      }
+    }
+  })
+})()
+
+function renderTuBudgetCards() {
+  const el = document.getElementById('tuBudgetCards')
+  if (!el || !tuChartState) return
+  const { win5h, winWeekly } = tuChartState
+  const cur5h = win5h?.length ? win5h[win5h.length - 1].cumulative : 0
+  const curWeekly = winWeekly?.length ? winWeekly[winWeekly.length - 1].cumulative : 0
+
+  el.innerHTML = `
+    <div class="overview-stat tu-budget-card${tuBudgetView === '5h' ? ' tu-active' : ''}" data-budget="5h"
+      style="border-left:3px solid #06b6d4;cursor:pointer;${tuBudgetView === 'weekly' ? 'opacity:0.4;' : ''}transition:opacity 0.2s">
+      <div class="overview-stat-label">${t('tokenUsage.window_5h_label')}</div>
+      <div class="overview-stat-value" style="color:#06b6d4">${tuFormatTokens(cur5h)}</div>
+      <div class="overview-stat-sub">${t('tokenUsage.cumulative_sub')}</div>
+    </div>
+    <div class="overview-stat tu-budget-card${tuBudgetView === 'weekly' ? ' tu-active' : ''}" data-budget="weekly"
+      style="border-left:3px solid #8b5cf6;cursor:pointer;${tuBudgetView === '5h' ? 'opacity:0.4;' : ''}transition:opacity 0.2s">
+      <div class="overview-stat-label">${t('tokenUsage.window_weekly_label')}</div>
+      <div class="overview-stat-value" style="color:#8b5cf6">${tuFormatTokens(curWeekly)}</div>
+      <div class="overview-stat-sub">${t('tokenUsage.cumulative_sub')}</div>
+    </div>`
+
+  el.querySelectorAll('.tu-budget-card').forEach(card => {
+    card.addEventListener('click', () => {
+      const id = card.dataset.budget
+      tuBudgetView = tuBudgetView === id ? '' : id
+      if (renderTuTimeline.__lastData) renderTuTimeline(renderTuTimeline.__lastData, renderTuTimeline.__lastAgent)
+      renderTuBudgetCards()
+    })
+  })
+}
+
+let tuDetailData = []
+let tuDetailSort = { col: 'timestamp', dir: 'desc' }
+let tuDetailSearch = ''
+let tuSearchTimer = null
+
+function tuSortDetails(data) {
+  return [...data].sort((a, b) => {
+    const { col, dir } = tuDetailSort
+    let va, vb
+    if (col === 'input') {
+      va = (a.input_tokens || 0) + (a.cache_read_tokens || 0) + (a.cache_creation_tokens || 0)
+      vb = (b.input_tokens || 0) + (b.cache_read_tokens || 0) + (b.cache_creation_tokens || 0)
+    } else if (col === 'output') {
+      va = a.output_tokens || 0; vb = b.output_tokens || 0
+    } else if (col === 'agent') {
+      va = a.agent || ''; vb = b.agent || ''
+      return dir === 'asc' ? va.localeCompare(vb) : vb.localeCompare(va)
+    } else {
+      va = a.timestamp || 0; vb = b.timestamp || 0
+    }
+    return dir === 'asc' ? va - vb : vb - va
+  })
+}
+
+function renderTuDetailsTable() {
+  const tbody = document.getElementById('tuDetailsTbody')
+  const countEl = document.getElementById('tuDetailsCount')
+  if (!tbody) return
+
+  const sorted = tuSortDetails(tuDetailData)
+  if (countEl) countEl.textContent = `${sorted.length} sor`
+
+  if (!sorted.length) {
+    tbody.innerHTML = `<tr><td colspan="5" style="color:var(--text-secondary);font-size:13px;text-align:center;padding:16px">${t('tokenUsage.no_calls')}</td></tr>`
+    return
+  }
+
+  tbody.innerHTML = sorted.map(d => {
+    const totalIn = (d.input_tokens || 0) + (d.cache_read_tokens || 0) + (d.cache_creation_tokens || 0)
+    const timeStr = tuFormatLocalDate(d.timestamp)
+    const preview = d.content_preview ? d.content_preview.slice(0, 80) + (d.content_preview.length > 80 ? '...' : '') : ''
+    const taskInfo = d.task_title ? `<span style="color:var(--text-secondary);font-size:11px"> [${escapeHtml(d.task_title)}]</span>` : ''
+    return `<tr>
+      <td style="white-space:nowrap">${timeStr}</td>
+      <td><span style="color:${tuGetColor(d.agent)};font-weight:600">${escapeHtml(d.agent)}</span>${taskInfo}</td>
+      <td style="text-align:right;font-variant-numeric:tabular-nums">${tuFormatTokens(totalIn)}</td>
+      <td style="text-align:right;font-variant-numeric:tabular-nums">${tuFormatTokens(d.output_tokens)}</td>
+      <td style="font-size:12px;color:var(--text-secondary);max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${escapeHtml(preview || '')}">${d.tool_name ? '<code>' + escapeHtml(d.tool_name) + '</code> ' : ''}${escapeHtml(preview)}</td>
+    </tr>`
+  }).join('')
+}
+
+function renderTuDetails(data) {
+  if (data) tuDetailData = data
+  const el = document.getElementById('tuDetailsTable')
+  if (!el) return
+
+  if (!document.getElementById('tuDetailsTbody')) {
+    const arrow = col => tuDetailSort.col === col ? (tuDetailSort.dir === 'asc' ? ' ▲' : ' ▼') : ''
+    const thStyle = 'cursor:pointer;user-select:none'
+    const thStyleR = thStyle + ';text-align:right'
+    el.innerHTML = `<div style="margin-bottom:8px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+      <input id="tuSearchInput" type="text" placeholder="${t('tokenUsage.search_placeholder')}"
+        style="padding:4px 8px;border:1px solid var(--border);border-radius:4px;background:var(--bg-primary);color:var(--text-primary);width:260px;font-size:13px">
+      <span id="tuDetailsCount" style="color:var(--text-secondary);font-size:12px"></span>
+    </div>
+    <div style="overflow-x:auto"><table class="mem-table" style="width:100%;min-width:600px">
+      <thead><tr>
+        <th style="${thStyle}" data-sort="timestamp">${t('tokenUsage.col.time')}${arrow('timestamp')}</th>
+        <th style="${thStyle}" data-sort="agent">${t('tokenUsage.col.agent')}${arrow('agent')}</th>
+        <th style="${thStyleR}" data-sort="input">Input${arrow('input')}</th>
+        <th style="${thStyleR}" data-sort="output">Output${arrow('output')}</th>
+        <th>${t('tokenUsage.col.content')}</th>
+      </tr></thead>
+      <tbody id="tuDetailsTbody"></tbody>
+    </table></div>`
+
+    el.querySelectorAll('th[data-sort]').forEach(th => {
+      th.addEventListener('click', () => {
+        const col = th.dataset.sort
+        if (tuDetailSort.col === col) {
+          tuDetailSort.dir = tuDetailSort.dir === 'asc' ? 'desc' : 'asc'
+        } else {
+          tuDetailSort = { col, dir: col === 'agent' ? 'asc' : 'desc' }
+        }
+        th.closest('thead').querySelectorAll('th[data-sort]').forEach(h => {
+          const c = h.dataset.sort
+          const arrow = tuDetailSort.col === c ? (tuDetailSort.dir === 'asc' ? ' ▲' : ' ▼') : ''
+          const labels = { timestamp: t('tokenUsage.col.time'), agent: t('tokenUsage.col.agent'), input: 'Input', output: 'Output' }
+          h.textContent = (labels[c] || c) + arrow
+        })
+        renderTuDetailsTable()
+      })
+    })
+
+    document.getElementById('tuSearchInput').addEventListener('input', e => {
+      tuDetailSearch = e.target.value
+      clearTimeout(tuSearchTimer)
+      tuSearchTimer = setTimeout(() => tuFetchDetails(), 400)
+    })
+  }
+
+  renderTuDetailsTable()
+}
+
+async function tuFetchDetails() {
+  const { from, to } = tuGetTimeRange()
+  const agent = tuSelectedAgent
+  const minTokens = document.getElementById('tuMinTokens')?.value || '50000'
+  const params = new URLSearchParams()
+  if (from) params.set('from', from)
+  if (to) params.set('to', to)
+  if (agent) params.set('agent', agent)
+  if (!tuDetailSearch) params.set('min_tokens', minTokens)
+  if (tuDetailSearch) params.set('q', tuDetailSearch)
+  params.set('limit', '200')
+  const detailRes = await fetch('/api/token-usage?' + params)
+  if (!detailRes.ok) return
+  const details = await detailRes.json()
+  renderTuDetails(details)
+}
+
+document.getElementById('tuCollectBtn')?.addEventListener('click', async () => {
+  const btn = document.getElementById('tuCollectBtn')
+  btn.disabled = true
+  btn.textContent = t('tokenUsage.collect_btn.collecting')
+  try {
+    const res = await fetch('/api/token-usage/collect', { method: 'POST' }).then(r => r.json())
+    btn.textContent = t('tokenUsage.collect_done', { n: res.inserted || 0 })
+    setTimeout(() => { btn.textContent = t('tokenUsage.collect_btn.collect'); btn.disabled = false }, 2000)
+    loadTokenUsage()
+  } catch {
+    btn.textContent = t('tokenUsage.collect_error')
+    setTimeout(() => { btn.textContent = t('tokenUsage.collect_btn.collect'); btn.disabled = false }, 2000)
+  }
+})
+
+document.getElementById('tuPeriod')?.addEventListener('change', () => { tuSelectedAgent = ''; loadTokenUsage() })
+document.getElementById('tuAgent')?.addEventListener('change', () => { tuSelectedAgent = document.getElementById('tuAgent').value; loadTokenUsage() })
+document.getElementById('tuMinTokens')?.addEventListener('change', () => tuFetchDetails())
+document.getElementById('tuToolAgentBreakdown')?.addEventListener('change', () => {
+  if (tuToolStatsData) renderTuToolStats(tuToolStatsData)
+})
+
+window.addEventListener('resize', () => {
+  if (!document.getElementById('tokenUsagePage')?.hidden) {
+    if (tuChartState && renderTuTimeline.__lastData) renderTuTimeline(renderTuTimeline.__lastData, renderTuTimeline.__lastAgent)
+    if (tuModelDistData) renderTuModelDist(tuModelDistData)
+  }
+})
+
+// ============================================================
+// Token Monitor: Model distribution pie chart
+// ============================================================
+let tuModelDistData = null
+
+function renderTuModelDist(data) {
+  tuModelDistData = data
+  const section = document.getElementById('tuModelDistSection')
+  const tableEl = document.getElementById('tuModelDistTable')
+  const canvas = document.getElementById('tuModelPieCanvas')
+  if (!section || !tableEl || !canvas) return
+
+  if (!data || !data.length) {
+    tableEl.innerHTML = `<span style="color:var(--text-secondary);font-size:13px">${t('tokenUsage.model_dist_no_data')}</span>`
+    const ctx = canvas.getContext('2d')
+    ctx.clearRect(0, 0, canvas.width, canvas.height)
+    return
+  }
+
+  // Pie chart
+  const dpr = window.devicePixelRatio || 1
+  const size = 180
+  canvas.width = size * dpr
+  canvas.height = size * dpr
+  canvas.style.width = size + 'px'
+  canvas.style.height = size + 'px'
+  const ctx = canvas.getContext('2d')
+  ctx.scale(dpr, dpr)
+  ctx.clearRect(0, 0, size, size)
+
+  const total = data.reduce((s, d) => s + (d.count || 0), 0)
+  const cx = size / 2, cy = size / 2, r = size / 2 - 8
+  let startAngle = -Math.PI / 2
+  for (let i = 0; i < data.length; i++) {
+    const frac = (data[i].count || 0) / total
+    const endAngle = startAngle + frac * Math.PI * 2
+    ctx.beginPath()
+    ctx.moveTo(cx, cy)
+    ctx.arc(cx, cy, r, startAngle, endAngle)
+    ctx.closePath()
+    ctx.fillStyle = tuGetModelColor(i)
+    ctx.fill()
+    // Thin separator
+    ctx.strokeStyle = 'var(--bg-primary, #0f172a)'
+    ctx.lineWidth = 1.5
+    ctx.stroke()
+    startAngle = endAngle
+  }
+
+  // Center hole (donut effect)
+  ctx.beginPath()
+  ctx.arc(cx, cy, r * 0.5, 0, Math.PI * 2)
+  ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--bg-elevated') || '#1e293b'
+  ctx.fill()
+
+  // Legend + table
+  const thStyle = 'text-align:left;padding:4px 8px 4px 0;font-size:12px;color:var(--text-secondary);border-bottom:1px solid var(--border);font-weight:600'
+  const tdStyle = 'padding:4px 8px 4px 0;font-size:13px;vertical-align:middle'
+  const tdRStyle = tdStyle + ';text-align:right'
+
+  let rows = data.map((d, i) => {
+    const pct = total > 0 ? ((d.count / total) * 100).toFixed(1) : '0.0'
+    const costUSD = tuCalcCostUSD(d.totalInput, d.totalOutput, d.totalCacheRead, d.totalCacheCreation, d.model !== '(unknown)' ? d.model : null)
+    return `<tr>
+      <td style="${tdStyle}">
+        <span style="display:inline-block;width:10px;height:10px;background:${tuGetModelColor(i)};border-radius:2px;margin-right:6px;vertical-align:middle"></span>
+        <code style="font-size:12px">${escapeHtml(d.model)}</code>
+      </td>
+      <td style="${tdRStyle}">${(d.count || 0).toLocaleString()}</td>
+      <td style="${tdRStyle}">${pct}%</td>
+      <td style="${tdRStyle}">${tuFormatCostUSD(costUSD)}</td>
+    </tr>`
+  }).join('')
+
+  tableEl.innerHTML = `<div style="overflow-x:auto"><table style="border-collapse:collapse;width:100%;min-width:300px">
+    <thead><tr>
+      <th style="${thStyle}">Modell</th>
+      <th style="${thStyle.replace('text-align:left','text-align:right')}">${t('tokenUsage.model_dist_calls', { n: '' }).trim()}</th>
+      <th style="${thStyle.replace('text-align:left','text-align:right')}">%</th>
+      <th style="${thStyle.replace('text-align:left','text-align:right')}">Becsült USD</th>
+    </tr></thead>
+    <tbody>${rows}</tbody>
+  </table></div>`
+}
+
+// ============================================================
+// Token Monitor: MCP tool usage grid
+// ============================================================
+let tuToolStatsData = null
+
+function renderTuToolStats(data) {
+  tuToolStatsData = data
+  const el = document.getElementById('tuToolStatsContent')
+  if (!el) return
+
+  if (!data || !data.length) {
+    el.innerHTML = `<span style="color:var(--text-secondary);font-size:13px">${t('tokenUsage.tool_stats_no_data')}</span>`
+    return
+  }
+
+  // Aggregate per-model rows into one entry per tool (MCP tools grouped by server)
+  const byTool = new Map()
+  for (const row of data) {
+    const key = tuMcpGroupKey(row.tool_name)
+    let entry = byTool.get(key)
+    if (!entry) {
+      entry = { tool_name: key, count: 0, agentSet: new Set(), costUSD: 0 }
+      byTool.set(key, entry)
+    }
+    entry.count += row.count || 0
+    ;(row.agents || '').split(',').forEach(a => { const s = a.trim(); if (s) entry.agentSet.add(s) })
+    entry.costUSD += tuCalcCostUSD(row.totalInput || 0, row.totalOutput || 0, row.totalCacheRead || 0, row.totalCacheCreation || 0, row.model || null)
+  }
+  const aggregated = Array.from(byTool.values()).sort((a, b) => b.count - a.count).slice(0, 50)
+
+  const showAgents = document.getElementById('tuToolAgentBreakdown')?.checked
+  const thStyle = 'text-align:left;padding:4px 8px 4px 0;font-size:12px;color:var(--text-secondary);border-bottom:1px solid var(--border);font-weight:600'
+  const tdStyle = 'padding:4px 8px 4px 0;font-size:13px;overflow:hidden;text-overflow:ellipsis;max-width:260px;white-space:nowrap'
+  const tdRStyle = 'padding:4px 8px 4px 0;font-size:13px;text-align:right;font-variant-numeric:tabular-nums'
+
+  const maxCount = Math.max(...aggregated.map(d => d.count || 0))
+
+  const rows = aggregated.map(d => {
+    const barPct = maxCount > 0 ? Math.round((d.count / maxCount) * 100) : 0
+    const server = tuMcpServerFromTool(d.tool_name)
+    const serverLabel = server
+      ? `<span style="font-size:11px;color:var(--text-secondary)">${escapeHtml(server)}</span>`
+      : `<span style="font-size:11px;color:var(--text-secondary);opacity:0.6">${t('tokenUsage.tool_stats_builtin')}</span>`
+    const agentChips = Array.from(d.agentSet).map(a => {
+      const color = tuGetColor(a)
+      return `<span style="display:inline-block;padding:1px 6px;border-radius:10px;font-size:11px;font-weight:500;border:1px solid ${color};color:${color};margin:1px 2px 1px 0;white-space:nowrap">${escapeHtml(a)}</span>`
+    }).join('')
+    const agentCell = showAgents ? `<td style="${tdStyle};white-space:normal">${agentChips}</td>` : ''
+    return `<tr>
+      <td style="${tdStyle}" title="${escapeHtml(d.tool_name)}"><code style="font-size:12px">${escapeHtml(d.tool_name)}</code></td>
+      <td style="${tdRStyle}">${(d.count || 0).toLocaleString()}</td>
+      <td style="padding:4px 8px 4px 0;vertical-align:middle;min-width:70px">
+        <div style="background:var(--accent,#6366f1);height:6px;border-radius:3px;width:${barPct}%;opacity:0.7"></div>
+      </td>
+      <td style="${tdStyle}">${serverLabel}</td>
+      <td style="${tdRStyle}">${tuFormatCostUSD(d.costUSD)}</td>
+      ${agentCell}
+    </tr>`
+  }).join('')
+
+  const agentHeader = showAgents ? `<th style="${thStyle}">${t('tokenUsage.tool_stats_col_agents')}</th>` : ''
+
+  el.innerHTML = `<div style="overflow-x:auto"><table style="border-collapse:collapse;width:100%;min-width:400px">
+    <thead><tr>
+      <th style="${thStyle}">${t('tokenUsage.tool_stats_col_tool')}</th>
+      <th style="${thStyle.replace('text-align:left','text-align:right')}">${t('tokenUsage.tool_stats_col_calls')}</th>
+      <th style="${thStyle}"></th>
+      <th style="${thStyle}">${t('tokenUsage.tool_stats_col_server')}</th>
+      <th style="${thStyle.replace('text-align:left','text-align:right')}">${t('tokenUsage.tool_stats_col_cost')}</th>
+      ${agentHeader}
+    </tr></thead>
+    <tbody>${rows}</tbody>
+  </table></div>`
+}
+
+// ============================================================
+// Ideas (Ötletláda)
+// ============================================================
+let ideas = []
+let ideasAll = []
+let ideasPromoteId = null
+let ideaEditId = null
+let ideaDetailId = null
+const IDEA_SCOPE_STORAGE_KEY = 'ideas-scope-filter'
+let ideaScope = (() => {
+  try {
+    const saved = localStorage.getItem(IDEA_SCOPE_STORAGE_KEY)
+    return ['munka', 'szemelyes', 'all'].includes(saved) ? saved : 'munka'
+  } catch { return 'munka' }
+})()
+const STATUS_COLORS = { new: 'var(--accent)', reviewed: '#f59e0b', kanban: '#22c55e', rejected: '#ef4444' }
+const STATUS_LABELS = { new: () => t('ideas.status.new'), reviewed: () => t('ideas.status.reviewed'), kanban: () => t('ideas.status.kanban'), rejected: () => t('ideas.status.rejected') }
+
+async function loadIdeasPage() {
+  const statusFilter = document.getElementById('ideaStatusFilter')?.value ?? 'active'
+  const categoryFilter = document.getElementById('ideaCategoryFilter')?.value || ''
+  const params = new URLSearchParams()
+  // Status narrowing happens client-side on the full fetch: the stats row must
+  // count every status, and a server-side status filter starved it — after the
+  // first promote the "Kanbanban" box showed 0 with the item hidden, which read
+  // as data loss on the first live promote (2026-08-20).
+  if (categoryFilter) params.set('category', categoryFilter)
+  if (ideaScope !== 'all') params.set('scope', ideaScope)
+  const [ideasRes, catsRes] = await Promise.all([fetch('/api/ideas?' + params), fetch('/api/ideas/categories')])
+  ideasAll = await ideasRes.json()
+  if (statusFilter === 'active') ideas = ideasAll.filter(i => i.status === 'new' || i.status === 'reviewed')
+  else if (statusFilter) ideas = ideasAll.filter(i => i.status === statusFilter)
+  else ideas = ideasAll
+  const cats = await catsRes.json()
+  const catSel = document.getElementById('ideaCategoryFilter')
+  if (catSel) {
+    const prev = catSel.value
+    catSel.innerHTML = `<option value="">${t('ideas.filter.all_categories')}</option>` + cats.map(c => `<option value="${escapeHtml(c)}" ${c === prev ? 'selected' : ''}>${escapeHtml(c)}</option>`).join('')
+  }
+  renderIdeasStats()
+  renderIdeasList()
+  document.querySelectorAll('#ideaScopeFilter [data-scope]').forEach(button => button.classList.toggle('active', button.dataset.scope === ideaScope))
+}
+
+document.getElementById('ideaUploadInput')?.addEventListener('change', async (event) => {
+  const input = event.target
+  const files = Array.from(input.files || [])
+  const button = document.getElementById('ideaUploadBtn')
+  let uploaded = 0
+  const failures = []
+  input.disabled = true
+  button.disabled = true
+  try {
+    for (const file of files) {
+      button.textContent = t('ideas.upload.uploading', { name: file.name })
+      const form = new FormData()
+      form.append('file', file)
+      form.append('scope', ideaScope === 'all' ? 'munka' : ideaScope)
+      try {
+        const res = await fetch('/api/ideas/upload', { method: 'POST', body: form })
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}))
+          throw new Error(data.error || t('ideas.upload.error'))
+        }
+        uploaded++
+      } catch (err) {
+        failures.push(`${file.name}: ${err.message || t('ideas.upload.error')}`)
+      }
+    }
+    if (files.length) {
+      const summary = t('ideas.upload.summary', { uploaded, failed: failures.length })
+      showToast(failures.length ? `${summary} (${failures.join('; ')})` : summary, failures.length ? 'error' : undefined)
+      await loadIdeasPage()
+    }
+  } finally {
+    input.value = ''
+    input.disabled = false
+    button.disabled = false
+    button.textContent = t('ideas.upload.button')
+  }
+})
+
+document.getElementById('ideaUploadBtn')?.addEventListener('click', () => document.getElementById('ideaUploadInput')?.click())
+
+function renderIdeasStats() {
+  const counts = { new: 0, reviewed: 0, kanban: 0, rejected: 0 }
+  for (const i of ideasAll) counts[i.status] = (counts[i.status] || 0) + 1
+  const el = document.getElementById('ideasStats')
+  if (!el) return
+  el.innerHTML = Object.entries(counts).map(([s, n]) =>
+    `<div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:10px 16px;min-width:90px">
+      <div style="font-size:22px;font-weight:700;color:${STATUS_COLORS[s]}">${n}</div>
+      <div style="font-size:12px;color:var(--text-muted)">${typeof STATUS_LABELS[s] === 'function' ? STATUS_LABELS[s]() : STATUS_LABELS[s]}</div>
+    </div>`
+  ).join('')
+}
+
+function renderIdeasList() {
+  const el = document.getElementById('ideasList')
+  if (!el) return
+  if (!ideas.length) { el.innerHTML = `<div style="color:var(--text-muted);padding:32px;text-align:center">${t('ideas.empty')}</div>`; return }
+  const byCategory = {}
+  for (const idea of ideas) {
+    if (!byCategory[idea.category]) byCategory[idea.category] = []
+    byCategory[idea.category].push(idea)
+  }
+  el.innerHTML = Object.entries(byCategory).map(([cat, items]) => `
+    <div style="margin-bottom:8px">
+      <div style="font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--text-muted);padding:4px 0 6px">${escapeHtml(cat)}</div>
+      ${items.map(renderIdeaCard).join('')}
+    </div>`).join('')
+}
+
+function ideaScoreBadge(idea) {
+  if (!idea.impact || !idea.effort) return ''
+  const score = idea.impact - idea.effort
+  const color = score > 0 ? '#22c55e' : score < 0 ? '#ef4444' : 'var(--text-muted)'
+  return `<span style="font-size:11px;color:${color};border:1px solid ${color};border-radius:4px;padding:2px 5px" title="Impact ${idea.impact} - Effort ${idea.effort}">I${idea.impact}·E${idea.effort}</span>`
+}
+
+function renderIdeaCard(idea) {
+  const statusColor = STATUS_COLORS[idea.status] || 'var(--text-muted)'
+  const statusLabelRaw = STATUS_LABELS[idea.status]; const statusLabel = statusLabelRaw ? (typeof statusLabelRaw === 'function' ? statusLabelRaw() : statusLabelRaw) : idea.status
+  const desc = idea.description ? `<div style="font-size:12px;color:var(--text-muted);margin-top:4px">${escapeHtml(idea.description.slice(0, 120))}${idea.description.length > 120 ? '…' : ''}</div>` : ''
+  const staleBadge = idea.stale ? `<span style="font-size:11px;background:#92400e22;color:#d97706;border:1px solid #d97706;border-radius:4px;padding:2px 5px" title="${t('ideas.stale_tooltip')}">${t('ideas.stale_badge')}</span>` : ''
+  return `<div class="card" style="padding:12px 16px;margin-bottom:4px${idea.stale ? ';border-left:3px solid #d97706' : ''}">
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">
+      <div style="flex:1;min-width:0">
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+          <span class="idea-title-link" style="font-weight:600;font-size:14px;cursor:pointer" onclick="openIdeaDetail('${idea.id}')">${escapeHtml(idea.title)}</span>
+          <span style="font-size:11px;color:${statusColor};padding:2px 6px;border:1px solid ${statusColor};border-radius:4px">${statusLabel}</span>
+          ${ideaScoreBadge(idea)}
+          ${staleBadge}
+        </div>
+        ${desc}
+      </div>
+      <div style="display:flex;gap:4px;flex-shrink:0;flex-wrap:wrap;justify-content:flex-end">
+        ${idea.status !== 'reviewed' && idea.status !== 'kanban' ? `<button class="btn-secondary btn-compact" onclick="setIdeaStatus('${idea.id}','reviewed')" style="font-size:11px">${t('ideas.btn.reviewed')}</button>` : ''}
+        ${idea.status !== 'rejected' ? `<button class="btn-secondary btn-compact" onclick="setIdeaStatus('${idea.id}','rejected')" style="font-size:11px;color:#ef4444">${t('ideas.btn.rejected')}</button>` : ''}
+        ${idea.status === 'reviewed' || idea.status === 'rejected' ? `<button class="btn-secondary btn-compact" onclick="setIdeaStatus('${idea.id}','new')" style="font-size:11px">${t('ideas.btn.reopen')}</button>` : ''}
+        <button class="btn-secondary btn-compact" onclick="openIdeaEdit('${idea.id}')" style="font-size:11px">${t('ideas.btn.edit')}</button>
+        ${idea.status !== 'kanban' && idea.status !== 'rejected' ? `<button class="btn-primary btn-compact" onclick="openIdeaBreakdown('${idea.id}')" style="font-size:11px">${t('ideas.btn.kanban_ai')}</button>` : ''}
+        <button class="btn-secondary btn-compact" onclick="deleteIdeaItem('${idea.id}')" style="font-size:11px;color:#ef4444">${t('ideas.btn.delete')}</button>
+      </div>
+    </div>
+  </div>`
+}
+
+function applyIdeaModalI18n() {
+  const labels = document.querySelectorAll('#ideaModalOverlay .form-label')
+  const keys = ['ideas.modal.title_label', 'ideas.modal.desc_label', 'ideas.scope.label', 'ideas.modal.category_label', 'ideas.modal.impact_label', 'ideas.modal.effort_label']
+  labels.forEach((el, i) => { if (keys[i]) el.textContent = t(keys[i]) })
+  const saveBtn = document.getElementById('ideaModalSave')
+  const cancelBtn = document.getElementById('ideaModalCancel')
+  if (saveBtn) saveBtn.textContent = t('ideas.modal.save_btn')
+  if (cancelBtn) cancelBtn.textContent = t('ideas.modal.cancel_btn')
+}
+
+function openIdeaNew() {
+  ideaEditId = null
+  document.getElementById('ideaModalTitle').textContent = t('ideas.modal.title_new')
+  document.getElementById('ideaTitleInput').value = ''
+  document.getElementById('ideaDescInput').value = ''
+  document.getElementById('ideaScopeInput').value = ideaScope === 'all' ? 'munka' : ideaScope
+  applyIdeaModalI18n()
+  openModal(document.getElementById('ideaModalOverlay'))
+}
+
+function openIdeaEdit(id) {
+  const idea = ideas.find(i => i.id === id)
+  if (!idea) return
+  ideaEditId = id
+  document.getElementById('ideaModalTitle').textContent = t('ideas.modal.title_edit')
+  document.getElementById('ideaTitleInput').value = idea.title
+  document.getElementById('ideaDescInput').value = idea.description || ''
+  document.getElementById('ideaCategoryInput').value = idea.category
+  document.getElementById('ideaScopeInput').value = idea.scope
+  document.getElementById('ideaImpactInput').value = idea.impact ?? ''
+  document.getElementById('ideaEffortInput').value = idea.effort ?? ''
+  openModal(document.getElementById('ideaModalOverlay'))
+}
+
+async function saveIdea() {
+  const title = document.getElementById('ideaTitleInput').value.trim()
+  if (!title) { showToast(t('common.title') + ' ' + t('common.error'), 'error'); return }
+  const impactRaw = document.getElementById('ideaImpactInput').value
+  const effortRaw = document.getElementById('ideaEffortInput').value
+  const body = {
+    title,
+    description: document.getElementById('ideaDescInput').value.trim() || undefined,
+    category: document.getElementById('ideaCategoryInput').value,
+    scope: document.getElementById('ideaScopeInput').value,
+    source: 'manual',
+    impact: impactRaw ? parseInt(impactRaw) : null,
+    effort: effortRaw ? parseInt(effortRaw) : null,
+  }
+  if (ideaEditId) {
+    await fetch(`/api/ideas/${ideaEditId}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+  } else {
+    await fetch('/api/ideas', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...body, status: 'new' }) })
+  }
+  closeModal(document.getElementById('ideaModalOverlay'))
+  loadIdeasPage()
+}
+
+async function deleteIdeaItem(id) {
+  if (!confirm(t('kanban.confirm.delete'))) return
+  await fetch(`/api/ideas/${id}`, { method: 'DELETE' })
+  loadIdeasPage()
+}
+
+// --- Idea detail modal (comments + impact/effort view) ---
+
+async function openIdeaDetail(id) {
+  const idea = ideas.find(i => i.id === id)
+  if (!idea) return
+  ideaDetailId = id
+  const statusLabel = STATUS_LABELS[idea.status] || idea.status
+  document.getElementById('ideaDetailTitle').textContent = idea.title
+  document.getElementById('ideaDetailMeta').textContent = `${idea.category} · ${statusLabel}`
+  document.getElementById('ideaDetailDesc').textContent = idea.description || t('ideas.no_description')
+  const otherScope = idea.scope === 'munka' ? 'szemelyes' : 'munka'
+  document.getElementById('ideaDetailScope').textContent = t('ideas.scope.current', { scope: t(`ideas.scope.${idea.scope}`) })
+  document.getElementById('ideaDetailScopeMove').textContent = t('ideas.scope.move', { scope: t(`ideas.scope.${otherScope}`) })
+  document.getElementById('ideaDetailScopeMove').dataset.scope = otherScope
+  document.getElementById('ideaDetailImpact').value = idea.impact ?? ''
+  document.getElementById('ideaDetailEffort').value = idea.effort ?? ''
+  updateDetailScoreChip()
+  document.getElementById('ideaCommentsList').innerHTML = ''
+  document.getElementById('ideaAttachmentsList').innerHTML = ''
+  document.getElementById('ideaAttachmentStatus').style.display = 'none'
+  document.getElementById('ideaCommentContent').value = ''
+  openModal(document.getElementById('ideaDetailOverlay'))
+  await Promise.all([loadIdeaComments(id), loadIdeaAttachments(id)])
+}
+
+function formatIdeaAttachmentSize(bytes) {
+  if (bytes < 1024) return `${bytes} B`
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+}
+
+async function loadIdeaAttachments(id) {
+  const list = document.getElementById('ideaAttachmentsList')
+  try {
+    const res = await fetch(`/api/ideas/${encodeURIComponent(id)}/attachments`)
+    if (!res.ok) throw new Error('HTTP ' + res.status)
+    const data = await res.json()
+    if (!data.attachments || !data.attachments.length) {
+      list.innerHTML = `<div style="color:var(--text-muted);font-size:12px;padding:3px 0">${t('ideas.detail.attach.empty')}</div>`
+      return
+    }
+    list.innerHTML = data.attachments.map(a => `
+      <div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-top:1px solid var(--border)">
+        <div style="flex:1;min-width:0">
+          <div style="font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${escapeHtml(a.filename)}">${escapeHtml(a.filename)}</div>
+          <div style="font-size:11px;color:var(--text-muted)">${formatIdeaAttachmentSize(a.size)}${a.has_text ? ` · <span title="${t('ideas.detail.attach.has_text')}" style="color:var(--success)">✓ ${t('ideas.detail.attach.text_marker')}</span>` : ''}</div>
+        </div>
+        <a class="btn-secondary btn-compact" style="font-size:11px;text-decoration:none" href="/api/ideas/attachments/${encodeURIComponent(a.id)}/download">${t('ideas.detail.attach.download')}</a>
+        <button class="btn-secondary btn-compact" style="font-size:11px;color:var(--danger)" onclick="deleteIdeaAttachmentItem('${encodeURIComponent(a.id)}')">${t('ideas.detail.attach.delete')}</button>
+      </div>`).join('')
+  } catch {
+    list.innerHTML = `<div style="color:var(--danger);font-size:12px">${t('ideas.detail.attach.load_error')}</div>`
+  }
+}
+
+document.getElementById('ideaAttachmentInput')?.addEventListener('change', async (event) => {
+  if (!ideaDetailId) return
+  const input = event.target
+  const files = Array.from(input.files || [])
+  const label = document.getElementById('ideaAttachmentUploadLabel')
+  const status = document.getElementById('ideaAttachmentStatus')
+  input.disabled = true
+  label.style.opacity = '0.6'
+  status.style.display = ''
+  try {
+    for (const file of files) {
+      status.textContent = t('ideas.detail.attach.uploading', { name: file.name })
+      const form = new FormData()
+      form.append('file', file)
+      const res = await fetch(`/api/ideas/${encodeURIComponent(ideaDetailId)}/attachments`, { method: 'POST', body: form })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        throw new Error(data.error || t('ideas.detail.attach.upload_error'))
+      }
+    }
+    if (files.length) showToast(t('ideas.detail.attach.uploaded'))
+    await loadIdeaAttachments(ideaDetailId)
+  } catch (err) {
+    showToast(err.message || t('ideas.detail.attach.upload_error'), 'error')
+  } finally {
+    input.value = ''
+    input.disabled = false
+    label.style.opacity = ''
+    status.style.display = 'none'
+  }
+})
+
+async function deleteIdeaAttachmentItem(encodedId) {
+  if (!confirm(t('ideas.detail.attach.confirm_delete'))) return
+  try {
+    const res = await fetch(`/api/ideas/attachments/${encodedId}`, { method: 'DELETE' })
+    if (!res.ok) throw new Error('HTTP ' + res.status)
+    if (ideaDetailId) await loadIdeaAttachments(ideaDetailId)
+  } catch { showToast(t('ideas.detail.attach.delete_error'), 'error') }
+}
+
+function updateDetailScoreChip() {
+  const chip = document.getElementById('ideaDetailScoreChip')
+  if (!chip) return
+  const impact = Number(document.getElementById('ideaDetailImpact').value) || 0
+  const effort = Number(document.getElementById('ideaDetailEffort').value) || 0
+  if (!impact && !effort) { chip.textContent = ''; return }
+  if (!impact || !effort) { chip.textContent = ''; return }
+  const score = impact - effort
+  const color = score > 0 ? '#22c55e' : score < 0 ? '#ef4444' : 'var(--text-muted)'
+  chip.innerHTML = `<span class="idea-score-chip" style="border-color:${color};color:${color}">Pont: <strong>${score >= 0 ? '+' : ''}${score}</strong></span>`
+}
+
+document.getElementById('ideaDetailImpact')?.addEventListener('change', updateDetailScoreChip)
+document.getElementById('ideaDetailEffort')?.addEventListener('change', updateDetailScoreChip)
+
+document.getElementById('ideaDetailScoreSave')?.addEventListener('click', async () => {
+  if (!ideaDetailId) return
+  const impact = document.getElementById('ideaDetailImpact').value
+  const effort = document.getElementById('ideaDetailEffort').value
+  try {
+    const res = await fetch(`/api/ideas/${encodeURIComponent(ideaDetailId)}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        impact: impact ? Number(impact) : null,
+        effort: effort ? Number(effort) : null,
+      }),
+    })
+    if (!res.ok) { showToast(t('ideas.toast.score_saved_error'), 'error'); return }
+    // update local cache so card chip refreshes on close
+    const idea = ideas.find(i => i.id === ideaDetailId)
+    if (idea) {
+      idea.impact = impact ? Number(impact) : null
+      idea.effort = effort ? Number(effort) : null
+    }
+    updateDetailScoreChip()
+    showToast(t('ideas.toast.score_saved'))
+    renderIdeasList()
+  } catch { showToast(t('ideas.toast.score_saved_error'), 'error') }
+})
+
+async function loadIdeaComments(id) {
+  const list = document.getElementById('ideaCommentsList')
+  try {
+    const res = await fetch(`/api/ideas/${encodeURIComponent(id)}/comments`)
+    const data = await res.json()
+    if (!data.comments || !data.comments.length) {
+      list.innerHTML = `<div style="color:var(--text-muted);font-size:12px;padding:6px 0">${t('ideas.comments.empty')}</div>`
+      return
+    }
+    list.innerHTML = ''
+    for (const c of data.comments) {
+      const date = new Date(c.created_at * 1000).toLocaleString('hu-HU', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+      const div = document.createElement('div')
+      div.className = 'comment-item'
+      div.innerHTML = `<div style="display:flex;align-items:baseline;gap:6px;margin-bottom:4px"><span class="comment-author">${escapeHtml(c.author)}</span><span class="comment-date">${date}</span></div><div class="comment-body">${escapeHtml(c.content)}</div>`
+      list.appendChild(div)
+    }
+  } catch {
+    list.innerHTML = `<div style="color:var(--danger);font-size:12px">${t('ideas.comments.error')}</div>`
+  }
+}
+
+document.getElementById('ideaCommentSubmit')?.addEventListener('click', async () => {
+  if (!ideaDetailId) return
+  const content = document.getElementById('ideaCommentContent').value.trim()
+  if (!content) { document.getElementById('ideaCommentContent').focus(); return }
+  try {
+    const res = await fetch(`/api/ideas/${encodeURIComponent(ideaDetailId)}/comments`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ content }),
+    })
+    if (!res.ok) { showToast(t('ideas.toast.comment_error'), 'error'); return }
+    document.getElementById('ideaCommentContent').value = ''
+    await loadIdeaComments(ideaDetailId)
+  } catch { showToast(t('ideas.toast.comment_error'), 'error') }
+})
+
+document.getElementById('ideaDetailClose')?.addEventListener('click', () => closeModal(document.getElementById('ideaDetailOverlay')))
+document.getElementById('ideaDetailCloseBtn')?.addEventListener('click', () => closeModal(document.getElementById('ideaDetailOverlay')))
+document.getElementById('ideaDetailEditBtn')?.addEventListener('click', () => {
+  if (!ideaDetailId) return
+  closeModal(document.getElementById('ideaDetailOverlay'))
+  openIdeaEdit(ideaDetailId)
+})
+document.getElementById('ideaDetailScopeMove')?.addEventListener('click', async (event) => {
+  if (!ideaDetailId) return
+  const scope = event.currentTarget.dataset.scope
+  try {
+    const res = await fetch(`/api/ideas/${encodeURIComponent(ideaDetailId)}`, {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ scope }),
+    })
+    if (!res.ok) throw new Error('HTTP ' + res.status)
+    closeModal(document.getElementById('ideaDetailOverlay'))
+    await loadIdeasPage()
+  } catch { showToast(t('ideas.scope.move_error'), 'error') }
+})
+
+function openIdeaPromote(id) {
+  ideasPromoteId = id
+  openModal(document.getElementById('ideaPromoteOverlay'))
+}
+
+async function promoteIdea(phase) {
+  if (!ideasPromoteId) return
+  const res = await fetch(`/api/ideas/${ideasPromoteId}/promote`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ phase }) })
+  const data = await res.json()
+  ideasPromoteId = null
+  closeModal(document.getElementById('ideaPromoteOverlay'))
+  if (data.ok) showToast(t('kanban.toast.card_created') + ': ' + data.kanban_id)
+  loadIdeasPage()
+}
+
+async function setIdeaStatus(id, status) {
+  try {
+    const res = await fetch(`/api/ideas/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status }) })
+    if (!res.ok) { showToast(t('ideas.toast.status_error')); return }
+    loadIdeasPage()
+  } catch { showToast(t('ideas.toast.status_error')) }
+}
+
+// Promote an idea to the board via AI breakdown + per-subtask approval.
+// Reuses the shared breakdown modal (breakdownMode='idea').
+async function openIdeaBreakdown(id) {
+  const idea = ideas.find(i => i.id === id)
+  if (!idea) return
+  // The breakdown modal's assignee dropdown reads kanbanAssignees, which is only
+  // populated by loadKanban(). If the user lands here without visiting the board,
+  // fetch it so the AI-suggested assignees are selectable.
+  if (!kanbanAssignees.length) {
+    try { kanbanAssignees = await (await fetch('/api/kanban/assignees')).json() } catch { /* dropdown falls back to "nincs" */ }
+  }
+  showToast(t('ideas.toast.ai_elaborating'))
+  try {
+    const res = await fetch(`/api/ideas/${id}/breakdown`, { method: 'POST', headers: { 'Content-Type': 'application/json' } })
+    const data = await res.json()
+    if (!res.ok) { showToast(data.error || 'Breakdown hiba'); return }
+    if (!data.subtasks || !data.subtasks.length) { showToast('Az AI nem adott vissza alfeladatot'); return }
+    breakdownMode = 'idea'
+    breakdownIdeaId = id
+    breakdownSubtasks = data.subtasks
+    showBreakdownModal(data.subtasks, { title: idea.title })
+    // Show DoD field only in idea mode
+    const dodSection = document.getElementById('breakdownDoDSection')
+    if (dodSection) { dodSection.style.display = ''; document.getElementById('breakdownSuccessCriteria').value = '' }
+  } catch {
+    showToast('Breakdown hiba')
+  }
+}
+
+document.getElementById('ideaNewBtn')?.addEventListener('click', openIdeaNew)
+document.getElementById('ideaModalClose')?.addEventListener('click', () => { closeModal(document.getElementById('ideaModalOverlay')) })
+document.getElementById('ideaModalCancel')?.addEventListener('click', () => { closeModal(document.getElementById('ideaModalOverlay')) })
+document.getElementById('ideaModalSave')?.addEventListener('click', saveIdea)
+document.getElementById('ideaPromoteClose')?.addEventListener('click', () => { closeModal(document.getElementById('ideaPromoteOverlay')) })
+document.getElementById('ideaPromoteCancel')?.addEventListener('click', () => { closeModal(document.getElementById('ideaPromoteOverlay')) })
+document.getElementById('ideaPromoteDetail')?.addEventListener('click', () => promoteIdea('detail'))
+document.getElementById('ideaPromotePlan')?.addEventListener('click', () => promoteIdea('plan'))
+document.getElementById('ideaStatusFilter')?.addEventListener('change', loadIdeasPage)
+document.getElementById('ideaCategoryFilter')?.addEventListener('change', loadIdeasPage)
+document.getElementById('ideaScopeFilter')?.addEventListener('click', (event) => {
+  const button = event.target.closest('[data-scope]')
+  if (!button) return
+  ideaScope = button.dataset.scope
+  try { localStorage.setItem(IDEA_SCOPE_STORAGE_KEY, ideaScope) } catch { /* storage blocked */ }
+  loadIdeasPage()
+})
+
+
+// === Agent reauth login flow ===
+async function handleAgentLogin(agentName, btn) {
+  const phase = btn.dataset.phase || 'start'
+  btn.disabled = true
+  const origText = btn.textContent
+  btn.textContent = phase === 'start' ? t('agents.auth.btn_starting') : t('agents.auth.btn_confirming')
+  try {
+    const res = await fetch(`/api/agents/${encodeURIComponent(agentName)}/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ phase }),
+    })
+    if (!res.ok) { const err = await res.json().catch(() => ({})); throw new Error(err.error || 'HTTP ' + res.status) }
+    if (phase === 'start') {
+      btn.dataset.phase = 'confirm'
+      btn.textContent = t('agents.auth.btn_confirm')
+      btn.disabled = false
+      showToast(t('agents.auth.toast_started'))
+    } else {
+      btn.textContent = t('agents.auth.btn_logged_in')
+      showToast(t('agents.auth.toast_success'))
+      setTimeout(() => loadAgents(), 1500)
+    }
+  } catch (e) {
+    showToast('Hiba: ' + (e.message || e))
+    btn.textContent = origText
+    btn.dataset.phase = 'start'
+    btn.disabled = false
+  }
+}
+
+// === Agent terminal modal (xterm.js) ===
+let terminalInstance = null
+let terminalSSE = null
+let terminalFit = null
+// Master input gate (mirrors the server-side terminal-input toggle). Keystrokes
+// are dropped locally when OFF so we never spam the audit log with 403s; the
+// server enforces the same gate independently (fail-closed). Owner flips it via
+// the checkbox in the modal header (POST /api/terminal-input).
+let terminalInputEnabled = false
+
+function syncTerminalInputToggleUI() {
+  const cb = document.getElementById('terminalInputToggle')
+  const label = document.getElementById('terminalInputToggleLabel')
+  if (cb) cb.checked = terminalInputEnabled
+  if (label) {
+    label.textContent = terminalInputEnabled ? 'Input on' : 'Input off'
+    label.style.color = terminalInputEnabled ? '#8fbf6f' : '#b8b2a6'
+  }
+}
+
+function openTerminalModal(agentName) {
+  const overlay = document.getElementById('terminalOverlay')
+  const container = document.getElementById('terminalContainer')
+  const title = document.getElementById('terminalModalTitle')
+  if (!overlay || !container) return
+
+  title.textContent = agentName + ' - Terminal'
+
+  // Read the current server-side gate so the modal reflects reality on open.
+  fetch('/api/terminal-input')
+    .then(r => r.ok ? r.json() : { enabled: false })
+    .then(d => { terminalInputEnabled = d.enabled === true; syncTerminalInputToggleUI() })
+    .catch(() => { terminalInputEnabled = false; syncTerminalInputToggleUI() })
+
+  // Cleanup previous
+  if (terminalSSE) { terminalSSE.close(); terminalSSE = null }
+  if (terminalInstance) { terminalInstance.dispose(); terminalInstance = null }
+  container.innerHTML = ''
+
+  // Init xterm — fontSize 12 + wider modal fits ~140 chars of tmux output
+  const term = new window.Terminal({
+    theme: { background: '#1a1a1a', foreground: '#e8e4da' },
+    fontFamily: 'JetBrains Mono, Menlo, monospace',
+    fontSize: 12,
+    cursorBlink: false,
+    disableStdin: false,
+    scrollback: 4000,
+    convertEol: true,
+    allowProposedApi: true,
+  })
+  const fitAddon = new window.FitAddon.FitAddon()
+  term.loadAddon(fitAddon)
+  term.open(container)
+  fitAddon.fit()
+  terminalInstance = term
+  terminalFit = fitAddon
+
+  openModal(overlay)
+  setTimeout(() => term.focus(), 50)
+
+  // SSE pane stream.
+  // The pane snapshot now includes scrollback history (server uses
+  // `capture-pane -S -2000`), so the user can scroll back. To keep scrolling
+  // stable we (a) only repaint when the snapshot actually changed, and (b) only
+  // repaint while the viewport is at the bottom — if the user has scrolled up we
+  // freeze their view and resume painting when they return to the bottom (the
+  // onScroll handler below). The repaint clears the scrollback (CSI 3 J) before
+  // rewriting the full snapshot so frames don't accumulate duplicate history.
+  let latestPane = null
+  let paintedPane = null
+  const isAtBottom = () => {
+    const buf = term.buffer.active
+    return buf.viewportY >= buf.baseY
+  }
+  const repaint = () => {
+    if (latestPane === null || latestPane === paintedPane) return
+    if (!isAtBottom()) return // user scrolled up — keep their view put
+    paintedPane = latestPane
+    term.write('\x1b[3J\x1b[2J\x1b[H' + latestPane)
+  }
+  // EventSource cannot set an Authorization header. In token mode we pass the
+  // token via ?token=; in password-login (session-cookie) mode there is no
+  // token, so we open a plain URL and the browser attaches the mv_session
+  // cookie automatically -- the gate's cookie branch covers the SSE path.
+  const token = localStorage.getItem('marveen-dashboard-token') || ''
+  const streamBase = `/api/agents/${encodeURIComponent(agentName)}/pane/stream`
+  const sse = new EventSource(token ? `${streamBase}?token=${encodeURIComponent(token)}` : streamBase)
+  sse.onmessage = (e) => {
+    try {
+      const msg = JSON.parse(e.data)
+      if (msg.pane !== undefined) {
+        latestPane = msg.pane.replace(/\x1b]8;[^\x1b]*\x1b\\/g, '')
+        repaint()
+      }
+    } catch {}
+  }
+  sse.onerror = () => term.write(`\r\n${t('terminal.stream_error')}\r\n`)
+  terminalSSE = sse
+  // When the user scrolls back down to the bottom, resume live repainting.
+  term.onScroll(() => { if (isAtBottom()) repaint() })
+
+  // Single onData handler — maps escape sequences to {special}, plain chars to {keys}
+  // Using onData only (no onKey) avoids double-firing on arrow/Enter keys.
+  // PageUp/PageDown are intentionally NOT forwarded: they scroll the xterm
+  // scrollback locally (history viewing) instead of going to the agent.
+  const ESC_TO_SPECIAL = {
+    '\r': 'Enter', '\x1b': 'Escape',
+    '\x1b[A': 'Up', '\x1b[B': 'Down', '\x1b[C': 'Right', '\x1b[D': 'Left',
+    '\x7f': 'BSpace', '\t': 'Tab', '\x1b[Z': 'S-Tab',
+    '\x03': 'C-c', '\x04': 'C-d', '\x15': 'C-u', '\x0c': 'C-l',
+  }
+  term.onData(data => {
+    if (data === '\x1b[5~') { term.scrollPages(-1); return } // PageUp -> scroll history up
+    if (data === '\x1b[6~') { term.scrollPages(1); return }  // PageDown -> scroll history down
+    if (!terminalInputEnabled) {
+      // Read-only mode: input gate is OFF. Drop the keystroke locally (server
+      // would 403 it anyway) and nudge the user to the toggle.
+      showToast('Terminal input is off. Enable it with the header toggle first.')
+      return
+    }
+    const special = ESC_TO_SPECIAL[data]
+    const body = special ? { special } : { keys: data }
+    fetch(`/api/agents/${encodeURIComponent(agentName)}/keys`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    }).catch(() => {})
+  })
+
+  // Resize fit on modal resize — observe the modal wrapper (not the xterm container
+  // itself) to avoid a ResizeObserver->fit->resize->ResizeObserver infinite loop
+  let fitTimer = null
+  const ro = new ResizeObserver(() => {
+    clearTimeout(fitTimer)
+    fitTimer = setTimeout(() => { try { fitAddon.fit() } catch {} }, 50)
+  })
+  const modalEl = container.closest('.terminal-modal') || container.parentElement
+  if (modalEl) ro.observe(modalEl)
+}
+
+document.getElementById('terminalClose')?.addEventListener('click', () => {
+  const overlay = document.getElementById('terminalOverlay')
+  if (overlay) closeModal(overlay)
+  if (terminalSSE) { terminalSSE.close(); terminalSSE = null }
+  if (terminalInstance) { terminalInstance.dispose(); terminalInstance = null }
+})
+
+// Owner flips the master terminal-input gate. Optimistically reflect the desired
+// state, POST it, then reconcile with the server's authoritative response.
+document.getElementById('terminalInputToggle')?.addEventListener('change', (e) => {
+  const desired = e.target.checked === true
+  fetch('/api/terminal-input', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ enabled: desired }),
+  })
+    .then(r => r.ok ? r.json() : Promise.reject(new Error('HTTP ' + r.status)))
+    .then(d => {
+      terminalInputEnabled = d.enabled === true
+      syncTerminalInputToggleUI()
+      showToast(terminalInputEnabled ? 'Terminal input enabled (audit-logged)' : 'Terminal input disabled')
+    })
+    .catch(() => {
+      terminalInputEnabled = false
+      syncTerminalInputToggleUI()
+      showToast('Could not change terminal input state')
+    })
+})
+
+// === Agent conversation (readable transcript) modal ===
+// Renders the agent's Claude Code transcript as a chat-style timeline: inbound
+// Telegram messages, the agent's replies, and (optionally) its notes/actions.
+// Solves what the raw terminal can't: a readable, searchable review of what
+// actually happened -- also the support view for customer-hosted Webinár Máguss.
+const CONVERSATION_PAGE_SIZE = 400
+let conversationEntries = []
+let conversationAgentName = null
+let conversationHasOlder = false
+let conversationLoadingOlder = false
+
+async function openConversationModal(agentName, displayName) {
+  const overlay = document.getElementById('conversationOverlay')
+  const container = document.getElementById('conversationContainer')
+  const title = document.getElementById('conversationModalTitle')
+  if (!overlay || !container) return
+  conversationAgentName = agentName
+  title.textContent = t('conversation.title', { name: displayName || agentName })
+  container.innerHTML = `<div class="conversation-empty">${t('conversation.loading')}</div>`
+  openModal(overlay)
+  await loadConversation()
+}
+
+// Latest page (offset=0); resets the loaded window.
+async function loadConversation() {
+  const container = document.getElementById('conversationContainer')
+  const token = localStorage.getItem('marveen-dashboard-token') || ''
+  try {
+    const r = await fetch(`/api/agents/${encodeURIComponent(conversationAgentName)}/conversation?limit=${CONVERSATION_PAGE_SIZE}&offset=0`, {
+      headers: { 'Authorization': 'Bearer ' + token },
+    })
+    const d = await r.json()
+    conversationEntries = Array.isArray(d.entries) ? d.entries : []
+    conversationHasOlder = !!d.hasOlder
+    renderConversation()
+  } catch {
+    if (container) container.innerHTML = `<div class="conversation-empty">${t('conversation.error')}</div>`
+  }
+}
+
+// Page further back: fetch the window of entries immediately before the oldest
+// loaded one and PREPEND it, keeping the scroll position so the view does not
+// jump. Lets the operator read history beyond the on-screen window (and beyond
+// the old fixed cap).
+async function loadOlderConversation() {
+  if (conversationLoadingOlder || !conversationHasOlder) return
+  conversationLoadingOlder = true
+  const btn = document.getElementById('conversationLoadOlder')
+  if (btn) { btn.disabled = true; btn.textContent = t('conversation.loading') }
+  const token = localStorage.getItem('marveen-dashboard-token') || ''
+  try {
+    const offset = conversationEntries.length
+    const r = await fetch(`/api/agents/${encodeURIComponent(conversationAgentName)}/conversation?limit=${CONVERSATION_PAGE_SIZE}&offset=${offset}`, {
+      headers: { 'Authorization': 'Bearer ' + token },
+    })
+    const d = await r.json()
+    const older = Array.isArray(d.entries) ? d.entries : []
+    conversationHasOlder = !!d.hasOlder
+    if (older.length) {
+      conversationEntries = older.concat(conversationEntries)
+      renderConversation({ preserveScroll: true })
+    } else {
+      renderConversation()
+    }
+  } catch {
+    if (btn) { btn.disabled = false; btn.textContent = t('conversation.load_more') }
+  } finally {
+    conversationLoadingOlder = false
+  }
+}
+
+function fmtConvTs(ts) {
+  if (!ts) return ''
+  try {
+    return new Date(ts).toLocaleString('hu-HU', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })
+  } catch { return '' }
+}
+
+function renderConversation(opts = {}) {
+  const container = document.getElementById('conversationContainer')
+  if (!container) return
+  const prevH = container.scrollHeight
+  const prevTop = container.scrollTop
+  const q = (document.getElementById('conversationSearch')?.value || '').toLowerCase().trim()
+  const showActions = document.getElementById('conversationShowActions')?.checked
+  let list = conversationEntries
+  if (!showActions) list = list.filter(e => e.kind === 'in' || e.kind === 'out')
+  if (q) list = list.filter(e => (e.text || '').toLowerCase().includes(q))
+  // "Korábbiak betöltése" sits at the top so the operator can page further back;
+  // shown whenever the server still has older entries beyond the loaded window.
+  const olderBtn = conversationHasOlder
+    ? `<button id="conversationLoadOlder" class="conv-load-older">${t('conversation.load_more')}</button>`
+    : ''
+  if (!list.length) {
+    container.innerHTML = olderBtn || `<div class="conversation-empty">${t('conversation.empty')}</div>`
+  } else {
+    container.innerHTML = olderBtn + list.map(renderConvEntry).join('')
+  }
+  document.getElementById('conversationLoadOlder')?.addEventListener('click', loadOlderConversation)
+  if (opts.preserveScroll) {
+    // After prepending older messages, keep the previously-visible ones in place.
+    container.scrollTop = prevTop + (container.scrollHeight - prevH)
+  } else {
+    container.scrollTop = container.scrollHeight
+  }
+}
+
+function renderConvEntry(e) {
+  const ts = fmtConvTs(e.ts)
+  const txt = escapeHtml(e.text || '').replace(/\n/g, '<br>')
+  if (e.kind === 'in') {
+    return `<div class="conv-row conv-in"><div class="conv-bubble"><div class="conv-meta">Telegram be · ${ts}</div><div class="conv-text">${txt}</div></div></div>`
+  }
+  if (e.kind === 'out') {
+    const lbl = escapeHtml(e.label || t('messages.conv.reply_label'))
+    return `<div class="conv-row conv-out"><div class="conv-bubble"><div class="conv-meta">${lbl} · ${ts}</div><div class="conv-text">${txt}</div></div></div>`
+  }
+  if (e.kind === 'note') {
+    return `<div class="conv-row conv-note"><div class="conv-note-text">📝 ${txt}</div></div>`
+  }
+  return `<div class="conv-row conv-action"><div class="conv-action-text">⚙ ${txt}<span class="conv-action-ts">${ts}</span></div></div>`
+}
+
+document.getElementById('conversationClose')?.addEventListener('click', () => {
+  const overlay = document.getElementById('conversationOverlay')
+  if (overlay) closeModal(overlay)
+})
+document.getElementById('conversationSearch')?.addEventListener('input', () => renderConversation())
+document.getElementById('conversationShowActions')?.addEventListener('change', () => renderConversation())
+document.getElementById('conversationRefresh')?.addEventListener('click', () => loadConversation())
+
+// === Federation page ===
+// State lets live BEFORE the router IIFE (top-level code runs in order; a
+// first-load #federation route must not hit a TDZ on these).
+let fedPageWired = false
+let fedPeersViewCache = null
+
+async function loadFederationPage() {
+  wireFederationPage()
+  const statsEl = document.getElementById('federationStats')
+  const masterEl = document.getElementById('federationMaster')
+  const peersEl = document.getElementById('federationPeers')
+  if (!statsEl || !masterEl || !peersEl) return
+  peersEl.innerHTML = `<p style="color:var(--text-muted);font-size:13px">${t('common.loading')}</p>`
+  try {
+    const [peersRes, statusRes] = await Promise.all([
+      fetch('/api/federation/peers'),
+      fetch('/api/federation/status').then((r) => (r.ok ? r.json() : null)).catch(() => null),
+    ])
+    if (!peersRes.ok) throw new Error('HTTP ' + peersRes.status)
+    fedPeersViewCache = await peersRes.json()
+    if (statusRes && Array.isArray(statusRes.peers)) federatedPeerStatus = statusRes.peers
+    renderFederationPage()
+  } catch (e) {
+    peersEl.innerHTML = `<p style="color:var(--danger)">${t('federation.error', { msg: escapeHtml(String(e.message || e)) })}</p>`
+  }
+}
+
+function fedStateLabel(state) {
+  const key = 'federation.peer_state.' + (state || 'unknown')
+  return t(key)
+}
+
+function renderFederationPage() {
+  const view = fedPeersViewCache
+  if (!view) return
+  const statsEl = document.getElementById('federationStats')
+  const masterEl = document.getElementById('federationMaster')
+  const peersEl = document.getElementById('federationPeers')
+  const statusById = new Map(federatedPeerStatus.map((p) => [p.id, p]))
+  const okCount = federatedPeerStatus.filter((p) => p.state === 'ok').length
+
+  const statBox = (value, label) => `<div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:10px 16px;min-width:110px">
+    <div style="font-size:20px;font-weight:600">${value}</div>
+    <div style="font-size:12px;color:var(--text-muted)">${label}</div>
+  </div>`
+  statsEl.innerHTML = [
+    statBox(view.enabled ? t('common.yes') : t('common.no'), t('federation.stat.enabled')),
+    statBox(String(view.peers.length), t('federation.stat.peers')),
+    statBox(String(okCount), t('federation.stat.reachable')),
+    statBox(escapeHtml(view.systemId || '-'), t('federation.stat.system_id')),
+  ].join('')
+
+  const routingMode = view.routingMode || 'catalog-first'
+  const routingRadios = ['strong', 'catalog-first', 'advisory'].map((m) => `
+    <label style="display:flex;align-items:flex-start;gap:8px;cursor:pointer;padding:5px 0">
+      <input type="radio" name="fedRoutingMode" value="${m}" ${routingMode === m ? 'checked' : ''} style="margin-top:3px;accent-color:var(--accent)">
+      <span>
+        <span style="font-weight:600">${t('federation.routing.mode.' + m + '.label')}</span>
+        <span style="display:block;font-size:12px;color:var(--text-muted)">${t('federation.routing.mode.' + m + '.hint')}</span>
+      </span>
+    </label>`).join('')
+  masterEl.innerHTML = `
+    <label style="display:flex;align-items:center;gap:10px;cursor:pointer">
+      <input type="checkbox" id="fedEnabledToggle" style="width:16px;height:16px;accent-color:var(--accent)" ${view.enabled ? 'checked' : ''}>
+      <span style="font-weight:600">${t('federation.master_label')}</span>
+    </label>
+    <p style="font-size:12px;color:var(--text-muted);margin:6px 0 0 26px">${t('federation.master_hint')}</p>
+    <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border)">
+      <div style="font-weight:600">${t('federation.routing.title')}</div>
+      <p style="font-size:12px;color:var(--text-muted);margin:2px 0 8px 0">${t('federation.routing.subtitle')}</p>
+      ${routingRadios}
+      <p style="font-size:12px;color:var(--text-muted);margin:8px 0 0 0">${t('federation.routing.apply_note')}</p>
+    </div>`
+  document.getElementById('fedEnabledToggle').addEventListener('change', async (e) => {
+    const enabled = e.target.checked
+    if (!enabled && !confirm(t('federation.confirm.disable'))) { e.target.checked = true; return }
+    try {
+      const res = await fetch('/api/federation/enabled', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ enabled }) })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) { showToast(t('federation.toast.error', { msg: data.error || ('HTTP ' + res.status) })); e.target.checked = !enabled; return }
+      showToast(enabled ? t('federation.toast.enabled') : t('federation.toast.disabled'))
+      fedRefreshAndReload()
+    } catch (err) { showToast(t('federation.toast.error', { msg: String(err.message || err) })); e.target.checked = !enabled }
+  })
+  document.querySelectorAll('input[name="fedRoutingMode"]').forEach((radio) => {
+    radio.addEventListener('change', async (e) => {
+      const mode = e.target.value
+      try {
+        const res = await fetch('/api/federation/routing-mode', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ mode }) })
+        const data = await res.json().catch(() => ({}))
+        if (!res.ok) { showToast(t('federation.toast.error', { msg: data.error || ('HTTP ' + res.status) })); return }
+        showToast(t('federation.routing.toast_set', { mode: t('federation.routing.mode.' + mode + '.label') }))
+      } catch (err) { showToast(t('federation.toast.error', { msg: String(err.message || err) })) }
+    })
+  })
+
+  if (!view.peers.length) {
+    peersEl.innerHTML = `<p style="color:var(--text-muted);font-size:13px">${t('federation.peers_empty')}</p>`
+    return
+  }
+  peersEl.innerHTML = ''
+  for (const peer of view.peers) {
+    const st = statusById.get(peer.id)
+    const state = peer.hasOutboundToken ? (st ? st.state : 'unknown') : 'unpaired'
+    const reachable = state === 'ok'
+    const lastOk = st && st.lastOkAt ? new Date(st.lastOkAt).toLocaleString() : '-'
+    const agentCount = st && st.manifest && Array.isArray(st.manifest.agents) ? String(st.manifest.agents.length) : '-'
+    const card = document.createElement('div')
+    card.className = 'card'
+    card.style.cssText = 'padding:12px 16px;display:flex;flex-direction:column;gap:8px'
+    // Peer ids/baseUrls are OWNER-entered and segment-validated; state labels
+    // come from t(). Still: text nodes only, escapeHtml everywhere.
+    card.innerHTML = `
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+        <strong style="font-size:15px">${escapeHtml(peer.id)}</strong>
+        <span class="tg-status"><span class="tg-dot ${reachable ? 'connected' : 'disconnected'}"></span> ${fedStateLabel(state)}</span>
+        <span style="color:var(--text-muted);font-size:12px;margin-left:auto">${t('federation.card.last_ok')}: ${escapeHtml(lastOk)} · ${t('federation.card.agents')}: ${escapeHtml(agentCount)}</span>
+      </div>
+      <div style="font-size:13px;color:var(--text-muted);word-break:break-all">${escapeHtml(peer.baseUrl)}</div>
+      ${st && st.error ? `<div style="font-size:12px;color:var(--danger)">${escapeHtml(st.error)}</div>` : ''}
+      <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text-muted);cursor:pointer">
+        <input type="checkbox" class="fed-share-cap" ${peer.shareCapabilitySummaries ? 'checked' : ''} style="accent-color:var(--accent)">
+        ${t('federation.share_cap_label')}
+      </label>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        <button class="btn-secondary btn-compact" data-action="reveal">${t('federation.btn.reveal')}</button>
+        <button class="btn-secondary btn-compact" data-action="rotate">${t('federation.btn.rotate')}</button>
+        <button class="btn-secondary btn-compact" data-action="edit">${t('common.edit')}</button>
+        <button class="btn-secondary btn-compact" data-action="delete" style="color:var(--danger)">${t('common.delete')}</button>
+      </div>
+      <div class="fed-token-reveal" hidden style="font-family:monospace;font-size:12px;background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:8px;word-break:break-all"></div>`
+    card.querySelector('[data-action="reveal"]').addEventListener('click', () => fedRevealToken(peer.id, card))
+    card.querySelector('[data-action="rotate"]').addEventListener('click', () => fedRotateToken(peer.id))
+    card.querySelector('[data-action="edit"]').addEventListener('click', () => fedOpenPeerModal(peer))
+    card.querySelector('[data-action="delete"]').addEventListener('click', () => fedDeletePeer(peer.id))
+    card.querySelector('.fed-share-cap').addEventListener('change', (e) => fedToggleShareCap(peer.id, e.target.checked))
+    peersEl.appendChild(card)
+  }
+}
+
+async function fedRevealToken(peerId, card) {
+  const box = card.querySelector('.fed-token-reveal')
+  if (!box.hidden) { box.hidden = true; box.textContent = ''; return }
+  try {
+    const res = await fetch(`/api/federation/peers/${encodeURIComponent(peerId)}/inbound-token`)
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok) { showToast(t('federation.toast.error', { msg: data.error || ('HTTP ' + res.status) })); return }
+    box.textContent = data.inboundToken
+    box.hidden = false
+    navigator.clipboard?.writeText(data.inboundToken).then(
+      () => showToast(t('federation.toast.token_copied')),
+      () => {},
+    )
+  } catch (err) { showToast(t('federation.toast.error', { msg: String(err.message || err) })) }
+}
+
+async function fedRotateToken(peerId) {
+  if (!confirm(t('federation.confirm.rotate', { peer: peerId }))) return
+  try {
+    const res = await fetch(`/api/federation/peers/${encodeURIComponent(peerId)}/rotate-inbound-token`, { method: 'POST' })
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok) { showToast(t('federation.toast.error', { msg: data.error || ('HTTP ' + res.status) })); return }
+    showToast(t('federation.toast.rotated'))
+    loadFederationPage()
+  } catch (err) { showToast(t('federation.toast.error', { msg: String(err.message || err) })) }
+}
+
+async function fedToggleShareCap(peerId, share) {
+  try {
+    const res = await fetch(`/api/federation/peers/${encodeURIComponent(peerId)}`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ shareCapabilitySummaries: share }),
+    })
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok) { showToast(t('federation.toast.error', { msg: data.error || ('HTTP ' + res.status) })); loadFederationPage(); return }
+    showToast(share ? t('federation.toast.share_cap_on') : t('federation.toast.share_cap_off'))
+  } catch (err) { showToast(t('federation.toast.error', { msg: String(err.message || err) })); loadFederationPage() }
+}
+
+async function fedDeletePeer(peerId) {
+  if (!confirm(t('federation.confirm.delete_peer', { peer: peerId }))) return
+  try {
+    const res = await fetch(`/api/federation/peers/${encodeURIComponent(peerId)}`, { method: 'DELETE' })
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok) { showToast(t('federation.toast.error', { msg: data.error || ('HTTP ' + res.status) })); return }
+    // Sweep browser leftovers scoped to the removed peer.
+    for (let i = localStorage.length - 1; i >= 0; i--) {
+      const key = localStorage.key(i)
+      if (key && key.startsWith('chat_last_seen_' + peerId + '/')) localStorage.removeItem(key)
+    }
+    if (chatSelectedAgent && chatSelectedAgent.startsWith(peerId + '/')) chatSelectedAgent = null
+    showToast(t('federation.toast.peer_deleted'))
+    loadFederationPage()
+  } catch (err) { showToast(t('federation.toast.error', { msg: String(err.message || err) })) }
+}
+
+// Apply federation config changes to the RUNNING main agent by restarting it
+// (it reloads CLAUDE.md, which carries the federation onboarding + delegation
+// directive). Reuses the existing main-agent restart endpoint -- no new
+// backend, no terminal command for the operator.
+async function fedApplyToMainAgent() {
+  if (!confirm(t('federation.confirm.apply'))) return
+  try {
+    // Server-side apply: restarts the main channels agent by MAIN_AGENT_ID,
+    // so the client does not depend on window._marveen being loaded (the
+    // Federation page does not populate it -> the old /api/agents/:name path
+    // 404'd when it fell back to the 'marveen' default).
+    const res = await fetch('/api/federation/apply', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}',
+    })
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok) { showToast(t('federation.toast.error', { msg: data.error || ('HTTP ' + res.status) })); return }
+    showToast(t('federation.toast.applied'))
+  } catch (err) { showToast(t('federation.toast.error', { msg: String(err.message || err) })) }
+}
+
+// Re-poll peer reachability then re-render. Called after config mutations
+// (enable, peer add/edit) so the status shows fresh -- there is no separate
+// manual "refresh" button anymore (the apply action owns the top-right slot).
+async function fedRefreshAndReload() {
+  try { await fetch('/api/federation/refresh', { method: 'POST' }) } catch { /* best effort */ }
+  loadFederationPage()
+}
+
+let fedPeerModalEditId = null
+
+function fedOpenPeerModal(peer) {
+  fedPeerModalEditId = peer ? peer.id : null
+  document.getElementById('fedPeerModalTitle').textContent = peer ? t('federation.modal.edit_title', { peer: peer.id }) : t('federation.modal.add_title')
+  const idInput = document.getElementById('fedPeerId')
+  idInput.value = peer ? peer.id : ''
+  idInput.disabled = !!peer
+  document.getElementById('fedPeerBaseUrl').value = peer ? peer.baseUrl : ''
+  document.getElementById('fedPeerOutboundToken').value = ''
+  document.getElementById('fedPeerOutboundToken').placeholder = peer && peer.hasOutboundToken ? t('federation.modal.outbound_keep') : ''
+  document.getElementById('fedPeerAbandonWindow').value = peer && peer.abandonWindowMinutes ? String(peer.abandonWindowMinutes) : ''
+  openModal(document.getElementById('fedPeerModalOverlay'))
+}
+
+async function fedSavePeerModal() {
+  // Ids are case-insensitive server-side (stored lowercase); fold here too so
+  // the operator immediately sees the canonical form.
+  const id = document.getElementById('fedPeerId').value.trim().toLowerCase()
+  const baseUrl = document.getElementById('fedPeerBaseUrl').value.trim()
+  const outbound = document.getElementById('fedPeerOutboundToken').value.trim()
+  const abandonRaw = document.getElementById('fedPeerAbandonWindow').value.trim()
+  try {
+    let res, data
+    if (fedPeerModalEditId) {
+      const body = { baseUrl }
+      if (outbound) body.outboundToken = outbound
+      if (abandonRaw) body.abandonWindowMinutes = parseInt(abandonRaw, 10)
+      else body.abandonWindowMinutes = null
+      res = await fetch(`/api/federation/peers/${encodeURIComponent(fedPeerModalEditId)}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+      data = await res.json().catch(() => ({}))
+      if (!res.ok) { showToast(t('federation.toast.error', { msg: data.error || ('HTTP ' + res.status) })); return }
+      showToast(t('federation.toast.peer_saved'))
+    } else {
+      const body = { id, baseUrl }
+      if (outbound) body.outboundToken = outbound
+      res = await fetch('/api/federation/peers', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+      data = await res.json().catch(() => ({}))
+      if (!res.ok) { showToast(t('federation.toast.error', { msg: data.error || ('HTTP ' + res.status) })); return }
+      // The minted inbound token is shown ONCE right away: the owner hands it
+      // to the peer's operator during pairing.
+      prompt(t('federation.modal.minted_token_hint'), data.inboundToken)
+      showToast(t('federation.toast.peer_added'))
+    }
+    closeModal(document.getElementById('fedPeerModalOverlay'))
+    fedRefreshAndReload()
+  } catch (err) { showToast(t('federation.toast.error', { msg: String(err.message || err) })) }
+}
+
+async function fedRemoveAll() {
+  if (!confirm(t('federation.confirm.remove'))) return
+  try {
+    const res = await fetch('/api/federation/remove', { method: 'POST' })
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok) { showToast(t('federation.toast.error', { msg: data.error || ('HTTP ' + res.status) })); return }
+    federatedPeerStatus = []
+    // Sweep browser leftovers for ALL federated (qualified) threads -- the
+    // per-peer DELETE path does this per peer, full removal must do it wholesale.
+    for (let i = localStorage.length - 1; i >= 0; i--) {
+      const key = localStorage.key(i)
+      if (key && /^chat_last_seen_[^/]+\//.test(key)) localStorage.removeItem(key)
+    }
+    if (chatSelectedAgent && chatSelectedAgent.includes('/')) chatSelectedAgent = null
+    showToast(t('federation.toast.removed'))
+    loadFederationPage()
+  } catch (err) { showToast(t('federation.toast.error', { msg: String(err.message || err) })) }
+}
+
+function wireFederationPage() {
+  if (fedPageWired) return
+  fedPageWired = true
+  const fedApplyBtn = document.getElementById('federationApplyBtn')
+  if (fedApplyBtn) { fedApplyBtn.title = t('federation.apply_hint'); fedApplyBtn.addEventListener('click', fedApplyToMainAgent) }
+  document.getElementById('federationAddPeerBtn')?.addEventListener('click', () => fedOpenPeerModal(null))
+  document.getElementById('federationRemoveBtn')?.addEventListener('click', fedRemoveAll)
+  document.getElementById('fedPeerModalSave')?.addEventListener('click', fedSavePeerModal)
+  document.getElementById('fedPeerModalCancel')?.addEventListener('click', () => closeModal(document.getElementById('fedPeerModalOverlay')))
+  document.getElementById('fedPeerModalClose')?.addEventListener('click', () => closeModal(document.getElementById('fedPeerModalOverlay')))
+  const overlay = document.getElementById('fedPeerModalOverlay')
+  overlay?.addEventListener('click', (e) => { if (e.target === overlay) closeModal(overlay) })
+}
+
+;(() => {
+  function routeFromHash() {
+    let pageId = decodeURIComponent((location.hash || '').replace(/^#/, ''))
+    if (!pageId) pageId = new URLSearchParams(window.location.search).get('page') || ''
+    // 'team' page is merged into 'agents' (org-chart view toggle).
+    if (pageId === 'team') { pageId = 'agents'; _agentsActiveView = 'tree' }
+    if (pageId && document.getElementById(pageId + 'Page')) switchPage(pageId)
+  }
+  window.addEventListener('hashchange', routeFromHash)
+  routeFromHash()
+})()
+
+// ============================================================
+// === Docs (read-only viewer for the project's docs/ folder) ===
+// ============================================================
+
+function escapeAttr(s) {
+  return escapeHtml(String(s)).replace(/"/g, '&quot;')
+}
+
+// Minimal, dependency-free Markdown -> HTML renderer. Inputs come from the
+// repo's own docs/ folder (trusted), but we HTML-escape everything anyway and
+// only emit a fixed set of tags. Covers the constructs our docs use: fenced
+// code, headings, hr, tables, ordered/unordered lists, blockquotes, paragraphs,
+// and inline code/bold/italic/links.
+function mdInline(text) {
+  let s = escapeHtml(text)
+  s = s.replace(/`([^`]+)`/g, (m, c) => '<code>' + c + '</code>')
+  s = s.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+  s = s.replace(/\*([^*]+)\*/g, '<em>$1</em>')
+  s = s.replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, (m, txt, url) =>
+    '<a href="' + escapeAttr(url) + '" target="_blank" rel="noopener noreferrer">' + txt + '</a>')
+  return s
+}
+
+function renderMarkdown(md) {
+  const lines = String(md).replace(/\r\n/g, '\n').split('\n')
+  const out = []
+  let i = 0
+  const isBlockStart = (l) =>
+    /^```/.test(l) || /^(#{1,6})\s/.test(l) || /^\s*[-*]\s+/.test(l) ||
+    /^\s*\d+\.\s+/.test(l) || /^\s*\|.*\|\s*$/.test(l) || /^\s*>\s?/.test(l) ||
+    /^\s*([-*_])\1{2,}\s*$/.test(l) || /^\s*$/.test(l)
+  while (i < lines.length) {
+    const line = lines[i]
+    const fence = line.match(/^```(\w*)\s*$/)
+    if (fence) {
+      const code = []
+      i++
+      while (i < lines.length && !/^```\s*$/.test(lines[i])) { code.push(lines[i]); i++ }
+      i++
+      out.push('<pre><code' + (fence[1] ? ' class="language-' + escapeHtml(fence[1]) + '"' : '') + '>' + escapeHtml(code.join('\n')) + '</code></pre>')
+      continue
+    }
+    const h = line.match(/^(#{1,6})\s+(.*)$/)
+    if (h) { const lvl = h[1].length; out.push('<h' + lvl + '>' + mdInline(h[2].trim()) + '</h' + lvl + '>'); i++; continue }
+    if (/^\s*([-*_])\1{2,}\s*$/.test(line)) { out.push('<hr>'); i++; continue }
+    if (/^\s*\|.*\|\s*$/.test(line) && i + 1 < lines.length &&
+        /^\s*\|?[\s:|-]+\|?\s*$/.test(lines[i + 1]) && lines[i + 1].includes('-')) {
+      const parseRow = (r) => r.trim().replace(/^\|/, '').replace(/\|$/, '').split('|').map(c => c.trim())
+      const headers = parseRow(line)
+      i += 2
+      const rows = []
+      while (i < lines.length && /^\s*\|.*\|\s*$/.test(lines[i])) { rows.push(parseRow(lines[i])); i++ }
+      let t = '<table><thead><tr>' + headers.map(c => '<th>' + mdInline(c) + '</th>').join('') + '</tr></thead><tbody>'
+      for (const r of rows) t += '<tr>' + r.map(c => '<td>' + mdInline(c) + '</td>').join('') + '</tr>'
+      t += '</tbody></table>'
+      out.push(t)
+      continue
+    }
+    if (/^\s*[-*]\s+/.test(line)) {
+      const items = []
+      while (i < lines.length && /^\s*[-*]\s+/.test(lines[i])) { items.push(lines[i].replace(/^\s*[-*]\s+/, '')); i++ }
+      out.push('<ul>' + items.map(it => '<li>' + mdInline(it) + '</li>').join('') + '</ul>')
+      continue
+    }
+    if (/^\s*\d+\.\s+/.test(line)) {
+      const items = []
+      while (i < lines.length && /^\s*\d+\.\s+/.test(lines[i])) { items.push(lines[i].replace(/^\s*\d+\.\s+/, '')); i++ }
+      out.push('<ol>' + items.map(it => '<li>' + mdInline(it) + '</li>').join('') + '</ol>')
+      continue
+    }
+    if (/^\s*>\s?/.test(line)) {
+      const q = []
+      while (i < lines.length && /^\s*>\s?/.test(lines[i])) { q.push(lines[i].replace(/^\s*>\s?/, '')); i++ }
+      out.push('<blockquote>' + q.map(mdInline).join('<br>') + '</blockquote>')
+      continue
+    }
+    if (/^\s*$/.test(line)) { i++; continue }
+    const para = []
+    while (i < lines.length && !isBlockStart(lines[i])) { para.push(lines[i]); i++ }
+    if (para.length) out.push('<p>' + para.map(mdInline).join('<br>') + '</p>')
+  }
+  return out.join('\n')
+}
+
+async function loadDocs() {
+  const listEl = document.getElementById('docsList')
+  const contentEl = document.getElementById('docsContent')
+  if (!listEl) return
+  listEl.innerHTML = '<p class="muted">' + t('docs.loading') + '</p>'
+  let docs = []
+  try {
+    const res = await fetch('/api/docs')
+    docs = await res.json()
+    if (!Array.isArray(docs)) docs = []
+  } catch (e) {
+    listEl.innerHTML = '<p class="muted">' + t('docs.list_load_error') + ': ' + escapeHtml(String(e.message || e)) + '</p>'
+    return
+  }
+  if (!docs.length) {
+    listEl.innerHTML = '<p class="muted">' + t('docs.empty_list') + '</p>'
+    if (contentEl) contentEl.innerHTML = '<p class="muted">' + t('docs.empty_content') + '</p>'
+    return
+  }
+  listEl.innerHTML = docs.map(d =>
+    '<a href="#" class="docs-list-item" data-doc="' + escapeAttr(d.name) + '">' +
+      '<span class="docs-list-title">' + escapeHtml(d.title || d.name) + '</span>' +
+      (d.created ? '<span class="docs-list-date">' + escapeHtml(d.created) + '</span>' : '') +
+    '</a>'
+  ).join('')
+  listEl.querySelectorAll('.docs-list-item').forEach(a => {
+    a.addEventListener('click', (e) => {
+      e.preventDefault()
+      listEl.querySelectorAll('.docs-list-item').forEach(x => x.classList.remove('active'))
+      a.classList.add('active')
+      openDoc(a.dataset.doc)
+    })
+  })
+  const first = listEl.querySelector('.docs-list-item')
+  if (first) { first.classList.add('active'); openDoc(first.dataset.doc) }
+}
+
+async function openDoc(name) {
+  const contentEl = document.getElementById('docsContent')
+  if (!contentEl) return
+  contentEl.innerHTML = '<p class="muted">' + t('docs.loading') + '</p>'
+  try {
+    const res = await fetch('/api/docs/' + encodeURIComponent(name))
+    if (!res.ok) throw new Error('HTTP ' + res.status)
+    const doc = await res.json()
+    const content = doc.content || ''
+    // Toolbar with a raw-.md download, then the rendered markdown.
+    contentEl.innerHTML =
+      '<div class="docs-content-toolbar">' +
+        '<button class="btn-secondary btn-compact" id="docsDownloadBtn">' + t('docs.download_btn') + '</button>' +
+      '</div>' +
+      '<div class="docs-rendered markdown-body md-rendered">' + renderMarkdown(content) + '</div>'
+    const dl = document.getElementById('docsDownloadBtn')
+    if (dl) dl.addEventListener('click', () => downloadMarkdown(name, content))
+  } catch (e) {
+    contentEl.innerHTML = '<p class="muted">' + t('docs.open_error') + ': ' + escapeHtml(String(e.message || e)) + '</p>'
+  }
+}
+
+// Download a doc's raw markdown as a .md file (client-side Blob, no server).
+function downloadMarkdown(name, content) {
+  try {
+    const blob = new Blob([content], { type: 'text/markdown;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = /\.md$/.test(name) ? name : (name + '.md')
+    document.body.appendChild(a)
+    a.click()
+    a.remove()
+    setTimeout(() => URL.revokeObjectURL(url), 1000)
+  } catch (e) {
+    showToast(t('common.toast.download_failed', { msg: String(e && e.message || e) }))
+  }
+}
+
+// === Research (read-only viewer for each agent's research/ folder) ===
+// Mirrors the Docs tab above, but the API groups docs by agent
+// ([{agent, docs:[{name,title,updated}]}]), so the list needs a per-agent
+// header and each item's dataset carries both agent+name for the detail
+// fetch. Reuses escapeHtml/escapeAttr/renderMarkdown/downloadMarkdown as-is.
+async function loadResearch() {
+  const listEl = document.getElementById('researchList')
+  const contentEl = document.getElementById('researchContent')
+  if (!listEl) return
+  listEl.innerHTML = '<p class="muted">' + t('research.loading') + '</p>'
+  let groups = []
+  try {
+    const res = await fetch('/api/research')
+    groups = await res.json()
+    if (!Array.isArray(groups)) groups = []
+  } catch (e) {
+    listEl.innerHTML = '<p class="muted">' + t('research.list_load_error') + ': ' + escapeHtml(String(e.message || e)) + '</p>'
+    return
+  }
+  if (!groups.length) {
+    listEl.innerHTML = '<p class="muted">' + t('research.empty_list') + '</p>'
+    if (contentEl) contentEl.innerHTML = '<p class="muted">' + t('research.empty_content') + '</p>'
+    return
+  }
+  listEl.innerHTML = groups.map(g =>
+    '<div class="docs-list-group-label">' + escapeHtml(g.agent) + '</div>' +
+    g.docs.map(d =>
+      '<a href="#" class="docs-list-item" data-agent="' + escapeAttr(g.agent) + '" data-doc="' + escapeAttr(d.name) + '">' +
+        '<span class="docs-list-title">' + escapeHtml(d.title || d.name) + '</span>' +
+        (d.updated ? '<span class="docs-list-date">' + escapeHtml(d.updated) + '</span>' : '') +
+      '</a>'
+    ).join('')
+  ).join('')
+  listEl.querySelectorAll('.docs-list-item').forEach(a => {
+    a.addEventListener('click', (e) => {
+      e.preventDefault()
+      listEl.querySelectorAll('.docs-list-item').forEach(x => x.classList.remove('active'))
+      a.classList.add('active')
+      openResearchDoc(a.dataset.agent, a.dataset.doc)
+    })
+  })
+  const first = listEl.querySelector('.docs-list-item')
+  if (first) { first.classList.add('active'); openResearchDoc(first.dataset.agent, first.dataset.doc) }
+}
+
+async function openResearchDoc(agent, name) {
+  const contentEl = document.getElementById('researchContent')
+  if (!contentEl) return
+  contentEl.innerHTML = '<p class="muted">' + t('research.loading') + '</p>'
+  try {
+    const res = await fetch('/api/research/' + encodeURIComponent(agent) + '/' + encodeURIComponent(name))
+    if (!res.ok) throw new Error('HTTP ' + res.status)
+    const doc = await res.json()
+    const content = doc.content || ''
+    contentEl.innerHTML =
+      '<div class="docs-content-toolbar">' +
+        '<button class="btn-secondary btn-compact" id="researchDownloadBtn">' + t('docs.download_btn') + '</button>' +
+      '</div>' +
+      '<div class="docs-rendered markdown-body">' + renderMarkdown(content) + '</div>'
+    const dl = document.getElementById('researchDownloadBtn')
+    if (dl) dl.addEventListener('click', () => downloadMarkdown(name, content))
+  } catch (e) {
+    contentEl.innerHTML = '<p class="muted">' + t('research.open_error') + ': ' + escapeHtml(String(e.message || e)) + '</p>'
+  }
+}
+
+// === Mobile login (QR of the ?token= bootstrap URL) ===
+// The desktop is already authenticated, so the token lives in localStorage.
+// We render it as a QR purely client-side and show it in a modal; the phone
+// scans it and stores the token locally. The token never travels through chat.
+(function setupMobileLogin() {
+  const btn = document.getElementById('mobileLoginBtn')
+  const overlay = document.getElementById('mobileLoginOverlay')
+  if (!btn || !overlay) return
+  const qrBox = document.getElementById('mobileLoginQr')
+  const closeBtn = document.getElementById('mobileLoginClose')
+
+  async function render() {
+    const token = localStorage.getItem('marveen-dashboard-token')
+    if (!token) {
+      qrBox.innerHTML = `<p class="muted">${t('mobile_login.no_token')}</p>`
+      return
+    }
+    if (typeof qrcode !== 'function') {
+      qrBox.innerHTML = `<p class="muted">${t('mobile_login.cdn_error')}</p>`
+      return
+    }
+    // The QR must encode a URL the phone can reach. If the desktop opened the
+    // dashboard on localhost/127.0.0.1, window.location.origin would put
+    // "localhost" in the QR and the phone would hit its OWN localhost. In that
+    // case ask the server for its LAN IP and build the QR from that. If the
+    // dashboard is already open on a LAN IP or a tunnel host, the origin works
+    // as-is.
+    let base = window.location.origin
+    const host = window.location.hostname
+    if (host === 'localhost' || host === '127.0.0.1') {
+      qrBox.innerHTML = `<p class="muted">${t('mobile_login.generating')}</p>`
+      try {
+        const r = await fetch('/api/network-info', { headers: { 'Authorization': 'Bearer ' + token } })
+        const info = r.ok ? await r.json() : {}
+        if (info.lan_ip) {
+          base = 'http://' + info.lan_ip + ':' + (info.port || window.location.port || '3420')
+        } else {
+          qrBox.innerHTML = `<p class="mobile-login-warn">${t('mobile_login.localhost_warn')}</p>`
+          return
+        }
+      } catch (e) {
+        qrBox.innerHTML = `<p class="mobile-login-warn">${t('mobile_login.lan_error')}</p>`
+        return
+      }
+    }
+    const url = base + '/?token=' + token
+    try {
+      const qr = qrcode(0, 'M') // typeNumber 0 = auto-fit, ECC level M
+      qr.addData(url)
+      qr.make()
+      qrBox.innerHTML = qr.createSvgTag({ cellSize: 6, margin: 4, scalable: true })
+    } catch (e) {
+      qrBox.innerHTML = `<p class="muted">${t('mobile_login.qr_error', { msg: escapeHtml(String(e && e.message || e)) })}</p>`
+    }
+  }
+
+  btn.addEventListener('click', () => { render(); openModal(overlay) })
+  if (closeBtn) closeBtn.addEventListener('click', () => closeModal(overlay))
+  overlay.addEventListener('click', (e) => { if (e.target === overlay) closeModal(overlay) })
+})()
+
+// === Archivalt kartyak ===
+;(() => {
+  let archivedInit = false
+
+  const STATUS_LABELS = {
+    planned:     () => t('kanban.status.planned'),
+    in_progress: () => t('kanban.status.in_progress'),
+    waiting:     () => t('kanban.status.waiting'),
+    done:        () => t('kanban.status.done')
+  }
+  const STATUS_COLORS = { planned: '#6b7280', in_progress: '#3b82f6', waiting: '#f59e0b', done: '#10b981' }
+  const PRIORITY_LABELS = {
+    low:    () => t('kanban.priority.low'),
+    normal: () => t('kanban.priority.normal'),
+    high:   () => t('kanban.priority.high'),
+    urgent: () => t('kanban.priority.urgent')
+  }
+  const PRIORITY_COLORS = { low: '#9ca3af', normal: '#6b7280', high: '#f59e0b', urgent: '#ef4444' }
+
+  function fmtDate(unix) {
+    if (!unix) return ''
+    return new Date(unix * 1000).toLocaleString('hu-HU', { dateStyle: 'short', timeStyle: 'short' })
+  }
+
+  // Render an archived card with the same visual language as the live board:
+  // project pill + #seq title + colored rounded priority/label chips, wrapped in
+  // the .kanban-card frame. The whole card opens a read-only detail modal on
+  // click; the restore button stops propagation so it doesn't also open it.
+  function renderArchivedCard(card) {
+    const prioColor = PRIORITY_COLORS[card.priority] || '#6b7280'
+    const prioLabel = PRIORITY_LABELS[card.priority]?.() ?? card.priority
+    const seqHtml = card.seq != null
+      ? `<span class="kanban-card-seq" style="font-family:monospace;font-size:11px;color:var(--text-muted);margin-right:5px">#${card.seq}</span>`
+      : ''
+    const projectHtml = card.project
+      ? `<span class="kanban-card-project">${esc(card.project)}</span>`
+      : ''
+    let labelsHtml = ''
+    if (Array.isArray(card.labels) && card.labels.length > 0) {
+      const pills = card.labels
+        .map(l => `<span class="kanban-card-label-pill" style="--label-color:${esc(l.color)}">#${esc(l.name)}</span>`)
+        .join('')
+      labelsHtml = `<div class="kanban-card-labels">${pills}</div>`
+    }
+    const prioPill = `<span class="archived-prio-pill" style="--prio-color:${prioColor}">${prioLabel}</span>`
+    return `<div class="kanban-card archived-card" data-id="${esc(card.id)}" data-priority="${esc(card.priority)}">
+      ${projectHtml}
+      <div class="kanban-card-title">${seqHtml}${esc(card.title)}</div>
+      <div class="kanban-card-footer">${prioPill}</div>
+      ${labelsHtml}
+      <div class="archived-card-foot">
+        <span class="archived-date">${t('archived.label.archived_at', {date: fmtDate(card.archived_at)})}</span>
+        <button class="btn-secondary btn-compact archived-restore-btn" data-id="${esc(card.id)}" title="${t('archived.btn.restore_to_board')}" style="white-space:nowrap;flex-shrink:0;">${t('archived.btn.restore')}</button>
+      </div>
+    </div>`
+  }
+
+  // Read-only detail modal for an archived card: meta grid, labels, description,
+  // comments -- no editing affordances. Restore button mirrors the card button.
+  async function showArchivedDetail(card) {
+    const seqPrefix = card.seq != null ? `#${card.seq} ` : ''
+    document.getElementById('archivedDetailTitle').textContent = `${seqPrefix}${card.title}`
+    const meta = document.getElementById('archivedDetailMeta')
+    const idLabel = (card.seq != null ? `#${card.seq} · ` : '') + card.id
+    meta.innerHTML = `
+      <div class="meta-item"><span class="meta-label">${t('kanban.meta.id')}</span><span class="meta-value" style="font-family:monospace">${esc(idLabel)}</span></div>
+      <div class="meta-item"><span class="meta-label">${t('kanban.meta.status')}</span><span class="meta-value">${STATUS_LABELS[card.status]?.() ?? card.status}</span></div>
+      <div class="meta-item"><span class="meta-label">${t('kanban.meta.assignee')}</span><span class="meta-value">${card.assignee ? esc(card.assignee) : t('kanban.meta.none')}</span></div>
+      <div class="meta-item"><span class="meta-label">${t('kanban.meta.priority')}</span><span class="meta-value">${PRIORITY_LABELS[card.priority]?.() ?? card.priority}</span></div>
+      <div class="meta-item"><span class="meta-label">${t('kanban.meta.project')}</span><span class="meta-value">${card.project ? esc(card.project) : t('kanban.meta.none')}</span></div>
+      <div class="meta-item"><span class="meta-label">${t('archived.meta.archived_at')}</span><span class="meta-value">${fmtDate(card.archived_at)}</span></div>
+    `
+    const labelsWrap = document.getElementById('archivedDetailLabelsWrap')
+    const labelsBox = document.getElementById('archivedDetailLabels')
+    if (Array.isArray(card.labels) && card.labels.length > 0) {
+      labelsBox.innerHTML = card.labels
+        .map(l => `<span class="kanban-card-label-pill" style="--label-color:${esc(l.color)}">#${esc(l.name)}</span>`)
+        .join('')
+      labelsWrap.style.display = ''
+    } else {
+      labelsWrap.style.display = 'none'
+    }
+    document.getElementById('archivedDetailDesc').textContent = card.description || ''
+
+    const commentsWrap = document.getElementById('archivedDetailCommentsWrap')
+    const commentsBox = document.getElementById('archivedDetailComments')
+    commentsBox.innerHTML = ''
+    try {
+      const res = await fetch(`/api/kanban/${encodeURIComponent(card.id)}/comments`)
+      const comments = res.ok ? await res.json() : []
+      if (Array.isArray(comments) && comments.length > 0) {
+        for (const c of comments) {
+          const date = new Date(c.created_at * 1000).toLocaleString('hu-HU')
+          const div = document.createElement('div')
+          div.className = 'comment-item'
+          div.innerHTML = `<div><span class="comment-author">${esc(c.author)}</span><span class="comment-date">${date}</span></div><div class="comment-body">${esc(c.content)}</div>`
+          commentsBox.appendChild(div)
+        }
+        commentsWrap.style.display = ''
+      } else {
+        commentsWrap.style.display = 'none'
+      }
+    } catch { commentsWrap.style.display = 'none' }
+
+    const restoreBtn = document.getElementById('archivedDetailRestoreBtn')
+    restoreBtn.disabled = false
+    restoreBtn.textContent = t('archived.btn.restore_to_board')
+    restoreBtn.onclick = async () => {
+      restoreBtn.disabled = true
+      restoreBtn.textContent = t('archived.btn.restoring')
+      try {
+        const resp = await fetch(`/api/kanban/${encodeURIComponent(card.id)}/unarchive`, { method: 'POST' })
+        if (resp.ok) {
+          closeModal(document.getElementById('archivedDetailOverlay'))
+          doArchivedSearch()
+        } else {
+          restoreBtn.disabled = false
+          restoreBtn.textContent = t('archived.btn.restore_to_board')
+          showToast(t('archived.restore_error'))
+        }
+      } catch {
+        restoreBtn.disabled = false
+        restoreBtn.textContent = t('archived.btn.restore_to_board')
+      }
+    }
+    openModal(document.getElementById('archivedDetailOverlay'))
+  }
+
+  async function populateArchivedProjects() {
+    try {
+      const r = await fetch('/api/kanban-projects')
+      if (!r.ok) return
+      const projects = await r.json()
+      const sel = document.getElementById('archivedProject')
+      const cur = sel.value
+      sel.innerHTML = '<option value="">' + t('archived.filter.all_projects') + '</option>'
+      for (const p of projects) {
+        const opt = document.createElement('option')
+        opt.value = p
+        opt.textContent = p
+        if (p === cur) opt.selected = true
+        sel.appendChild(opt)
+      }
+    } catch { /* best-effort */ }
+  }
+
+  async function doArchivedSearch() {
+    const list = document.getElementById('archivedList')
+    const summary = document.getElementById('archivedSummary')
+    list.className = ''
+    list.innerHTML = '<p class="naplo-empty">' + t('common.loading') + '</p>'
+    summary.textContent = ''
+
+    const params = new URLSearchParams()
+    const q = document.getElementById('archivedQ').value.trim()
+    const project = document.getElementById('archivedProject').value
+    const from = document.getElementById('archivedFrom').value
+    const to = document.getElementById('archivedTo').value
+    if (q) params.set('q', q)
+    if (project) params.set('project', project)
+    if (from) params.set('from', Math.floor(new Date(from).getTime() / 1000))
+    if (to) params.set('to', Math.floor(new Date(to + 'T23:59:59').getTime() / 1000))
+
+    try {
+      const r = await fetch('/api/kanban/archived?' + params.toString())
+      if (!r.ok) { list.innerHTML = '<p class="naplo-empty error">' + t('archived.error.http', {status: r.status}) + '</p>'; return }
+      const data = await r.json()
+      const cards = data.cards || []
+      summary.textContent = t('archived.summary', {count: cards.length, limit: data.limit})
+      if (cards.length === 0) { list.innerHTML = '<p class="naplo-empty">' + t('archived.empty') + '</p>'; return }
+      list.className = 'archived-grid'
+      list.innerHTML = cards.map(renderArchivedCard).join('')
+      const byId = new Map(cards.map(c => [c.id, c]))
+      // Whole card opens the read-only detail; restore button acts on its own.
+      list.querySelectorAll('.archived-card').forEach(el => {
+        el.addEventListener('click', () => {
+          const card = byId.get(el.dataset.id)
+          if (card) showArchivedDetail(card)
+        })
+      })
+      list.querySelectorAll('.archived-restore-btn').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+          e.stopPropagation()
+          const id = btn.dataset.id
+          btn.disabled = true
+          btn.textContent = '...'
+          try {
+            const resp = await fetch(`/api/kanban/${id}/unarchive`, { method: 'POST' })
+            if (resp.ok) {
+              const cardEl = btn.closest('.archived-card')
+              if (cardEl) cardEl.style.opacity = '0.4'
+              btn.textContent = t('archived.btn.restored')
+            } else {
+              btn.disabled = false
+              btn.textContent = t('archived.btn.restore')
+              showToast(t('archived.restore_error'))
+            }
+          } catch {
+            btn.disabled = false
+            btn.textContent = t('archived.btn.restore')
+          }
+        })
+      })
+    } catch (err) {
+      list.innerHTML = '<p class="naplo-empty error">' + t('common.error_network', {msg: err.message}) + '</p>'
+    }
+  }
+
+  function loadArchivedPage() {
+    if (!archivedInit) {
+      archivedInit = true
+      document.getElementById('archivedSearchBtn').addEventListener('click', doArchivedSearch)
+      document.getElementById('archivedRefreshBtn').addEventListener('click', doArchivedSearch)
+      document.getElementById('archivedQ').addEventListener('keydown', e => { if (e.key === 'Enter') doArchivedSearch() })
+      // Back button mirrors the kanban row's Archivaltak entry point; explicit
+      // switchPage (not history.back) so it works on direct-link arrivals too.
+      const backBtn = document.getElementById('archivedBackToKanban')
+      if (backBtn) backBtn.addEventListener('click', () => switchPage('kanban'))
+      const adOverlay = document.getElementById('archivedDetailOverlay')
+      document.getElementById('archivedDetailClose').addEventListener('click', () => closeModal(adOverlay))
+      attachOverlayCloseGuard(adOverlay)
+    }
+    populateArchivedProjects()
+    doArchivedSearch()
+  }
+
+  window.loadArchivedPage = loadArchivedPage
+})()
+
+// === Naplo (Audit Timeline) ===
+;(() => {
+  let naploInitialized = false
+  let naploActiveSource = ''
+
+  const SOURCE_LABELS = { config: () => t('naplo.source.config'), idea: () => t('naplo.source.idea'), store: () => t('naplo.source.store'), diary: () => t('naplo.source.diary') }
+  const SOURCE_COLORS = { config: '#3b82f6', idea: '#10b981', store: '#f59e0b', diary: '#8b5cf6' }
+  const DIARY_ENTRY_LABELS = { log: () => t('naplo.diary.log_badge'), memory: () => t('naplo.diary.memory_badge') }
+  const DIARY_ENTRY_COLORS = { log: '#6b7280', memory: '#a78bfa' }
+
+  function fmtTs(unix) {
+    return new Date(unix * 1000).toLocaleString('hu-HU', { dateStyle: 'short', timeStyle: 'short' })
+  }
+
+  function renderEntry(e) {
+    const sourceColor = SOURCE_COLORS[e.source] || '#6b7280'
+    const sourceLabelRaw = SOURCE_LABELS[e.source]; const sourceLabel = sourceLabelRaw ? (typeof sourceLabelRaw === 'function' ? sourceLabelRaw() : sourceLabelRaw) : e.source
+    const badge = `<span class="naplo-badge" style="background:${sourceColor}">${sourceLabel}</span>`
+    const ts = `<span class="naplo-ts">${fmtTs(e.created_at)}</span>`
+    let detail = ''
+    if (e.source === 'config') {
+      const oldV = e.old_value != null ? `<code>${esc(e.old_value)}</code>` : '<em>nincs</em>'
+      const newV = e.new_value != null ? `<code>${esc(e.new_value)}</code>` : '<em>nincs</em>'
+      detail = `<strong>${esc(e.key)}</strong> ${oldV} &rarr; ${newV} <span class="naplo-actor">${esc(e.actor || '')}</span>`
+    } else if (e.source === 'idea') {
+      const from = e.from_status ? `<code>${esc(e.from_status)}</code> &rarr; ` : ''
+      detail = `<strong>${esc(e.idea_id)}</strong> ${from}<code>${esc(e.to_status)}</code>`
+      if (e.note) detail += ` <span class="naplo-note">${esc(e.note)}</span>`
+      if (e.actor) detail += ` <span class="naplo-actor">${esc(e.actor)}</span>`
+    } else if (e.source === 'store') {
+      const sizeStr = e.file_size != null ? ` (${(e.file_size / 1024).toFixed(1)} KB)` : ''
+      const agentStr = e.agent ? ` <span class="naplo-actor">${esc(e.agent)}</span>` : ''
+      const sens = e.is_sensitive ? ` <span class="naplo-sensitive">${t('naplo.entry.sensitive')}</span>` : ''
+      detail = `<code>${esc(e.rel_path)}</code> <span class="naplo-event-type">${esc(e.event_type)}</span>${sizeStr}${agentStr}${sens}`
+    } else if (e.source === 'diary') {
+      const entryColor = DIARY_ENTRY_COLORS[e.entry_type] || '#6b7280'
+      const entryLabelRaw = DIARY_ENTRY_LABELS[e.entry_type]; const entryLabel = entryLabelRaw ? (typeof entryLabelRaw === 'function' ? entryLabelRaw() : entryLabelRaw) : e.entry_type
+      const entryBadge = `<span class="naplo-badge" style="background:${entryColor};font-size:10px">${entryLabel}</span>`
+      const agentStr = e.agent_id ? ` <span class="naplo-actor">${esc(e.agent_id)}</span>` : ''
+      let contentSnippet = esc(e.content || '').replace(/\n/g, ' ').slice(0, 200)
+      if ((e.content || '').length > 200) contentSnippet += '…'
+      const keywordsStr = e.keywords ? `<div class="naplo-note" style="margin-top:2px">Kulcsszavak: ${esc(e.keywords)}</div>` : ''
+      const catStr = e.category ? ` <span class="naplo-event-type">${esc(e.category)}</span>` : ''
+      detail = `${entryBadge}${catStr}${agentStr}<div class="naplo-diary-content">${contentSnippet}</div>${keywordsStr}`
+    }
+    return `<div class="naplo-entry"><div class="naplo-entry-meta">${ts}${badge}</div><div class="naplo-entry-detail">${detail}</div></div>`
+  }
+
+  async function doNaplo() {
+    const timeline = document.getElementById('naplo-timeline')
+    const summary = document.getElementById('naplo-summary')
+    timeline.innerHTML = `<p class="naplo-empty">${t('naplo.loading')}</p>`
+    summary.textContent = ''
+
+    const params = new URLSearchParams()
+    if (naploActiveSource) params.set('source', naploActiveSource)
+    const from = document.getElementById('naplo-from').value
+    const to = document.getElementById('naplo-to').value
+    const q = document.getElementById('naplo-q').value.trim()
+    const agentEl = document.getElementById('naplo-agent')
+    const agentVal = agentEl ? agentEl.value.trim() : ''
+    if (from) params.set('from', Math.floor(new Date(from).getTime() / 1000))
+    if (to)   params.set('to', Math.floor(new Date(to + 'T23:59:59').getTime() / 1000))
+    if (q)    params.set('q', q)
+    if (agentVal) params.set('agent', agentVal)
+    params.set('limit', '200')
+
+    try {
+      const res = await fetch('/api/audit-log?' + params.toString())
+      if (!res.ok) { timeline.innerHTML = `<p class="naplo-empty error">Hiba: ${res.status}</p>`; return }
+      const data = await res.json()
+      const entries = data.entries || []
+      summary.textContent = t('naplo.summary', { n: entries.length })
+      if (entries.length === 0) { timeline.innerHTML = `<p class="naplo-empty">${t('naplo.empty')}</p>`; return }
+      timeline.innerHTML = entries.map(renderEntry).join('')
+    } catch (err) {
+      timeline.innerHTML = `<p class="naplo-empty error">${t('naplo.error', { msg: err.message })}</p>`
+    }
+  }
+
+  function loadNaplo() {
+    if (!naploInitialized) {
+      naploInitialized = true
+      document.querySelectorAll('#naplo-source-tabs .naplo-tab').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          document.querySelectorAll('#naplo-source-tabs .naplo-tab').forEach((b) => b.classList.remove('active'))
+          btn.classList.add('active')
+          naploActiveSource = btn.dataset.source
+          const agentFilter = document.getElementById('naplo-agent-wrap')
+          if (agentFilter) agentFilter.style.display = naploActiveSource === 'diary' ? '' : 'none'
+          doNaplo()
+        })
+      })
+      document.getElementById('naplo-search-btn').addEventListener('click', doNaplo)
+      document.getElementById('naplo-q').addEventListener('keydown', (e) => { if (e.key === 'Enter') doNaplo() })
+      document.getElementById('naplo-refresh-btn').addEventListener('click', doNaplo)
+    }
+    doNaplo()
+  }
+
+  window.loadNaplo = loadNaplo
+})()
+
+// === Kanban Gantt / timeline view ===
+;(function () {
+  // --- State ---
+  let ganttPeriod = 'week'  // 'week' | 'month' | 'quarter'
+  let ganttPeriodOffset = 0  // periods stepped from the current one (0 = current, -1 = prev, +1 = next)
+  let ganttOverdueOnly = false
+  let _initialized = false
+
+  // --- Color map by status (vars from theme) ---
+  const STATUS_COLOR = {
+    planned:     { bg: 'var(--accent)',  border: 'var(--accent)' },
+    in_progress: { bg: '#4f8ef7',        border: '#3a7be0' },
+    waiting:     { bg: '#e8a838',        border: '#c88c20' },
+    done:        { bg: '#3dbf79',        border: '#28a560' },
+  }
+
+  // Period window: returns { rangeStart: Date, rangeEnd: Date } (midnight boundaries)
+  function periodWindow() {
+    const now = new Date()
+    const start = new Date(now)
+    start.setHours(0, 0, 0, 0)
+    const end = new Date(start)
+    if (ganttPeriod === 'week') {
+      // Mon..Sun of current week, shifted by ganttPeriodOffset weeks
+      const dow = (start.getDay() + 6) % 7  // Mon=0
+      start.setDate(start.getDate() - dow + ganttPeriodOffset * 7)
+      end.setTime(start.getTime())
+      end.setDate(start.getDate() + 7)
+    } else if (ganttPeriod === 'month') {
+      start.setDate(1)
+      start.setMonth(start.getMonth() + ganttPeriodOffset)
+      end.setFullYear(start.getFullYear(), start.getMonth() + 1, 1)
+    } else {  // quarter
+      const qStart = Math.floor(start.getMonth() / 3) * 3 + ganttPeriodOffset * 3
+      start.setMonth(qStart, 1)
+      end.setFullYear(start.getFullYear(), start.getMonth() + 3, 1)
+    }
+    return { rangeStart: start, rangeEnd: end }
+  }
+
+  // Format date as short label (e.g. "jún 15" / "Jun 15")
+  function fmtDateShort(d) {
+    return d.toLocaleDateString(typeof _lang !== 'undefined' && _lang === 'en' ? 'en-US' : 'hu-HU', { month: 'short', day: 'numeric' })
+  }
+
+  // Return header tick labels for the visible range
+  function buildHeaderTicks(rangeStart, rangeEnd) {
+    const ticks = []
+    const totalMs = rangeEnd - rangeStart
+    // Aim for ~5-8 ticks; snap to day boundaries
+    let stepDays = 1
+    if (ganttPeriod === 'month') stepDays = 7
+    else if (ganttPeriod === 'quarter') stepDays = 14
+    const cur = new Date(rangeStart)
+    while (cur < rangeEnd) {
+      ticks.push({
+        date: new Date(cur),
+        pct: (cur - rangeStart) / totalMs * 100,
+      })
+      cur.setDate(cur.getDate() + stepDays)
+    }
+    return ticks
+  }
+
+  // Group visible cards by project (or 'Nincs projekt' for null)
+  function groupCardsByProject(cards) {
+    const map = new Map()
+    for (const c of cards) {
+      const key = c.project || t('kanban.gantt.no_project')
+      if (!map.has(key)) map.set(key, [])
+      map.get(key).push(c)
+    }
+    return map
+  }
+
+  // Build and inject the Gantt DOM into #kanbanGanttView
+  function renderGantt() {
+    const container = document.getElementById('kanbanGanttView')
+    if (!container) return
+    container.innerHTML = ''
+
+    const { rangeStart, rangeEnd } = periodWindow()
+    const totalMs = rangeEnd - rangeStart
+    const nowMs = Date.now()
+    const todayPct = Math.max(0, Math.min(100, (nowMs - rangeStart) / totalMs * 100))
+
+    // Filter: cards that have a due_date
+    let cards = (Array.isArray(kanbanCards) ? kanbanCards : []).filter(c => c.due_date)
+
+    if (ganttOverdueOnly) {
+      // Keep cards that are overdue OR due within 7 days
+      const cutoff = (nowMs + 7 * 86400000) / 1000
+      cards = cards.filter(c => c.due_date <= cutoff / 1 && c.status !== 'done')
+    }
+
+    // Exclude cards whose entire bar lies outside the window
+    cards = cards.filter(c => {
+      const barStart = c.created_at ? c.created_at * 1000 : rangeStart.getTime()
+      const barEnd   = c.due_date * 1000
+      return barEnd >= rangeStart && barStart <= rangeEnd
+    })
+
+    if (cards.length === 0) {
+      container.innerHTML = `<p style="color:var(--muted);padding:24px 0;text-align:center;">${t('kanban.gantt.no_cards')}</p>`
+      return
+    }
+
+    const grouped = groupCardsByProject(cards)
+
+    // --- Outer layout ---
+    const wrap = document.createElement('div')
+    wrap.className = 'gantt-wrap'
+    wrap.style.cssText = 'display:flex;flex-direction:column;overflow:hidden;'
+
+    // --- Header row: left label + tick strip ---
+    const headerRow = document.createElement('div')
+    headerRow.style.cssText = 'display:flex;border-bottom:1px solid var(--border);margin-bottom:4px;'
+
+    const headerLabel = document.createElement('div')
+    headerLabel.style.cssText = 'width:220px;min-width:220px;font-size:12px;color:var(--muted);padding:4px 8px;border-right:1px solid var(--border);'
+    headerLabel.textContent = t('kanban.gantt.col_label')
+    headerRow.appendChild(headerLabel)
+
+    const headerTrack = document.createElement('div')
+    headerTrack.style.cssText = 'flex:1;position:relative;height:28px;overflow:hidden;'
+    const ticks = buildHeaderTicks(rangeStart, rangeEnd)
+    for (const tick of ticks) {
+      const el = document.createElement('div')
+      el.style.cssText = `position:absolute;left:${tick.pct.toFixed(2)}%;transform:translateX(-50%);font-size:11px;color:var(--muted);top:6px;white-space:nowrap;`
+      el.textContent = fmtDateShort(tick.date)
+      headerTrack.appendChild(el)
+    }
+    // Today marker in header
+    if (todayPct >= 0 && todayPct <= 100) {
+      const todayHead = document.createElement('div')
+      todayHead.style.cssText = `position:absolute;left:${todayPct.toFixed(2)}%;top:0;bottom:0;width:2px;background:var(--danger,#e05252);opacity:0.6;`
+      headerTrack.appendChild(todayHead)
+    }
+    headerRow.appendChild(headerTrack)
+    wrap.appendChild(headerRow)
+
+    // --- Body rows ---
+    const body = document.createElement('div')
+    body.style.cssText = 'overflow-y:auto;max-height:70vh;'
+
+    for (const [project, projCards] of grouped) {
+      // Group header
+      const groupHeader = document.createElement('div')
+      groupHeader.style.cssText = 'display:flex;align-items:center;background:var(--bg2,var(--sidebar-bg));border-bottom:1px solid var(--border);'
+      const ghLabel = document.createElement('div')
+      ghLabel.style.cssText = 'width:220px;min-width:220px;font-size:12px;font-weight:600;color:var(--fg);padding:5px 8px;border-right:1px solid var(--border);'
+      ghLabel.textContent = `${project} (${projCards.length})`
+      groupHeader.appendChild(ghLabel)
+      const ghStripe = document.createElement('div')
+      ghStripe.style.cssText = 'flex:1;height:26px;background:var(--bg2,var(--sidebar-bg));'
+      groupHeader.appendChild(ghStripe)
+      body.appendChild(groupHeader)
+
+      // Card rows
+      for (const card of projCards) {
+        const barStartMs = card.created_at ? card.created_at * 1000 : rangeStart.getTime()
+        const barEndMs   = card.due_date * 1000
+        const isOverdue  = card.status !== 'done' && barEndMs < nowMs
+
+        // Clamp to window
+        const clampedStart = Math.max(barStartMs, rangeStart.getTime())
+        const clampedEnd   = Math.min(barEndMs,   rangeEnd.getTime())
+        const leftPct  = (clampedStart - rangeStart) / totalMs * 100
+        const widthPct = Math.max(0.5, (clampedEnd - clampedStart) / totalMs * 100)
+
+        const col = isOverdue ? { bg: 'var(--danger,#e05252)', border: '#b83030' }
+                              : (STATUS_COLOR[card.status] || STATUS_COLOR.planned)
+
+        const row = document.createElement('div')
+        row.style.cssText = 'display:flex;align-items:center;border-bottom:1px solid var(--border);min-height:32px;'
+
+        const rowLabel = document.createElement('div')
+        rowLabel.style.cssText = 'width:220px;min-width:220px;font-size:12px;color:var(--fg);padding:4px 8px;border-right:1px solid var(--border);overflow:hidden;white-space:nowrap;text-overflow:ellipsis;cursor:pointer;'
+        rowLabel.title = card.title
+        // Show the running display number (#N, card.seq) like the board, not the hex id.
+        const seqLabel = card.seq != null ? `#${card.seq}` : `#${card.id}`
+        rowLabel.textContent = `${seqLabel} ${card.title}`
+        rowLabel.addEventListener('click', () => { if (typeof openCardDetail === 'function') openCardDetail(card.id) })
+
+        const rowTrack = document.createElement('div')
+        rowTrack.style.cssText = 'flex:1;position:relative;height:32px;overflow:hidden;'
+
+        // Today line (in each row)
+        if (todayPct >= 0 && todayPct <= 100) {
+          const tl = document.createElement('div')
+          tl.style.cssText = `position:absolute;left:${todayPct.toFixed(2)}%;top:0;bottom:0;width:2px;background:var(--danger,#e05252);z-index:1;pointer-events:none;`
+          rowTrack.appendChild(tl)
+        }
+
+        const bar = document.createElement('div')
+        bar.style.cssText = [
+          `position:absolute`,
+          `left:${leftPct.toFixed(2)}%`,
+          `width:${widthPct.toFixed(2)}%`,
+          `top:5px`,
+          `bottom:5px`,
+          `background:${col.bg}`,
+          `border:1px solid ${col.border}`,
+          `border-radius:4px`,
+          `overflow:hidden`,
+          `white-space:nowrap`,
+          `font-size:11px`,
+          `color:#fff`,
+          `display:flex`,
+          `align-items:center`,
+          `padding:0 6px`,
+          `box-sizing:border-box`,
+          `cursor:pointer`,
+          `z-index:2`,
+          isOverdue ? 'background-image:repeating-linear-gradient(45deg,rgba(0,0,0,.12) 0px,rgba(0,0,0,.12) 4px,transparent 4px,transparent 8px)' : '',
+        ].filter(Boolean).join(';')
+        bar.title = `${seqLabel} ${card.title}\n${fmtDateShort(new Date(barStartMs))} - ${fmtDateShort(new Date(barEndMs))}`
+        bar.textContent = `${seqLabel} ${card.title}`
+        bar.addEventListener('click', () => { if (typeof openCardDetail === 'function') openCardDetail(card.id) })
+        rowTrack.appendChild(bar)
+        row.appendChild(rowLabel)
+        row.appendChild(rowTrack)
+        body.appendChild(row)
+      }
+    }
+
+    wrap.appendChild(body)
+
+    // --- Legend ---
+    const legend = document.createElement('div')
+    legend.style.cssText = 'display:flex;align-items:center;gap:16px;margin-top:10px;font-size:12px;flex-wrap:wrap;'
+    const legendItems = [
+      { key: 'planned',     color: STATUS_COLOR.planned.bg },
+      { key: 'in_progress', color: STATUS_COLOR.in_progress.bg },
+      { key: 'waiting',     color: STATUS_COLOR.waiting.bg },
+      { key: 'done',        color: STATUS_COLOR.done.bg },
+      { key: 'overdue',     color: 'var(--danger,#e05252)' },
+    ]
+    for (const item of legendItems) {
+      const dot = document.createElement('span')
+      dot.innerHTML = `<span style="display:inline-block;width:12px;height:12px;border-radius:2px;background:${item.color};vertical-align:middle;margin-right:4px;"></span>${t('kanban.gantt.legend.' + item.key)}`
+      legend.appendChild(dot)
+    }
+    const todayLegend = document.createElement('span')
+    todayLegend.style.cssText = 'margin-left:auto;color:var(--muted);'
+    todayLegend.innerHTML = `<span style="display:inline-block;width:12px;height:2px;background:var(--danger,#e05252);vertical-align:middle;margin-right:4px;"></span>${t('kanban.gantt.legend.today')}`
+    legend.appendChild(todayLegend)
+    wrap.appendChild(legend)
+
+    container.appendChild(wrap)
+
+    // --- Period stepper (below the timeline): step back/forward by one period unit ---
+    const nav = document.createElement('div')
+    nav.style.cssText = 'display:flex;align-items:center;justify-content:center;gap:10px;margin-top:12px;'
+    const prevBtn = document.createElement('button')
+    prevBtn.className = 'view-btn'
+    prevBtn.style.cssText = 'width:auto;padding:0 14px;'
+    prevBtn.textContent = '‹ ' + t('kanban.gantt.nav_prev')
+    prevBtn.addEventListener('click', () => { ganttPeriodOffset--; renderGantt() })
+    const rangeLbl = document.createElement('span')
+    rangeLbl.style.cssText = 'font-size:12px;color:var(--muted);min-width:130px;text-align:center;'
+    rangeLbl.textContent = `${fmtDateShort(rangeStart)} - ${fmtDateShort(new Date(rangeEnd.getTime() - 1))}`
+    const nextBtn = document.createElement('button')
+    nextBtn.className = 'view-btn'
+    nextBtn.style.cssText = 'width:auto;padding:0 14px;'
+    nextBtn.textContent = t('kanban.gantt.nav_next') + ' ›'
+    nextBtn.addEventListener('click', () => { ganttPeriodOffset++; renderGantt() })
+    nav.append(prevBtn, rangeLbl, nextBtn)
+    container.appendChild(nav)
+  }
+
+  // --- View switcher init (called once after DOM ready) ---
+  function initGanttViewSwitcher() {
+    if (_initialized) return
+    _initialized = true
+
+    const boardBtn  = document.getElementById('kanbanViewBoard')
+    const ganttBtn  = document.getElementById('kanbanViewGantt')
+    const boardFilters = document.getElementById('kanbanBoardFilters')
+    const ganttFilters = document.getElementById('kanbanGanttFilters')
+    const boardEls  = [document.getElementById('kanbanBoard'), document.getElementById('kanbanSwimlaneBoard')]
+    const ganttEl   = document.getElementById('kanbanGanttView')
+
+    function activateBoard() {
+      boardBtn.classList.add('active')
+      ganttBtn.classList.remove('active')
+      boardFilters.style.display = 'flex'
+      ganttFilters.style.display = 'none'
+      boardEls.forEach(el => { if (el) el.style.removeProperty('display') })
+      ganttEl.style.display = 'none'
+    }
+
+    function activateGantt() {
+      ganttBtn.classList.add('active')
+      boardBtn.classList.remove('active')
+      ganttFilters.style.display = 'flex'
+      boardFilters.style.display = 'none'
+      boardEls.forEach(el => { if (el) el.style.display = 'none' })
+      ganttEl.style.display = 'block'
+      renderGantt()
+    }
+
+    boardBtn.addEventListener('click', activateBoard)
+    ganttBtn.addEventListener('click', activateGantt)
+
+    // Archived button: navigates AWAY to the archived page (its sidebar entry
+    // was removed -- this button is now the entry point). It never takes the
+    // 'active' state here because leaving the kanban page hides the row.
+    const archivedBtn = document.getElementById('kanbanViewArchived')
+    if (archivedBtn) archivedBtn.addEventListener('click', () => switchPage('archived'))
+
+    // Period buttons
+    document.querySelectorAll('#kanbanGanttFilters [data-period]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        ganttPeriod = btn.dataset.period
+        ganttPeriodOffset = 0  // recenter on the current period when switching granularity
+        document.querySelectorAll('#kanbanGanttFilters [data-period]').forEach(b => b.classList.remove('active'))
+        btn.classList.add('active')
+        renderGantt()
+      })
+    })
+
+    // Overdue toggle
+    const overdueChk = document.getElementById('ganttOverdueOnly')
+    if (overdueChk) {
+      overdueChk.addEventListener('change', () => {
+        ganttOverdueOnly = overdueChk.checked
+        renderGantt()
+      })
+    }
+
+    // Re-render on data refresh (hook into global loadKanban completion)
+    const _origRenderKanban = window.renderKanban
+    if (typeof _origRenderKanban === 'function') {
+      window.renderKanban = function () {
+        _origRenderKanban.apply(this, arguments)
+        if (ganttEl.style.display !== 'none') renderGantt()
+      }
+    }
+  }
+
+  window._initGanttViewSwitcher = initGanttViewSwitcher
+  window.renderGantt = renderGantt
+})()
+ + model.inputUsdPerM
+  const output = model.outputUsdPerM == null ? '—' : '
+function onbStep2Html(s) {
+  const isSlack = onboardingChannelProvider === 'slack'
+  const desc = isSlack ? t('onboarding.step2.desc_slack') : t('onboarding.step2.desc')
+  const tokenLabel = isSlack ? t('onboarding.step2.token_label_slack') : t('onboarding.step2.token_label')
+  const tokenHint = isSlack ? t('onboarding.step2.token_hint_slack') : t('onboarding.step2.token_hint')
+  const placeholder = isSlack ? 'xoxb-...' : '123456:ABC...'
+  // Pre-fill from a token already on disk (e.g. a prior save that stopped at the managed-settings.json gate) so the operator isn't forced to dig it
+  // back out of ~/.claude/channels/<provider>/.env and repaste it. Saving still re-runs the managed-settings check server-side either way.
+  const existingBotToken = (s && s.existingBotToken) || ''
+  const existingAppToken = (s && s.existingAppToken) || ''
+  const appTokenFields = isSlack
+    ? `<label class="form-label-sm">${escapeHtml(t('onboarding.step2.app_token_label_slack'))}</label>`
+      + `<input id="onbSlackAppToken" type="password" class="onb-input" placeholder="xapp-..." value="${escapeHtml(existingAppToken)}" autocomplete="off" required>`
+      + `<div class="onb-hint">${escapeHtml(t('onboarding.step2.app_token_hint_slack'))}</div>`
+    : ''
+  return `<p>${escapeHtml(desc)}</p>`
+    + `<label class="form-label-sm">${escapeHtml(tokenLabel)}</label>`
+    + `<input id="onbBotToken" type="password" class="onb-input" placeholder="${placeholder}" value="${escapeHtml(existingBotToken)}" autocomplete="off">`
+    + `<div class="onb-hint">${escapeHtml(tokenHint)}</div>`
+    + appTokenFields
+    + `<button class="btn-primary btn-compact" id="onbBotBtn">${escapeHtml(t('onboarding.step2.save_btn'))}</button>`
+    + `<div id="onbMsg" class="onb-msg"></div>`
+}
+function onbStep3Html(s) {
+  // Pairing needs the channels session up (the wizard restarted it after the
+  // bot-token save) -- show its state so a not-yet-up service reads as
+  // "starting", not as the user's failure.
+  const svcLine = s && s.agentsRunning
+    ? `<p class="onb-ok-line">${escapeHtml(t('onboarding.step3.svc_up'))}</p>`
+    : `<p class="onb-hint">${escapeHtml(t('onboarding.step3.svc_starting'))}</p>`
+  return `<p>${escapeHtml(t('onboarding.step3.desc'))}</p>`
+    + svcLine
+    + `<ol class="onb-list"><li>${escapeHtml(t('onboarding.step3.li1'))}</li><li>${escapeHtml(t('onboarding.step3.li2'))}</li></ol>`
+    + `<div id="onbPending" class="onb-pending"></div>`
+    + `<button class="btn-secondary btn-compact" id="onbRefreshBtn">${escapeHtml(t('onboarding.step3.refresh_btn'))}</button>`
+    + `<div id="onbMsg" class="onb-msg"></div>`
+}
+function wireOnboarding(step) {
+  if (step === 1) {
+    const idBtn = document.getElementById('onbIdentityBtn')
+    if (idBtn) idBtn.addEventListener('click', async () => {
+      const agentName = (document.getElementById('onbAgentName').value || '').trim()
+      const ownerName = (document.getElementById('onbOwnerName').value || '').trim()
+      if (!agentName || !ownerName) { onbMsg(t('onboarding.identity.empty'), true); return }
+      idBtn.disabled = true; onbMsg(t('onboarding.saving'))
+      try {
+        const res = await fetch('/api/onboarding/identity', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ agentName, ownerName }) })
+        const d = await res.json().catch(() => ({}))
+        if (!res.ok) { idBtn.disabled = false; onbMsg(d.error || t('onboarding.error'), true); return }
+        // The name is live in the .env now -- repaint the chrome from
+        // /api/marveen so the sidebar/title reflect it immediately, and
+        // surface the automatic channels restart (same pattern as the
+        // claude-auth step) instead of silently advancing.
+        if (typeof initSidebarBrand === 'function') initSidebarBrand()
+        if (d.restartError) { idBtn.disabled = false; onbMsg(t('onboarding.identity.saved_restart_failed'), true); setTimeout(refreshOnboarding, 6000); return }
+        if (d.restarted) { onbMsg(t('onboarding.identity.saved_restarted')); setTimeout(refreshOnboarding, 2500); return }
+        if (d.restartNeeded) { onbMsg(t('onboarding.identity.saved_restart_needed')); await refreshOnboarding(); return }
+        onbMsg(t('onboarding.identity.saved'))
+        await refreshOnboarding()
+      } catch (e) { idBtn.disabled = false; onbMsg((e && e.message) || t('onboarding.error'), true) }
+    })
+    return
+  }
+  if (step === 2) {
+    const authBtn = document.getElementById('onbAuthBtn')
+    if (authBtn) authBtn.addEventListener('click', async () => {
+      const token = (document.getElementById('onbToken').value || '').trim()
+      if (!token) { onbMsg(t('onboarding.step1.token_empty'), true); return }
+      authBtn.disabled = true; onbMsg(t('onboarding.saving'))
+      try {
+        const res = await fetch('/api/onboarding/claude-auth', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token }) })
+        const d = await res.json().catch(() => ({}))
+        if (!res.ok) { authBtn.disabled = false; onbMsg(d.error || t('onboarding.error'), true); return }
+        // Fresh-install path: the server restarts the (previously
+        // unauthenticated) channels session right after the first auth save --
+        // surface that, and on failure show the manual restart step instead of
+        // silently advancing.
+        if (d.restartError) { authBtn.disabled = false; onbMsg(t('onboarding.step1.saved_restart_failed'), true); setTimeout(refreshOnboarding, 6000); return }
+        if (d.restarted) { onbMsg(t('onboarding.step1.saved_restarted')); setTimeout(refreshOnboarding, 2500); return }
+        onbMsg(d.verified ? t('onboarding.step1.saved_verified') : t('onboarding.step1.saved_unverified'))
+        await refreshOnboarding()
+      } catch (e) { authBtn.disabled = false; onbMsg((e && e.message) || t('onboarding.error'), true) }
+    })
+    const launchBtn = document.getElementById('onbLaunchBtn')
+    if (launchBtn) launchBtn.addEventListener('click', async () => {
+      launchBtn.disabled = true; onbMsg(t('onboarding.step1.launching'))
+      try {
+        const res = await fetch('/api/onboarding/launch', { method: 'POST' })
+        const d = await res.json().catch(() => ({}))
+        if (!res.ok) { launchBtn.disabled = false; onbMsg(d.error || t('onboarding.error'), true); return }
+        onbMsg(t('onboarding.step1.launched'))
+        // On a fresh install the session is CREATED here (ONBTMUX1) and takes a
+        // ~minute cold start via channels.sh. Poll until it is up so the wizard
+        // advances on its own instead of stranding the user on step 2 after a
+        // single 2.5s re-check. Bounded so a genuinely failed start still hands
+        // control back rather than spinning forever.
+        let up = false
+        for (let i = 0; i < 40 && !up; i++) {  // ~40 x 3s = 2 min
+          await new Promise((r) => setTimeout(r, 3000))
+          const st = await fetchOnboardingStatus()
+          if (st && st.agentsRunning) { up = true; break }
+        }
+        if (up) { await refreshOnboarding() }
+        // Timeout is NOT success: on a slow machine the cold start can outlast
+        // the 2-min bound while still being healthy, so the message must say
+        // "still starting, check back / refresh" -- repeating the launched
+        // message here would also mask a genuinely dead start (PR #779 review).
+        else { launchBtn.disabled = false; onbMsg(t('onboarding.step1.launch_slow'), true) }
+      } catch (e) { launchBtn.disabled = false; onbMsg((e && e.message) || t('onboarding.error'), true) }
+    })
+  } else if (step === 3) {
+    const botBtn = document.getElementById('onbBotBtn')
+    if (botBtn) botBtn.addEventListener('click', async () => {
+      const botToken = (document.getElementById('onbBotToken').value || '').trim()
+      if (!botToken) { onbMsg(t('onboarding.step2.token_empty'), true); return }
+      const payload = { botToken }
+      if (onboardingChannelProvider === 'slack') {
+        const appToken = (document.getElementById('onbSlackAppToken')?.value || '').trim()
+        // Required, not optional: without SLACK_APP_TOKEN the channel session starts but Socket Mode never connects,
+        // so "saved" would read as success while Slack silently never comes online.
+        if (!appToken) { onbMsg(t('onboarding.step2.app_token_empty_slack'), true); return }
+        payload.appToken = appToken
+      }
+      botBtn.disabled = true; onbMsg(t('onboarding.saving'))
+      try {
+        const res = await fetch(`/api/agents/${encodeURIComponent(onboardingAgentId || mainAgentId())}/channels/${onboardingChannelProvider}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
+        const d = await res.json().catch(() => ({}))
+        if (res.status === 409 && d.error === 'managed-settings-missing') {
+          botBtn.disabled = false
+          showSudoModal(d.sudoCommand, () => botBtn.click())
+          return
+        }
+        if (!res.ok) { botBtn.disabled = false; onbMsg(d.error || t('onboarding.error'), true); return }
+        // The server restarts the channels session so the new bot token goes
+        // live. Do NOT advance on a timer: the restart response is a dispatch
+        // receipt, and the cold start is ~minutes. Wait for the MEASURED
+        // channelLive signal, tell the user the channel is starting meanwhile,
+        // and on timeout stay on this step with an honest "still starting"
+        // message -- the old fixed 4s opened the pairing step against a
+        // booting session, which looked done-and-empty (WIZFLOW809).
+        onbMsg(d.restarted ? t('onboarding.step2.saved_restarted') : t('onboarding.step2.saved'))
+        onbMsg(t('onboarding.step2.waiting_channel'))
+        const outcome = await waitForChannelLive(fetchOnboardingStatus, 3000, 40)  // ~2 min bound
+        if (outcome === 'live') { await refreshOnboarding() }
+        else { botBtn.disabled = false; onbMsg(t('onboarding.step2.channel_slow'), true) }
+      } catch (e) { botBtn.disabled = false; onbMsg((e && e.message) || t('onboarding.error'), true) }
+    })
+  } else if (step === 4) {
+    const refreshBtn = document.getElementById('onbRefreshBtn')
+    // One sink for both failure paths. The box alone was not enough: it renders
+    // in the same muted onb-hint slot as "no pending", so the very distinction
+    // this fix is about -- "nobody is waiting" vs "I could not ask" -- stayed
+    // invisible. onbMsg is the error channel this function already uses for the
+    // approve step a few lines below.
+    const showPendingError = (msg) => {
+      const box = document.getElementById('onbPending')
+      if (box) box.innerHTML = `<span class="onb-hint">${escapeHtml(msg)}</span>`
+      onbMsg(msg, true)
+    }
+    const loadPending = async () => {
+      try {
+        // Same boot race the Messages page already guards against (see
+        // ensureWebinár MágusLoaded): until /api/marveen resolves window._marveen,
+        // mainAgentId() returns the literal 'marveen' fallback. On a renamed
+        // install that is not the main agent, so the backend takes the
+        // sub-agent branch, finds no such agent dir and answers 404 -- and the
+        // wizard rendered that as "no pending pairing" while the Channel view,
+        // which uses the selected agent, listed the very same request.
+        await ensureWebinár MágusLoaded()
+        const res = await fetch(`/api/agents/${encodeURIComponent(onboardingAgentId || mainAgentId())}/channels/${onboardingChannelProvider}/pending`)
+        // Surface the failure instead of rendering it as an empty list. This is
+        // a separate defect from the id race: without it a 404 or an auth error
+        // reads as "nobody is waiting for approval", which is the one answer the
+        // user cannot act on. A NETWORK failure does not land here at all -- the
+        // fetch rejects -- so the outer catch carries the same message; see the
+        // end of this function. The two together are what make the comment true.
+        if (!res.ok) {
+          const d = await res.json().catch(() => ({}))
+          showPendingError(d.error || t('onboarding.error'))
+          return
+        }
+        const p = await res.json()
+        // Backend contract: [{code, senderId, chatId, createdAt, expiresAt}].
+        // `code` is the approve key (the same code the bot sent the user) --
+        // POSTing anything else gets a 400 and the pairing never completes.
+        const now = Date.now()
+        const list = (Array.isArray(p) ? p : (p.pending || [])).filter((x) => x && x.code && (!x.expiresAt || x.expiresAt > now))
+        const box = document.getElementById('onbPending')
+        if (!box) return
+        if (!list.length) { box.innerHTML = `<span class="onb-hint">${escapeHtml(t('onboarding.step3.no_pending'))}</span>`; return }
+        box.innerHTML = list.map((x) => {
+          const code = escapeHtml(String(x.code))
+          const label = escapeHtml(String(x.senderId || x.chatId || '?')) + ' · ' + code
+          return `<div class="onb-pending-row"><span>${label}</span><button class="btn-primary btn-compact onb-approve" data-code="${code}">${escapeHtml(t('onboarding.step3.approve_btn'))}</button></div>`
+        }).join('')
+        box.querySelectorAll('.onb-approve').forEach((b) => b.addEventListener('click', async () => {
+          b.disabled = true
+          try {
+            const res = await fetch(`/api/agents/${encodeURIComponent(onboardingAgentId || mainAgentId())}/channels/${onboardingChannelProvider}/approve`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code: b.dataset.code }) })
+            const d = await res.json().catch(() => ({}))
+            if (!res.ok) { b.disabled = false; onbMsg(d.error || t('onboarding.error'), true); return }
+            onbMsg(t('onboarding.step3.approved'))
+            setTimeout(refreshOnboarding, 1500)
+          } catch (e) { b.disabled = false; onbMsg((e && e.message) || t('onboarding.error'), true) }
+        }))
+      } catch (e) {
+        // Network-level failure: the fetch rejected, so the !res.ok branch never
+        // ran. Without this the box stays empty and the user reads it as "nobody
+        // is waiting" -- the exact defect this change is about.
+        showPendingError((e && e.message) || t('onboarding.error'))
+      }
+    }
+    if (refreshBtn) refreshBtn.addEventListener('click', () => { refreshOnboarding() })
+    loadPending()
+  }
+}
+
+// === Init ===
+populateAvatarGrid()
+loadMemAgents()
+loadOverview()
+loadAvailableModels()
+loadOllamaModels()
+{
+  const onbClose = document.getElementById('onboardingClose')
+  if (onbClose) onbClose.addEventListener('click', dismissOnboarding)
+}
+initOnboarding()
+
+// "DeepSeek API kulcs hozzáadása" link az agent edit panel-en --
+// a Vault page-re visz, ahol a felhasználó egy DEEPSEEK_API_KEY
+// secret-et tud felvenni, és visszatérve frissítjük a model listát.
+document.getElementById('deepseekConfigLink')?.addEventListener('click', (e) => {
+  e.preventDefault()
+  location.hash = 'vault'
+})
+
+// === Sudo modal for managed-settings.json (Slack setup pre-flight) ===
+function showSudoModal(sudoCommand, onRetry) {
+  let overlay = document.getElementById('sudoModalOverlay')
+  if (overlay) overlay.remove()
+  overlay = document.createElement('div')
+  overlay.id = 'sudoModalOverlay'
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:10001;display:flex;align-items:center;justify-content:center'
+  const card = document.createElement('div')
+  card.style.cssText = 'background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:24px;max-width:560px;width:90%'
+  card.innerHTML = `
+    <h3 style="margin:0 0 12px">${t('channel.sudo_modal.title')}</h3>
+    <p style="font-size:13px;color:var(--text-muted);margin:0 0 16px">${t('channel.sudo_modal.desc')}</p>
+    <div style="position:relative">
+      <pre id="sudoCmdPre" style="background:var(--bg-main);border:1px solid var(--border);border-radius:8px;padding:12px;font-size:12px;overflow-x:auto;white-space:pre-wrap;word-break:break-all">${escapeHtml(sudoCommand)}</pre>
+      <button id="sudoCopyBtn" style="position:absolute;top:6px;right:6px;padding:4px 10px;font-size:11px;border-radius:6px;border:1px solid var(--border);background:var(--bg-card);cursor:pointer">${t('common.copy')}</button>
+    </div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px">
+      <button id="sudoCancelBtn" class="btn btn-secondary" style="padding:6px 16px;font-size:13px">${t('channel.sudo_modal.cancel')}</button>
+      <button id="sudoDoneBtn" class="btn btn-primary" style="padding:6px 16px;font-size:13px">${t('channel.sudo_modal.retry')}</button>
+    </div>
+  `
+  overlay.appendChild(card)
+  document.body.appendChild(overlay)
+
+  document.getElementById('sudoCopyBtn').addEventListener('click', () => {
+    navigator.clipboard.writeText(sudoCommand).then(() => {
+      document.getElementById('sudoCopyBtn').textContent = t('common.copied')
+      setTimeout(() => { document.getElementById('sudoCopyBtn').textContent = t('common.copy') }, 1500)
+    })
+  })
+  document.getElementById('sudoCancelBtn').addEventListener('click', () => overlay.remove())
+  document.getElementById('sudoDoneBtn').addEventListener('click', () => {
+    overlay.remove()
+    if (onRetry) onRetry()
+    else document.getElementById('chConnectBtn').click()
+  })
+  overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove() })
+}
+
+// === Clipboard fallback (non-secure context / legacy browser) ===
+function fallbackCopyToClipboard(text, btn) {
+  const ta = document.createElement('textarea')
+  ta.value = text
+  ta.style.cssText = 'position:fixed;left:-9999px'
+  document.body.appendChild(ta)
+  ta.select()
+  try {
+    const ok = document.execCommand('copy')
+    if (ok) {
+      btn.textContent = t('common.copied')
+      setTimeout(() => { btn.textContent = t('common.copy') }, 1500)
+    } else {
+      showToast(t('common.toast.copy_failed'))
+    }
+  } catch {
+    showToast(t('common.toast.copy_failed'))
+  }
+  document.body.removeChild(ta)
+}
+
+// === Slack App manifest modal ===
+function showSlackManifestModal(manifest, instructions) {
+  let overlay = document.getElementById('slackManifestOverlay')
+  if (overlay) overlay.remove()
+  overlay = document.createElement('div')
+  overlay.id = 'slackManifestOverlay'
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9999;display:flex;align-items:center;justify-content:center'
+  const card = document.createElement('div')
+  card.style.cssText = 'background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:24px;max-width:640px;width:95%;max-height:85vh;overflow-y:auto'
+
+  const stepsHtml = instructions.map((s, i) => `<li style="margin-bottom:6px">${escapeHtml(s)}</li>`).join('')
+
+  card.innerHTML = `
+    <h3 style="margin:0 0 16px">${t('channel.slack_manifest.title')}</h3>
+    <p style="font-size:13px;color:var(--text-muted);margin:0 0 12px">${t('channel.slack_manifest.desc')}</p>
+    <div style="position:relative;margin-bottom:16px">
+      <pre id="slackManifestPre" style="background:var(--bg-main);border:1px solid var(--border);border-radius:8px;padding:12px;font-size:12px;overflow-x:auto;white-space:pre-wrap;word-break:break-all;max-height:240px;overflow-y:auto">${escapeHtml(manifest)}</pre>
+      <button id="slackManifestCopyBtn" style="position:absolute;top:6px;right:6px;padding:4px 10px;font-size:11px;border-radius:6px;border:1px solid var(--border);background:var(--bg-card);cursor:pointer">${t('common.copy')}</button>
+    </div>
+    <h4 style="margin:0 0 8px;font-size:14px">${t('channel.slack_manifest.steps_title')}</h4>
+    <ol style="font-size:13px;padding-left:20px;margin:0 0 16px">${stepsHtml}</ol>
+    <div style="display:flex;gap:8px;justify-content:flex-end">
+      <button id="slackManifestCloseBtn" class="btn btn-secondary" style="padding:6px 16px;font-size:13px">${t('common.btn.close')}</button>
+      <a href="https://api.slack.com/apps" target="_blank" rel="noopener" class="btn btn-primary" style="padding:6px 16px;font-size:13px;text-decoration:none;display:inline-flex;align-items:center;gap:4px">
+        ${t('channel.slack_manifest.open_btn')}
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+      </a>
+    </div>
+  `
+  overlay.appendChild(card)
+  document.body.appendChild(overlay)
+
+  document.getElementById('slackManifestCopyBtn').addEventListener('click', () => {
+    const copyBtn = document.getElementById('slackManifestCopyBtn')
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(manifest).then(() => {
+        copyBtn.textContent = t('common.copied')
+        setTimeout(() => { copyBtn.textContent = t('common.copy') }, 1500)
+      }).catch(() => {
+        fallbackCopyToClipboard(manifest, copyBtn)
+      })
+    } else {
+      fallbackCopyToClipboard(manifest, copyBtn)
+    }
+  })
+  document.getElementById('slackManifestCloseBtn').addEventListener('click', () => overlay.remove())
+  overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove() })
+}
+
+document.getElementById('chSlackManifestBtn').addEventListener('click', async () => {
+  if (!currentAgent) return
+  const btn = document.getElementById('chSlackManifestBtn')
+  btn.disabled = true
+  try {
+    const res = await fetch(`/api/agents/${encodeURIComponent(currentAgent.name)}/channels/slack/manifest`)
+    if (!res.ok) throw new Error()
+    const data = await res.json()
+    showSlackManifestModal(data.manifest, data.instructions)
+  } catch {
+    showToast(t('channel.toast.manifest_failed'))
+  } finally {
+    btn.disabled = false
+  }
+})
+
+// ============================================================
+// === Recall / Napló ===
+// ============================================================
+
+let recallInitialized = false
+let recallSortDesc = true
+
+async function loadRecallPage() {
+  if (!recallInitialized) {
+    recallInitialized = true
+    const today = new Date().toISOString().split('T')[0]
+    document.getElementById('recallDate').value = today
+
+    try {
+      // /api/schedules/agents includes the main agent (jarvis); /api/agents lists sub-agents only
+      const res = await fetch('/api/schedules/agents')
+      if (res.ok) {
+        const agents = await res.json()
+        const sel = document.getElementById('recallAgent')
+        agents.forEach(a => {
+          const opt = document.createElement('option')
+          opt.value = a.name
+          opt.textContent = a.label || a.name
+          sel.appendChild(opt)
+        })
+      }
+    } catch {}
+
+    document.getElementById('recallBtn').addEventListener('click', doRecall)
+    document.getElementById('recallExpr').addEventListener('keydown', e => { if (e.key === 'Enter') doRecall() })
+    document.getElementById('recallSearch').addEventListener('keydown', e => { if (e.key === 'Enter') doRecall() })
+    // Re-fetch per-agent log dates when the agent filter changes; without this
+    // the date hint stayed stuck on the agent active at first page load.
+    document.getElementById('recallAgent').addEventListener('change', loadRecallDates)
+    // #53: sort order toggle
+    document.getElementById('recallSortToggle').addEventListener('click', () => {
+      recallSortDesc = !recallSortDesc
+      const btn = document.getElementById('recallSortToggle')
+      btn.textContent = recallSortDesc ? '↓' : '↑'
+      btn.title = recallSortDesc ? t('recall.sort.tooltip.desc') : t('recall.sort.tooltip.asc')
+      doRecall()
+    })
+
+    loadRecallDates()
+  }
+  doRecall()
+}
+
+async function loadRecallDates() {
+  try {
+    const agentVal = document.getElementById('recallAgent').value
+    const params = agentVal ? `?agent=${encodeURIComponent(agentVal)}&limit=90` : '?limit=90'
+    const res = await fetch('/api/recall/dates' + params)
+    if (!res.ok) return
+    const dates = await res.json()
+    const dateInput = document.getElementById('recallDate')
+    if (dates.length && !dateInput.value) {
+      dateInput.value = dates[0]
+    }
+    dateInput.setAttribute('title', t('recall.date.n_days', { n: dates.length }))
+  } catch {}
+}
+
+async function doRecall() {
+  const dateInput = document.getElementById('recallDate').value
+  const exprInput = document.getElementById('recallExpr').value.trim()
+  const searchInput = document.getElementById('recallSearch').value.trim()
+  const agentInput = document.getElementById('recallAgent').value
+
+  const params = new URLSearchParams()
+  if (exprInput) {
+    params.set('date', exprInput)
+  } else if (dateInput) {
+    params.set('date', dateInput)
+  }
+  if (searchInput) params.set('q', searchInput)
+  if (agentInput) params.set('agent', agentInput)
+
+  const timeline = document.getElementById('recallTimeline')
+  const summary = document.getElementById('recallSummary')
+  timeline.innerHTML = `<p class="recall-loading">${t('recall.loading')}</p>`
+  summary.innerHTML = ''
+
+  try {
+    const res = await fetch('/api/recall?' + params.toString())
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}))
+      timeline.innerHTML = `<p class="recall-error">${esc(err.error || t('recall.error'))}</p>`
+      return
+    }
+    const data = await res.json()
+    renderRecallSummary(summary, data)
+    renderRecallTimeline(timeline, data)
+  } catch (err) {
+    timeline.innerHTML = `<p style="color:var(--danger)">${t('recall.load_error')}</p>`
+  }
+}
+
+function renderRecallSummary(el, data) {
+  const { dateRange, summary: s } = data
+  const parts = []
+  if (dateRange.from === dateRange.to) {
+    parts.push(`<strong>${esc(dateRange.from)}</strong>`)
+  } else if (dateRange.from && dateRange.to) {
+    parts.push(`<strong>${esc(dateRange.from)}</strong> &ndash; <strong>${esc(dateRange.to)}</strong>`)
+  }
+  parts.push(t('recall.summary.log_count', { n: s.logCount }))
+  parts.push(t('recall.summary.memory_count', { n: s.memoryCount }))
+  if (s.agents.length) parts.push(`${t('recall.summary.agents')}: ${s.agents.map(esc).join(', ')}`)
+  el.innerHTML = `<div class="recall-summary-row">${parts.map(p => `<span>${p}</span>`).join('')}</div>`
+}
+
+function renderRecallTimeline(el, data) {
+  const { logs, memories } = data
+  if (!logs.length && !memories.length) {
+    el.innerHTML = `<p class="recall-empty">${t('recall.empty_period')}</p>`
+    return
+  }
+
+  const items = []
+  logs.forEach(l => items.push({ type: 'log', ts: l.created_at, agent: l.agent_id, date: l.date, content: l.content, label: l.created_label }))
+  memories.forEach(m => items.push({ type: 'memory', ts: m.created_at, agent: m.agent_id, category: m.category, content: m.content, keywords: m.keywords, label: m.created_label }))
+  // #52/#53: apply sort order (desc = newest first, default)
+  items.sort((a, b) => recallSortDesc ? b.ts - a.ts : a.ts - b.ts)
+
+  let currentDate = ''
+  let html = ''
+  for (const item of items) {
+    const dateStr = item.date || new Date(item.ts * 1000).toISOString().split('T')[0]
+    if (dateStr !== currentDate) {
+      currentDate = dateStr
+      html += `<div class="recall-date-header">${esc(dateStr)}</div>`
+    }
+    if (item.type === 'log') {
+      html += `<div class="recall-item recall-log">
+        <div class="recall-item-header">
+          <span class="recall-item-label">${esc(item.label)}</span>
+          <div class="recall-item-badges">
+            <span class="recall-badge recall-badge-agent">${esc(item.agent)}</span>
+          </div>
+        </div>
+        <div class="recall-item-content">${esc(item.content)}</div>
+      </div>`
+    } else {
+      const cat = item.category || 'warm'
+      html += `<div class="recall-item recall-memory" data-cat="${esc(cat)}">
+        <div class="recall-item-header">
+          <span class="recall-item-label">${esc(item.label)}</span>
+          <div class="recall-item-badges">
+            <span class="recall-badge recall-badge-cat" data-cat="${esc(cat)}">${esc(item.category)}</span>
+            <span class="recall-badge recall-badge-agent">${esc(item.agent)}</span>
+          </div>
+        </div>
+        <div class="recall-item-content">${esc(item.content)}</div>
+        ${item.keywords ? `<div class="recall-item-keywords">Kulcsszavak: ${esc(item.keywords)}</div>` : ''}
+      </div>`
+    }
+  }
+  el.innerHTML = html
+}
+
+function esc(s) {
+  if (!s) return ''
+  const d = document.createElement('div')
+  d.textContent = String(s)
+  return d.innerHTML
+}
+
+// ============================================================
+// === Background Tasks ===
+// ============================================================
+
+let bgInitialized = false
+let bgRefreshTimer = null
+
+async function loadBgTasksPage() {
+  if (!bgInitialized) {
+    bgInitialized = true
+    try {
+      // Use /api/schedules/agents (not /api/agents) so the main agent is a
+      // selectable background-task target too -- /api/agents lists sub-agents
+      // only, while the backend (spawnBackgroundTask) accepts any agent_id.
+      const res = await fetch('/api/schedules/agents')
+      if (res.ok) {
+        const agents = await res.json()
+        const sel = document.getElementById('bgAgent')
+        agents.forEach(a => {
+          const opt = document.createElement('option')
+          opt.value = a.name
+          opt.textContent = a.label || a.name
+          sel.appendChild(opt)
+        })
+        if (agents.length === 1) sel.value = agents[0].name
+      }
+    } catch {}
+
+    document.getElementById('bgStartBtn').addEventListener('click', startBgTask)
+    document.getElementById('bgPrompt').addEventListener('keydown', e => { if (e.key === 'Enter') startBgTask() })
+    document.getElementById('bgShowAll').addEventListener('change', loadBgTasks)
+  }
+  loadBgTasks()
+  if (bgRefreshTimer) clearInterval(bgRefreshTimer)
+  bgRefreshTimer = setInterval(loadBgTasks, 10000)
+}
+
+async function startBgTask() {
+  const agent = document.getElementById('bgAgent').value
+  const prompt = document.getElementById('bgPrompt').value.trim()
+  if (!agent) { showToast(t('bgTasks.select_agent')); return }
+  if (!prompt) { showToast(t('bgTasks.enter_task')); return }
+
+  const btn = document.getElementById('bgStartBtn')
+  btn.disabled = true
+  try {
+    const res = await fetch('/api/background-tasks', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ agent_id: agent, prompt }),
+    })
+    const data = await res.json()
+    if (!res.ok) {
+      showToast(data.error || t('common.error'))
+      return
+    }
+    document.getElementById('bgPrompt').value = ''
+    showToast(t('bgTasks.toast.started'))
+    loadBgTasks()
+  } catch {
+    showToast(t('bgTasks.toast.start_error'))
+  } finally {
+    btn.disabled = false
+  }
+}
+
+async function loadBgTasks() {
+  const list = document.getElementById('bgTasksList')
+  const showAll = document.getElementById('bgShowAll').checked
+  const agentVal = document.getElementById('bgAgent')?.value || ''
+
+  try {
+    const params = new URLSearchParams()
+    if (agentVal) params.set('agent', agentVal)
+    if (showAll) params.set('all', 'true')
+    const res = await fetch('/api/background-tasks?' + params.toString())
+    if (!res.ok) { list.innerHTML = `<p style="color:var(--danger)">${t('bgTasks.error')}</p>`; return }
+    const tasks = await res.json()
+
+    if (!tasks.length) {
+      list.innerHTML = `<p style="color:var(--text-muted)">${t('bgTasks.empty')}</p>`
+      return
+    }
+
+    list.innerHTML = tasks.map(t => {
+      const statusColors = { running: '#f59e0b', done: '#22c55e', failed: '#ef4444', timeout: '#6b7280' }
+      const statusLabels = { running: () => t('bgTasks.status.running'), done: () => t('bgTasks.status.done'), failed: () => t('bgTasks.status.failed'), timeout: () => t('bgTasks.status.timeout') }
+      const color = statusColors[t.status] || '#6b7280'
+      const labelRaw = statusLabels[t.status]; const label = labelRaw ? (typeof labelRaw === 'function' ? labelRaw() : labelRaw) : t.status
+      const output = t.output ? `<pre style="margin-top:8px;padding:8px;background:var(--bg);border-radius:6px;font-size:12px;max-height:200px;overflow:auto;white-space:pre-wrap;">${esc(t.output.slice(-2000))}</pre>` : ''
+      return `<div style="margin-bottom:12px;padding:12px 16px;border-radius:8px;background:var(--surface);border:1px solid var(--border);border-left:3px solid ${color};">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+          <div style="display:flex;gap:8px;align-items:center;">
+            <span style="font-weight:600;font-size:13px;">${esc(t.id)}</span>
+            <span class="badge" style="font-size:11px;background:${color};color:#fff;padding:2px 8px;border-radius:12px;">${label}</span>
+            <span class="badge" style="font-size:11px;background:var(--primary);color:#fff;padding:2px 8px;border-radius:12px;">${esc(t.agent_id)}</span>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <span style="font-size:12px;color:var(--text-muted)">${esc(t.started_label)}</span>
+            ${t.status === 'running' ? `<button class="btn btn-sm" onclick="viewBgTask('${esc(t.id)}')" style="font-size:11px;padding:2px 8px;">${t('bgTasks.output_btn')}</button><button class="btn btn-sm" onclick="cancelBgTask('${esc(t.id)}')" style="font-size:11px;padding:2px 8px;color:var(--danger)">${t('bgTasks.stop_btn')}</button>` : ''}
+          </div>
+        </div>
+        <div style="font-size:13px;color:var(--text-primary);margin-bottom:4px;">${esc(t.prompt)}</div>
+        ${t.finished_label ? `<div style="font-size:12px;color:var(--text-muted);">${t('bgTasks.finished_label')} ${esc(t.finished_label)}</div>` : ''}
+        ${output}
+      </div>`
+    }).join('')
+  } catch {
+    list.innerHTML = `<p style="color:var(--danger)">${t('bgTasks.load_error')}</p>`
+  }
+}
+
+async function viewBgTask(id) {
+  try {
+    const res = await fetch(`/api/background-tasks/${id}`)
+    if (!res.ok) { showToast(t('bgTasks.load_error')); return }
+    const task = await res.json()
+    const output = task.liveOutput || task.output || t('bgTasks.no_output')
+    const modal = document.createElement('div')
+    modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:1000;display:flex;align-items:center;justify-content:center;'
+    modal.innerHTML = `<div style="background:var(--surface);border-radius:12px;padding:20px;max-width:800px;width:90%;max-height:80vh;overflow:auto;">
+      <div style="display:flex;justify-content:space-between;margin-bottom:12px;">
+        <h3 style="margin:0;">${t('bgTasks.modal.title', { id: esc(id) })}</h3>
+        <button class="btn btn-sm" id="bgModalClose" style="font-size:13px;">${t('bgTasks.modal.close_btn')}</button>
+      </div>
+      <pre style="white-space:pre-wrap;font-size:12px;line-height:1.4;">${esc(output)}</pre>
+    </div>`
+    document.body.appendChild(modal)
+    modal.addEventListener('click', e => { if (e.target === modal) modal.remove() })
+    document.getElementById('bgModalClose').addEventListener('click', () => modal.remove())
+  } catch {
+    showToast('Hiba')
+  }
+}
+
+async function cancelBgTask(id) {
+  if (!confirm(t('bgTasks.cancel.confirm'))) return
+  try {
+    const res = await fetch(`/api/background-tasks/${id}`, { method: 'DELETE' })
+    if (res.ok) {
+      showToast(t('bgTasks.toast.stopped'))
+      loadBgTasks()
+    } else {
+      showToast(t('bgTasks.toast.stop_error'))
+    }
+  } catch {
+    showToast('Hiba')
+  }
+}
+
+// ============================================================
+// === Autonomy ===
+// ============================================================
+
+async function renderAutonomyContent(gridEl, footerEl) {
+  gridEl.innerHTML = `<p style="color:var(--text-muted);font-size:13px">${t('autonomy.loading')}</p>`
+
+  try {
+    const res = await fetch('/api/autonomy')
+    if (!res.ok) throw new Error('fetch failed')
+    const config = await res.json()
+
+    gridEl.innerHTML = ''
+    for (const cat of config.categories) {
+      const isCapped = !cat.locked && cat.maxLevel < 3
+      const row = document.createElement('div')
+      row.className = 'autonomy-row' + (cat.locked ? ' locked' : '') + (isCapped ? ' capped' : '')
+
+      const label = document.createElement('div')
+      label.className = 'autonomy-row-label'
+      label.textContent = cat.label
+
+      const levels = document.createElement('div')
+      levels.className = 'autonomy-levels'
+
+      for (let l = 1; l <= 3; l++) {
+        const btn = document.createElement('button')
+        const isOver = l > cat.maxLevel
+        btn.className = 'autonomy-level-btn' + (l === cat.level ? ' active' : '') + (isOver ? ' over-cap' : '')
+        btn.dataset.level = String(l)
+        btn.textContent = String(l)
+        btn.disabled = cat.locked || isOver
+        if (!cat.locked && !isOver) {
+          btn.addEventListener('click', () => setAutonomyLevel(cat.key, l))
+        }
+        levels.appendChild(btn)
+      }
+
+      row.appendChild(label)
+      if (cat.locked) {
+        const lock = document.createElement('div')
+        lock.className = 'autonomy-row-lock'
+        lock.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg> ${t('autonomy.lock_label')}`
+        row.appendChild(lock)
+      } else if (isCapped) {
+        const cap = document.createElement('div')
+        cap.className = 'autonomy-row-cap'
+        cap.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg> ${t('autonomy.cap_label', { n: cat.maxLevel })}`
+        row.appendChild(cap)
+      }
+      row.appendChild(levels)
+      gridEl.appendChild(row)
+    }
+
+    if (footerEl) {
+      if (config.updated_at > 0) {
+        const d = new Date(config.updated_at * 1000)
+        footerEl.textContent = t('autonomy.last_modified', { date: d.toLocaleString('hu-HU') })
+      } else {
+        footerEl.textContent = t('autonomy.not_modified')
+      }
+    }
+  } catch (err) {
+    gridEl.innerHTML = `<p style="color:var(--danger)">${t('autonomy.error')}</p>`
+    if (footerEl) footerEl.textContent = ''
+  }
+}
+
+async function setAutonomyLevel(key, level) {
+  try {
+    const res = await fetch('/api/autonomy', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ key, level }),
+    })
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}))
+      showToast(data.error || 'Hiba')
+      return
+    }
+    // Refresh the settings tab autonomy grid if it is visible
+    const tabGrid = document.getElementById('settingsAutonomyGrid')
+    const tabFooter = document.getElementById('settingsAutonomyUpdatedAt')
+    if (tabGrid) renderAutonomyContent(tabGrid, tabFooter)
+  } catch {
+    showToast(t('kanban.toast.save_error'))
+  }
+}
+
+// ============================================================
+// === Approvals ===
+// ============================================================
+
+const APPROVALS_PAGE_LIMIT = 50
+
+let _approvalsCountdownInterval = null
+const _approvalsState = { status: '', agent: '', category: '', offset: 0 }
+
+document.getElementById('refreshApprovalsBtn').addEventListener('click', loadApprovalsPage)
+document.getElementById('approvalsFilterStatus').addEventListener('change', (e) => {
+  _approvalsState.status = e.target.value
+  _approvalsState.offset = 0
+  _renderApprovalsTable()
+})
+document.getElementById('approvalsFilterAgent').addEventListener('input', (e) => {
+  _approvalsState.agent = e.target.value.trim()
+  _approvalsState.offset = 0
+  _renderApprovalsTable()
+})
+document.getElementById('approvalsFilterCategory').addEventListener('input', (e) => {
+  _approvalsState.category = e.target.value.trim()
+  _approvalsState.offset = 0
+  _renderApprovalsTable()
+})
+
+let _approvalsAll = []
+
+async function loadApprovalsPage() {
+  const tbody = document.getElementById('approvalsTbody')
+  const statsEl = document.getElementById('approvalsStats')
+  tbody.innerHTML = `<tr><td colspan="7" style="color:var(--text-muted);padding:24px;text-align:center">${t('approvals.loading')}</td></tr>`
+  statsEl.innerHTML = ''
+  if (_approvalsCountdownInterval) { clearInterval(_approvalsCountdownInterval); _approvalsCountdownInterval = null }
+
+  try {
+    const res = await fetch('/api/approvals?limit=500')
+    if (!res.ok) throw new Error('HTTP ' + res.status)
+    _approvalsAll = await res.json()
+    _renderApprovalsStats()
+    _renderApprovalsTable()
+    _approvalsCountdownInterval = setInterval(_updateCountdowns, 1000)
+  } catch (err) {
+    tbody.innerHTML = `<tr><td colspan="7" style="color:var(--danger);padding:24px;text-align:center">${t('approvals.error')}</td></tr>`
+  }
+}
+
+function _renderApprovalsStats() {
+  const counts = { pending: 0, approved: 0, rejected: 0, timeout: 0 }
+  for (const a of _approvalsAll) counts[a.status] = (counts[a.status] || 0) + 1
+  const statsEl = document.getElementById('approvalsStats')
+  statsEl.innerHTML = `
+    <div class="stat-card"><div class="stat-value" style="color:var(--warning)">${counts.pending}</div><div class="stat-label">${t('approvals.stat.pending')}</div></div>
+    <div class="stat-card"><div class="stat-value" style="color:var(--success)">${counts.approved}</div><div class="stat-label">${t('approvals.stat.approved')}</div></div>
+    <div class="stat-card"><div class="stat-value" style="color:var(--danger)">${counts.rejected}</div><div class="stat-label">${t('approvals.stat.rejected')}</div></div>
+    <div class="stat-card"><div class="stat-value" style="color:var(--text-muted)">${counts.timeout}</div><div class="stat-label">${t('approvals.stat.timeout')}</div></div>
+  `
+
+  // Sidebar badge: show pending count, hidden when zero
+  const badge = document.getElementById('approvalsPendingBadge')
+  if (badge) {
+    badge.textContent = counts.pending
+    badge.hidden = counts.pending === 0
+  }
+
+  // Pending notice banner above stat cards
+  const banner = document.getElementById('approvalsPendingBanner')
+  if (banner) {
+    if (counts.pending === 0) {
+      banner.hidden = true
+    } else {
+      const pendingRows = _approvalsAll.filter(a => a.status === 'pending')
+      const oldest = pendingRows.reduce((min, a) => a.requested_at < min.requested_at ? a : min, pendingRows[0])
+      const ageMin = Math.round((Date.now() / 1000 - oldest.requested_at) / 60)
+      const timeoutMin = oldest.timeout_at ? Math.max(0, Math.round((oldest.timeout_at - Date.now() / 1000) / 60)) : null
+      const timeoutPart = timeoutMin !== null ? ` ${t('approvals.banner.timeout', { n: timeoutMin })}` : ''
+      banner.hidden = false
+      banner.textContent = `${t('approvals.banner.notice', { n: counts.pending, age: ageMin, agent: oldest.agent_id, category: oldest.category })}${timeoutPart}`
+    }
+  }
+}
+
+function _filterApprovals() {
+  const { status, agent, category } = _approvalsState
+  return _approvalsAll.filter(a => {
+    if (status && a.status !== status) return false
+    if (agent && !a.agent_id.includes(agent)) return false
+    if (category && !a.category.includes(category)) return false
+    return true
+  })
+}
+
+function _renderApprovalsTable() {
+  const filtered = _filterApprovals()
+  const { offset } = _approvalsState
+  const page = filtered.slice(offset, offset + APPROVALS_PAGE_LIMIT)
+  const tbody = document.getElementById('approvalsTbody')
+
+  if (!page.length) {
+    tbody.innerHTML = `<tr><td colspan="7" style="color:var(--text-muted);padding:24px;text-align:center">${t('approvals.empty')}</td></tr>`
+    _renderApprovalsPagination(filtered.length)
+    return
+  }
+
+  tbody.innerHTML = page.map(a => {
+    const isPending = a.status === 'pending'
+    const rowStyle = isPending ? 'background:color-mix(in srgb, var(--warning) 8%, transparent)' : ''
+    const time = a.requested_at ? new Date(a.requested_at * 1000).toLocaleString('hu-HU', { dateStyle: 'short', timeStyle: 'short' }) : '-'
+    const badge = _approvalBadge(a.status)
+    const countdown = isPending && a.timeout_at ? `<span class="approvals-countdown" data-timeout="${a.timeout_at}" id="cd-${a.id}"></span>` : (a.timeout_at ? '-' : '')
+    const actions = isPending
+      ? `<div style="display:flex;gap:4px">
+           <button class="btn-primary btn-compact approvals-decide" data-id="${escapeAttr(a.id)}" data-decision="approved" style="font-size:11px">${t('approvals.btn.approve')}</button>
+           <button class="btn-danger btn-compact approvals-decide" data-id="${escapeAttr(a.id)}" data-decision="rejected" style="font-size:11px">${t('approvals.btn.reject')}</button>
+         </div>`
+      : (() => {
+          const resolvedBy = escapeHtml(a.resolved_by || '')
+          if (!a.resolved_at) return `<span style="font-size:12px;color:var(--text-muted)">${resolvedBy}</span>`
+          const resolvedDate = new Date(a.resolved_at * 1000)
+          const requestedDate = a.requested_at ? new Date(a.requested_at * 1000) : null
+          const sameDay = requestedDate && resolvedDate.toDateString() === requestedDate.toDateString()
+          const resolvedStr = resolvedDate.toLocaleString('hu-HU', sameDay ? { timeStyle: 'short' } : { dateStyle: 'short', timeStyle: 'short' })
+          return `<span style="font-size:12px;color:var(--text-muted)">${resolvedBy}<br><span style="font-size:11px;opacity:0.7">${escapeHtml(resolvedStr)}</span></span>`
+        })()
+    return `<tr style="${rowStyle}">
+      <td style="white-space:nowrap;font-size:12px">${escapeHtml(time)}</td>
+      <td><code style="font-size:12px">${escapeHtml(a.agent_id)}</code></td>
+      <td style="font-size:12px">${escapeHtml(a.category)}</td>
+      <td style="max-width:280px;font-size:12px" title="${escapeAttr(a.action_description)}">${escapeHtml(a.action_description.length > 80 ? a.action_description.slice(0, 80) + '...' : a.action_description)}</td>
+      <td>${badge}</td>
+      <td style="font-size:12px;white-space:nowrap">${countdown}</td>
+      <td>${actions}</td>
+    </tr>`
+  }).join('')
+
+  _updateCountdowns()
+  _renderApprovalsPagination(filtered.length)
+
+  tbody.querySelectorAll('.approvals-decide').forEach(btn => {
+    btn.addEventListener('click', () => _resolveApproval(btn.dataset.id, btn.dataset.decision))
+  })
+}
+
+function _approvalBadge(status) {
+  const colors = { pending: 'var(--warning)', approved: 'var(--success)', rejected: 'var(--danger)', timeout: 'var(--text-muted)' }
+  const color = colors[status] || 'var(--text-muted)'
+  return `<span style="display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600;background:color-mix(in srgb,${color} 15%,transparent);color:${color}">${t('approvals.status.' + status) || status}</span>`
+}
+
+function _updateCountdowns() {
+  const now = Math.floor(Date.now() / 1000)
+  document.querySelectorAll('.approvals-countdown[data-timeout]').forEach(el => {
+    const timeout = parseInt(el.dataset.timeout, 10)
+    const diff = timeout - now
+    if (diff <= 0) {
+      el.textContent = t('approvals.countdown.expired')
+      el.style.color = 'var(--danger)'
+    } else {
+      const h = Math.floor(diff / 3600)
+      const m = Math.floor((diff % 3600) / 60)
+      const s = diff % 60
+      el.textContent = h > 0 ? `${h}h ${m}m` : `${m}m ${s}s`
+      el.style.color = diff < 300 ? 'var(--danger)' : 'var(--text-muted)'
+    }
+  })
+}
+
+function _renderApprovalsPagination(total) {
+  const pager = document.getElementById('approvalsPagination')
+  if (total <= APPROVALS_PAGE_LIMIT) { pager.innerHTML = ''; return }
+  const { offset } = _approvalsState
+  const hasPrev = offset > 0
+  const hasNext = offset + APPROVALS_PAGE_LIMIT < total
+  pager.innerHTML = `
+    <button class="btn-secondary btn-compact" ${hasPrev ? '' : 'disabled'} id="approvalsPrev">&#8592; Előző</button>
+    <span style="font-size:12px;color:var(--text-muted)">${offset + 1}-${Math.min(offset + APPROVALS_PAGE_LIMIT, total)} / ${total}</span>
+    <button class="btn-secondary btn-compact" ${hasNext ? '' : 'disabled'} id="approvalsNext">Következő &#8594;</button>
+  `
+  pager.querySelector('#approvalsPrev')?.addEventListener('click', () => {
+    _approvalsState.offset = Math.max(0, offset - APPROVALS_PAGE_LIMIT)
+    _renderApprovalsTable()
+  })
+  pager.querySelector('#approvalsNext')?.addEventListener('click', () => {
+    _approvalsState.offset = offset + APPROVALS_PAGE_LIMIT
+    _renderApprovalsTable()
+  })
+}
+
+async function _resolveApproval(id, decision) {
+  try {
+    const res = await fetch(`/api/approvals/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: decision, resolved_by: 'dashboard' }),
+    })
+    const data = await res.json()
+    if (!res.ok) { showToast(t('approvals.toast.error', { msg: data.error || ('HTTP ' + res.status) })); return }
+    showToast(t(decision === 'approved' ? 'approvals.toast.approved' : 'approvals.toast.rejected'))
+    // Update in-place to avoid full reload flicker
+    const idx = _approvalsAll.findIndex(a => a.id === id)
+    if (idx !== -1) _approvalsAll[idx] = data
+    _renderApprovalsStats()
+    _renderApprovalsTable()
+  } catch (err) {
+    showToast(t('approvals.toast.error', { msg: String(err.message || err) }))
+  }
+}
+
+// ============================================================
+// === Settings (central config registry) ===
+// ============================================================
+
+document.getElementById('refreshSettingsBtn').addEventListener('click', loadSettings)
+window.addEventListener('beforeunload', (e) => {
+  if (settingsDirty.size > 0) { e.preventDefault(); e.returnValue = '' }
+})
+
+// Human label for a registry "module" -- falls back to a capitalised key for
+// any future module the UI doesn't know about yet, so adding a registry
+// entry never requires a frontend change just to render a sane heading.
+function settingsModuleLabel(mod) {
+  const key = `settings.module.${mod}`
+  const known = { kanban: true, system: true, heartbeat: true, audit: true, ideabox: true, channels: true, security: true, autonomy: true, 'claude-plans': true }
+  return known[mod] ? t(key) : (mod.charAt(0).toUpperCase() + mod.slice(1))
+}
+
+// Track dirty state: key -> { input, originalValue, type, errorEl }
+const settingsDirty = new Map()
+
+function updateSettingsSaveBar() {
+  const bar = document.getElementById('settingsSaveBar')
+  const countEl = document.getElementById('settingsDirtyCount')
+  if (!bar) return
+  const n = settingsDirty.size
+  bar.style.display = n > 0 ? 'flex' : 'none'
+  if (countEl) countEl.textContent = t('settings.dirty_count', {n})
+}
+
+// Read the current editor value in the canonical form the API expects. A
+// boolean setting renders as a checkbox, so its value is derived from .checked
+// as the canonical "1"/"0" string (not the element's .value, which is "on").
+function settingInputValue(input, type) {
+  if (type === 'boolean') return input.checked ? '1' : '0'
+  return input.value
+}
+
+function markSettingDirty(key, input, originalValue, type, errorEl) {
+  const currentVal = settingInputValue(input, type)
+  if (currentVal === String(originalValue)) {
+    settingsDirty.delete(key)
+  } else {
+    settingsDirty.set(key, { input, originalValue, type, errorEl })
+  }
+  updateSettingsSaveBar()
+}
+
+const SETTINGS_ACTIVE_TAB_KEY = 'settings-active-tab'
+
+// === Dashboard browser login (optional) ===
+// The card in the Settings page lets the operator opt into a username+password
+// login (in addition to the always-available access token). All copy is framed
+// around the existing public remote-access surfaces (Tailscale Serve, LAN,
+// mobile QR) -- no other transport is referenced.
+
+async function fetchAuthStatus() {
+  try {
+    const r = await fetch('/api/auth/status')
+    return r.ok ? await r.json() : null
+  } catch {
+    return null
+  }
+}
+
+async function renderAuthCard() {
+  const body = document.getElementById('authCardBody')
+  if (!body) return
+  const status = await fetchAuthStatus()
+  if (!status) { body.innerHTML = `<p class="auth-muted">${t('auth.card.unavailable')}</p>`; return }
+  if (status.setup_required) { renderCreateLoginForm(body) }
+  else if (status.method === 'session') { renderSessionPanel(body, status) }
+  else renderTokenModePanel(body)
+  // Device keys are managed by token/session operators only (a device key
+  // itself gets 403 from the management endpoints, so don't render the panel).
+  if (status.method === 'token' || status.method === 'session') {
+    renderDeviceKeysSection(body)
+    renderBridgeEnrollSection(body)
+  }
+}
+
+// === Bridge pairing (AUTHPLAN1 #2) ===
+// Paste the public-key line shown by the Bridge app -> one confirm -> the
+// server writes the restricted SSH entry + mints a per-device key -> the
+// returned bundle (shown once, copyable) goes back into the Bridge.
+
+function renderBridgeEnrollSection(body) {
+  const wrap = document.createElement('div')
+  wrap.className = 'auth-device-keys auth-bridge-enroll'
+  wrap.id = 'authBridgeEnroll'
+  wrap.innerHTML =
+    `<div class="auth-sessions-title">${t('auth.bridge.title')}</div>` +
+    `<p class="auth-muted">${t('auth.bridge.desc')}</p>` +
+    `<div class="auth-form">` +
+      `<input id="authBridgeKeyLine" type="text" autocapitalize="off" spellcheck="false" placeholder="${t('auth.bridge.key_placeholder')}">` +
+      `<input id="authBridgeName" type="text" autocapitalize="off" spellcheck="false" maxlength="64" placeholder="${t('auth.bridge.name_placeholder')}">` +
+      `<input id="authBridgeHost" type="text" autocapitalize="off" spellcheck="false" maxlength="253" placeholder="${t('auth.bridge.host_placeholder')}">` +
+      // The placeholder alone cannot carry this: it is clipped by the input's
+      // width, and it disappears the moment the user types. The Tailscale trap
+      // (account email vs 100.x address) has to stay readable while they type.
+      `<p class="auth-muted">${t('auth.bridge.host_hint')}</p>` +
+      `<button class="btn-secondary" id="authBridgeEnrollBtn">${t('auth.bridge.enroll')}</button>` +
+      `<div class="auth-form-msg" id="authBridgeMsg"></div>` +
+      `<div id="authBridgeBundle" hidden></div>` +
+    `</div>`
+  body.appendChild(wrap)
+  document.getElementById('authBridgeEnrollBtn').addEventListener('click', bridgeEnrollFromUi)
+}
+
+// The pairing endpoint answers with a stable `code` beside its English
+// `error` sentence. Translate on the code, never on the sentence: the wording
+// is free to change, the code is the contract. An unknown code falls back to
+// the server's own sentence rather than to a blank line or a raw key, so a
+// server error added later degrades to English instead of disappearing.
+function bridgeEnrollErrorText(data) {
+  const code = data && typeof data.code === 'string' ? data.code : ''
+  if (code) {
+    const key = `auth.bridge.err.${code}`
+    const translated = t(key, (data && data.params) || {})
+    if (translated !== key) return translated
+  }
+  return (data && data.error) || t('auth.card.err_generic')
+}
+
+async function bridgeEnrollFromUi() {
+  const msg = document.getElementById('authBridgeMsg')
+  const out = document.getElementById('authBridgeBundle')
+  const keyLine = (document.getElementById('authBridgeKeyLine').value || '').trim()
+  const name = (document.getElementById('authBridgeName').value || '').trim()
+  const hostOverride = (document.getElementById('authBridgeHost').value || '').trim()
+  msg.className = 'auth-form-msg'
+  msg.textContent = ''
+  out.hidden = true
+  if (!keyLine || !name) { msg.classList.add('err'); msg.textContent = t('auth.bridge.err_empty'); return }
+  // The confirm step: pairing grants the device SSH-tunnel + dashboard access.
+  if (!confirm(t('auth.bridge.confirm', { name }))) return
+  msg.textContent = t('auth.bridge.working')
+  try {
+    const r = await fetch('/api/security/bridge-enroll', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(hostOverride ? { key_line: keyLine, name, host: hostOverride } : { key_line: keyLine, name }),
+    })
+    const data = await r.json().catch(() => ({}))
+    if (!r.ok) { msg.classList.add('err'); msg.textContent = bridgeEnrollErrorText(data); return }
+    msg.classList.add('ok')
+    msg.textContent = (data.action === 'replaced' ? t('auth.bridge.repaired') : t('auth.bridge.paired')) +
+      (data.warnings && data.warnings.length ? ` (${data.warnings.join('; ')})` : '')
+    document.getElementById('authBridgeKeyLine').value = ''
+    document.getElementById('authBridgeName').value = ''
+    document.getElementById('authBridgeHost').value = ''
+    out.hidden = false
+    out.innerHTML =
+      `<p class="auth-muted">${t('auth.bridge.bundle_hint', { host: escapeHtml(data.host || '') })}</p>` +
+      `<div class="auth-form auth-device-minted-row">` +
+        `<input id="authBridgeBundleVal" type="text" readonly value="${escapeHtml(data.bundle)}" onclick="this.select()">` +
+        `<button class="btn-secondary btn-compact" id="authBridgeCopyBtn">${t('auth.devices.copy')}</button>` +
+      `</div>`
+    document.getElementById('authBridgeCopyBtn').addEventListener('click', async () => {
+      try {
+        await navigator.clipboard.writeText(data.bundle)
+        document.getElementById('authBridgeCopyBtn').textContent = t('auth.devices.copied')
+      } catch { document.getElementById('authBridgeBundleVal').select() }
+    })
+    refreshDeviceKeyList()
+  } catch { msg.classList.add('err'); msg.textContent = t('auth.login.err_network') }
+}
+
+// === Per-device keys (mint/list/revoke) ===
+// A device key is a revocable per-device credential (Bridge, phone). The raw
+// key is displayed exactly once, right after minting.
+
+function renderDeviceKeysSection(body) {
+  const wrap = document.createElement('div')
+  wrap.className = 'auth-device-keys'
+  wrap.id = 'authDeviceKeys'
+  wrap.innerHTML =
+    `<div class="auth-sessions-title">${t('auth.devices.title')}</div>` +
+    `<p class="auth-muted">${t('auth.devices.desc')}</p>` +
+    `<div class="auth-form-msg err auth-device-warn" id="authDeviceKeyWarn" hidden></div>` +
+    `<div id="authDeviceKeyList"></div>` +
+    `<div class="auth-form auth-device-mint">` +
+      `<input id="authDevName" type="text" autocapitalize="off" spellcheck="false" maxlength="64" placeholder="${t('auth.devices.name_placeholder')}">` +
+      `<input id="authDevExpiry" type="number" min="1" max="3650" placeholder="${t('auth.devices.expiry_placeholder')}">` +
+      `<button class="btn-secondary" id="authDevMintBtn">${t('auth.devices.mint')}</button>` +
+      `<div class="auth-form-msg" id="authDevMsg"></div>` +
+      `<div id="authDevMinted" hidden></div>` +
+    `</div>`
+  body.appendChild(wrap)
+  document.getElementById('authDevMintBtn').addEventListener('click', mintDeviceKey)
+  refreshDeviceKeyList()
+}
+
+async function refreshDeviceKeyList() {
+  const el = document.getElementById('authDeviceKeyList')
+  if (!el) return
+  try {
+    const r = await fetch('/api/auth/device-keys')
+    if (!r.ok) { el.innerHTML = ''; return }
+    const { keys } = await r.json()
+    if (!keys || !keys.length) { el.innerHTML = `<p class="auth-muted">${t('auth.devices.empty')}</p>`; return }
+    el.innerHTML = keys.map((k) => {
+      const created = new Date(k.createdAt * 1000).toLocaleDateString()
+      const lastUsed = k.lastUsedAt ? new Date(k.lastUsedAt * 1000).toLocaleString() : t('auth.devices.never_used')
+      const expires = k.expiresAt ? ` &middot; ${t('auth.devices.expires', { date: new Date(k.expiresAt * 1000).toLocaleDateString() })}` : ''
+      const bridge = k.installId ? ` <span class="auth-device-bridge-badge">${t('auth.devices.bridge_badge')}</span>` : ''
+      return `<div class="auth-session-row auth-device-row" data-key-id="${k.id}">` +
+        `<span class="auth-device-name">${escapeHtml(k.name)}${bridge}</span>` +
+        `<span class="auth-device-meta">${created} &middot; ${t('auth.devices.last_used', { date: lastUsed })}${expires}</span>` +
+        `<button class="btn-secondary btn-compact auth-device-revoke" data-key-id="${k.id}">${t('auth.devices.revoke')}</button>` +
+      `</div>`
+    }).join('')
+    el.querySelectorAll('.auth-device-revoke').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        if (!confirm(t('auth.devices.revoke_confirm'))) return
+        // A Bridge-paired revoke means BOTH halves (dashboard key + ssh line).
+        // The key is dead either way, but ssh_removed:false means the
+        // authorized_keys line survived (fs error) and the device can still
+        // open the tunnel -- the ONE outcome the UI must never hide.
+        const warnBefore = document.getElementById('authDeviceKeyWarn')
+        if (warnBefore) warnBefore.hidden = true
+        let sshWarn = false
+        try {
+          const r = await fetch(`/api/auth/device-keys/${btn.dataset.keyId}`, { method: 'DELETE' })
+          const data = await r.json().catch(() => ({}))
+          if (r.ok && data.ssh_removed === false) sshWarn = true
+        } catch { /* ignore -- the list refresh below shows the real state */ }
+        await refreshDeviceKeyList()
+        const warnEl = document.getElementById('authDeviceKeyWarn')
+        if (warnEl && sshWarn) {
+          warnEl.hidden = false
+          warnEl.textContent = t('auth.devices.revoke_ssh_warning')
+        }
+      })
+    })
+  } catch { el.innerHTML = '' }
+}
+
+async function mintDeviceKey() {
+  const msg = document.getElementById('authDevMsg')
+  const minted = document.getElementById('authDevMinted')
+  const name = (document.getElementById('authDevName').value || '').trim()
+  const expiryRaw = document.getElementById('authDevExpiry').value
+  msg.className = 'auth-form-msg'
+  minted.hidden = true
+  if (!name) { msg.classList.add('err'); msg.textContent = t('auth.devices.err_name'); return }
+  const payload = { name }
+  if (expiryRaw) payload.expires_in_days = Number(expiryRaw)
+  try {
+    const r = await fetch('/api/auth/device-keys', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    })
+    const data = await r.json().catch(() => ({}))
+    if (!r.ok) { msg.classList.add('err'); msg.textContent = data.error || t('auth.card.err_generic'); return }
+    document.getElementById('authDevName').value = ''
+    document.getElementById('authDevExpiry').value = ''
+    minted.hidden = false
+    minted.innerHTML =
+      `<p class="auth-muted">${t('auth.devices.minted_hint')}</p>` +
+      `<div class="auth-form auth-device-minted-row">` +
+        `<input id="authDevMintedKey" type="text" readonly value="${escapeHtml(data.key)}" onclick="this.select()">` +
+        `<button class="btn-secondary btn-compact" id="authDevCopyBtn">${t('auth.devices.copy')}</button>` +
+      `</div>`
+    document.getElementById('authDevCopyBtn').addEventListener('click', async () => {
+      try {
+        await navigator.clipboard.writeText(data.key)
+        document.getElementById('authDevCopyBtn').textContent = t('auth.devices.copied')
+      } catch { document.getElementById('authDevMintedKey').select() }
+    })
+    refreshDeviceKeyList()
+  } catch { msg.classList.add('err'); msg.textContent = t('auth.login.err_network') }
+}
+
+function renderCreateLoginForm(body) {
+  body.innerHTML =
+    `<p class="auth-muted">${t('auth.card.setup_desc')}</p>` +
+    `<div class="auth-form">` +
+      `<input id="authNewUser" type="text" autocomplete="username" autocapitalize="off" spellcheck="false" placeholder="${t('auth.login.username')}">` +
+      `<input id="authNewPass" type="password" autocomplete="new-password" placeholder="${t('auth.card.new_password')}">` +
+      `<input id="authNewPass2" type="password" autocomplete="new-password" placeholder="${t('auth.card.repeat_password')}">` +
+      `<button class="btn-primary" id="authCreateBtn">${t('auth.card.create')}</button>` +
+      `<div class="auth-form-msg" id="authCreateMsg"></div>` +
+    `</div>`
+  document.getElementById('authCreateBtn').addEventListener('click', async () => {
+    const msg = document.getElementById('authCreateMsg')
+    const username = (document.getElementById('authNewUser').value || '').trim()
+    const p1 = document.getElementById('authNewPass').value || ''
+    const p2 = document.getElementById('authNewPass2').value || ''
+    msg.className = 'auth-form-msg'
+    if (!username || !p1) { msg.classList.add('err'); msg.textContent = t('auth.login.err_empty'); return }
+    if (p1 !== p2) { msg.classList.add('err'); msg.textContent = t('auth.card.err_mismatch'); return }
+    try {
+      const r = await fetch('/api/auth/users', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password: p1 }),
+      })
+      const data = await r.json().catch(() => ({}))
+      if (r.ok) { msg.classList.add('ok'); msg.textContent = t('auth.card.created'); renderAuthCard(); initAuthBanner() }
+      else { msg.classList.add('err'); msg.textContent = data.error || t('auth.card.err_generic') }
+    } catch { msg.classList.add('err'); msg.textContent = t('auth.login.err_network') }
+  })
+}
+
+function renderSessionPanel(body, status) {
+  body.innerHTML =
+    `<p class="auth-muted">${t('auth.card.signed_in_as', { user: escapeHtml(status.user) })}</p>` +
+    `<div class="auth-form">` +
+      `<input id="authCurPass" type="password" autocomplete="current-password" placeholder="${t('auth.card.current_password')}">` +
+      `<input id="authChgPass" type="password" autocomplete="new-password" placeholder="${t('auth.card.new_password')}">` +
+      `<input id="authChgPass2" type="password" autocomplete="new-password" placeholder="${t('auth.card.repeat_password')}">` +
+      `<button class="btn-primary" id="authChgBtn">${t('auth.card.change_password')}</button>` +
+      `<div class="auth-form-msg" id="authChgMsg"></div>` +
+    `</div>` +
+    `<div class="auth-sessions" id="authSessions"></div>` +
+    `<div class="auth-actions">` +
+      `<button class="btn-secondary btn-compact" id="authLogoutAllBtn">${t('auth.card.logout_all')}</button>` +
+      `<button class="btn-secondary btn-compact" id="authLogoutBtn">${t('auth.card.logout')}</button>` +
+    `</div>`
+  document.getElementById('authChgBtn').addEventListener('click', async () => {
+    const msg = document.getElementById('authChgMsg')
+    const cur = document.getElementById('authCurPass').value || ''
+    const p1 = document.getElementById('authChgPass').value || ''
+    const p2 = document.getElementById('authChgPass2').value || ''
+    msg.className = 'auth-form-msg'
+    if (p1 !== p2) { msg.classList.add('err'); msg.textContent = t('auth.card.err_mismatch'); return }
+    try {
+      const r = await fetch('/api/auth/password', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ current_password: cur, new_password: p1 }),
+      })
+      const data = await r.json().catch(() => ({}))
+      if (r.ok) { msg.classList.add('ok'); msg.textContent = t('auth.card.password_changed') }
+      else { msg.classList.add('err'); msg.textContent = data.error || t('auth.card.err_generic') }
+    } catch { msg.classList.add('err'); msg.textContent = t('auth.login.err_network') }
+  })
+  document.getElementById('authLogoutBtn').addEventListener('click', async () => {
+    try { await fetch('/api/auth/logout', { method: 'POST' }) } catch { /* ignore */ }
+    window.location.reload()
+  })
+  document.getElementById('authLogoutAllBtn').addEventListener('click', async () => {
+    try { await fetch('/api/auth/logout-all', { method: 'POST' }) } catch { /* ignore */ }
+    window.location.reload()
+  })
+  renderAuthSessions()
+}
+
+async function renderAuthSessions() {
+  const el = document.getElementById('authSessions')
+  if (!el) return
+  try {
+    const r = await fetch('/api/auth/sessions')
+    if (!r.ok) { el.innerHTML = ''; return }
+    const { sessions } = await r.json()
+    if (!sessions || !sessions.length) { el.innerHTML = ''; return }
+    el.innerHTML = `<div class="auth-sessions-title">${t('auth.card.active_sessions')}</div>` +
+      sessions.map((s) => {
+        const last = new Date(s.lastSeenAt * 1000).toLocaleString()
+        const ua = escapeHtml(s.userAgent || '-')
+        return `<div class="auth-session-row"><code>${escapeHtml(s.idHashPrefix)}</code><span>${last}</span><span class="auth-session-ua">${ua}</span></div>`
+      }).join('')
+  } catch { el.innerHTML = '' }
+}
+
+function renderTokenModePanel(body) {
+  body.innerHTML =
+    `<p class="auth-muted">${t('auth.card.token_mode')}</p>`
+}
+
+// Dismissible setup banner: shown only when the operator is authed via the token
+// and has not yet created a browser login. Dismissal persists per browser.
+const AUTH_BANNER_DISMISS_KEY = 'marveen.auth-banner-dismissed'
+
+async function initAuthBanner() {
+  const banner = document.getElementById('authSetupBanner')
+  if (!banner) return
+  let dismissed = false
+  try { dismissed = localStorage.getItem(AUTH_BANNER_DISMISS_KEY) === '1' } catch { /* storage blocked */ }
+  const status = await fetchAuthStatus()
+  const show = !!status && status.authenticated && status.method === 'token' && status.setup_required && !dismissed
+  banner.hidden = !show
+}
+
+function wireAuthBanner() {
+  const banner = document.getElementById('authSetupBanner')
+  if (!banner) return
+  const dismiss = document.getElementById('authBannerDismiss')
+  const go = document.getElementById('authBannerGoBtn')
+  if (dismiss) dismiss.addEventListener('click', () => {
+    try { localStorage.setItem(AUTH_BANNER_DISMISS_KEY, '1') } catch { /* storage blocked */ }
+    banner.hidden = true
+  })
+  if (go) go.addEventListener('click', () => {
+    // Land on the Security tab, where the auth card lives now.
+    try { localStorage.setItem(SETTINGS_ACTIVE_TAB_KEY, 'security') } catch { /* storage blocked */ }
+    if (typeof switchPage === 'function') switchPage('settings')
+    const link = document.querySelector('.sb-link[data-page="settings"]')
+    if (link) { document.querySelectorAll('.sb-link').forEach((l) => l.classList.remove('active')); link.classList.add('active') }
+  })
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  wireAuthBanner()
+  initAuthBanner()
+  wireBranchDriftBanner()
+})
+
+async function loadSettings() {
+  const tabNav = document.getElementById('settingsTabNav')
+  const tabPanels = document.getElementById('settingsTabPanels')
+  if (!tabNav || !tabPanels) return
+
+  // Park the auth card back outside the panels before wiping them: a previous
+  // loadSettings run moved it INTO the Security panel, and clearing
+  // tabPanels.innerHTML with the card still inside would destroy the node.
+  const parkedAuthCard = document.getElementById('authCard')
+  if (parkedAuthCard) {
+    parkedAuthCard.hidden = true
+    tabNav.parentElement.insertBefore(parkedAuthCard, tabNav)
+  }
+
+  tabNav.innerHTML = `<span style="color:var(--text-muted);font-size:13px;padding:12px 0;display:inline-block">${t('settings.loading')}</span>`
+  tabPanels.innerHTML = ''
+  settingsDirty.clear()
+  updateSettingsSaveBar()
+
+  renderAuthCard()
+
+  try {
+    const res = await fetch('/api/settings')
+    if (!res.ok) throw new Error('fetch failed')
+    const { settings } = await res.json()
+
+    const byModule = new Map()
+    for (const s of settings) {
+      if (!byModule.has(s.module)) byModule.set(s.module, [])
+      byModule.get(s.module).push(s)
+    }
+
+    tabNav.innerHTML = ''
+    tabPanels.innerHTML = ''
+
+    if (byModule.size === 0) {
+      tabPanels.innerHTML = `<p style="padding:24px;color:var(--text-muted);font-size:13px">${t('settings.empty')}</p>`
+      // No tabs to host the Security panel: fall back to showing the auth card
+      // in its static spot above the (empty) tab area.
+      const orphanAuthCard = document.getElementById('authCard')
+      if (orphanAuthCard) orphanAuthCard.hidden = false
+      return
+    }
+
+    // Registry keys declared with module:'security' render inside the synthetic
+    // Security tab (below the auth card) instead of getting their own tab.
+    const securityDefs = byModule.get('security') ?? []
+    byModule.delete('security')
+
+    // module:'claude-plans' is just the CLAUDE_ROTATION_ENABLED toggle (PR2b)
+    // -- it renders below the plan-list widget in the synthetic Claude Plans
+    // tab, same pattern as securityDefs above.
+    const claudePlansDefs = byModule.get('claude-plans') ?? []
+    byModule.delete('claude-plans')
+
+    const allModules = [...byModule.keys(), 'security', 'autonomy', 'claude-plans']
+    const savedTab = localStorage.getItem(SETTINGS_ACTIVE_TAB_KEY) || allModules[0]
+    const activeTab = allModules.includes(savedTab) ? savedTab : allModules[0]
+
+    // Build a tab button + panel for each settings module
+    for (const [mod, defs] of byModule) {
+      const btn = document.createElement('button')
+      btn.className = 'tab-btn' + (mod === activeTab ? ' active' : '')
+      btn.dataset.tab = mod
+      btn.textContent = settingsModuleLabel(mod)
+      btn.addEventListener('click', () => activateSettingsTab(mod))
+      tabNav.appendChild(btn)
+
+      const panel = document.createElement('div')
+      panel.className = 'tab-panel'
+      panel.id = `settings-panel-${mod}`
+      panel.hidden = mod !== activeTab
+
+      const group = document.createElement('div')
+      group.className = 'settings-group'
+      for (const def of defs) {
+        group.appendChild(buildSettingRow(def))
+      }
+      panel.appendChild(group)
+      tabPanels.appendChild(panel)
+    }
+
+    // Security tab (synthetic, like autonomy: exists even with zero registry
+    // entries). Hosts the auth card -- browser login, password change, device
+    // keys -- plus any module:'security' registry keys.
+    {
+      const mod = 'security'
+      const btn = document.createElement('button')
+      btn.className = 'tab-btn' + (mod === activeTab ? ' active' : '')
+      btn.dataset.tab = mod
+      btn.textContent = settingsModuleLabel(mod)
+      btn.addEventListener('click', () => activateSettingsTab(mod))
+      tabNav.appendChild(btn)
+
+      const panel = document.createElement('div')
+      panel.className = 'tab-panel'
+      panel.id = `settings-panel-${mod}`
+      panel.hidden = mod !== activeTab
+
+      const authCard = document.getElementById('authCard')
+      if (authCard) {
+        panel.appendChild(authCard)
+        authCard.hidden = false
+      }
+
+      if (securityDefs.length) {
+        const group = document.createElement('div')
+        group.className = 'settings-group'
+        for (const def of securityDefs) {
+          group.appendChild(buildSettingRow(def))
+        }
+        panel.appendChild(group)
+      }
+      tabPanels.appendChild(panel)
+    }
+
+    // Autonomy tab
+    {
+      const mod = 'autonomy'
+      const btn = document.createElement('button')
+      btn.className = 'tab-btn' + (mod === activeTab ? ' active' : '')
+      btn.dataset.tab = mod
+      btn.textContent = settingsModuleLabel(mod)
+      btn.addEventListener('click', () => activateSettingsTab(mod))
+      tabNav.appendChild(btn)
+
+      const panel = document.createElement('div')
+      panel.className = 'tab-panel'
+      panel.id = `settings-panel-${mod}`
+      panel.hidden = mod !== activeTab
+
+      const legend = document.createElement('div')
+      legend.className = 'autonomy-legend'
+      legend.innerHTML = `
+        <div class="autonomy-legend-item"><span class="autonomy-level-dot" style="background:var(--text-muted)"></span><span><strong>1</strong> ${t('autonomy.level.1')}</span></div>
+        <div class="autonomy-legend-item"><span class="autonomy-level-dot" style="background:var(--accent)"></span><span><strong>2</strong> ${t('autonomy.level.2')}</span></div>
+        <div class="autonomy-legend-item"><span class="autonomy-level-dot" style="background:var(--success)"></span><span><strong>3</strong> ${t('autonomy.level.3')}</span></div>
+      `
+      panel.appendChild(legend)
+
+      const grid = document.createElement('div')
+      grid.className = 'autonomy-grid'
+      grid.id = 'settingsAutonomyGrid'
+      panel.appendChild(grid)
+
+      const footer = document.createElement('p')
+      footer.className = 'autonomy-footer'
+      footer.id = 'settingsAutonomyUpdatedAt'
+      panel.appendChild(footer)
+
+      const refreshBtn = document.createElement('button')
+      refreshBtn.className = 'btn-secondary btn-compact'
+      refreshBtn.textContent = t('common.btn.refresh')
+      refreshBtn.addEventListener('click', () => renderAutonomyContent(grid, footer))
+      panel.appendChild(refreshBtn)
+
+      tabPanels.appendChild(panel)
+
+      if (mod === activeTab) {
+        renderAutonomyContent(grid, footer)
+      }
+    }
+
+    // Claude Plans tab (PR2b): synthetic like autonomy/security -- a hand-built
+    // plan-list + add-form widget, with the CLAUDE_ROTATION_ENABLED toggle
+    // (claudePlansDefs) appended below it exactly like security appends its
+    // registry keys after the auth card.
+    {
+      const mod = 'claude-plans'
+      const btn = document.createElement('button')
+      btn.className = 'tab-btn' + (mod === activeTab ? ' active' : '')
+      btn.dataset.tab = mod
+      btn.textContent = settingsModuleLabel(mod)
+      btn.addEventListener('click', () => activateSettingsTab(mod))
+      tabNav.appendChild(btn)
+
+      const panel = document.createElement('div')
+      panel.className = 'tab-panel'
+      panel.id = `settings-panel-${mod}`
+      panel.hidden = mod !== activeTab
+
+      const body = document.createElement('div')
+      body.className = 'settings-group'
+      body.id = 'claudePlansBody'
+      panel.appendChild(body)
+
+      if (claudePlansDefs.length) {
+        const group = document.createElement('div')
+        group.className = 'settings-group'
+        for (const def of claudePlansDefs) {
+          group.appendChild(buildSettingRow(def))
+        }
+        panel.appendChild(group)
+      }
+
+      tabPanels.appendChild(panel)
+
+      if (mod === activeTab) {
+        renderClaudePlansPanel(body)
+      }
+    }
+  } catch (err) {
+    tabPanels.innerHTML = `<p style="padding:24px;color:var(--danger)">${t('settings.error')}</p>`
+  }
+}
+
+function activateSettingsTab(mod) {
+  document.querySelectorAll('#settingsTabNav .tab-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.tab === mod)
+  })
+  document.querySelectorAll('#settingsTabPanels .tab-panel').forEach(panel => {
+    panel.hidden = panel.id !== `settings-panel-${mod}`
+  })
+  localStorage.setItem(SETTINGS_ACTIVE_TAB_KEY, mod)
+
+  if (mod === 'autonomy') {
+    const grid = document.getElementById('settingsAutonomyGrid')
+    const footer = document.getElementById('settingsAutonomyUpdatedAt')
+    if (grid && !grid.innerHTML.trim()) renderAutonomyContent(grid, footer)
+  }
+
+  if (mod === 'claude-plans') {
+    const body = document.getElementById('claudePlansBody')
+    if (body && !body.innerHTML.trim()) renderClaudePlansPanel(body)
+  }
+}
+
+// Claude Plans tab (PR2b): plan-list + add-form widget over
+// store/claude-plans.json, plus GET /api/claude-plans/state for the
+// active-plan / last-known-usage badges. The "active" dot reflects the MAIN
+// agent's entry in activePlanByAgent (PR2c, design decision #1: the state is
+// per-agent, but this tab only shows the one that also drives the dashboard
+// header). There is still no manual rotate button here: this tab lets the
+// operator view and hand-edit the registry, the same way it already lets
+// them for store/claude-plans.json by hand; actual rotation is triggered by
+// the heartbeat script or POST /api/claude-plans/rotate directly.
+async function renderClaudePlansPanel(body) {
+  body.innerHTML = `
+    <p style="color:var(--text-muted);font-size:13px;margin:0 0 16px">${t('settings.claude_plans.intro')}</p>
+    <div id="claudePlansList"></div>
+    <div class="claude-plans-add-form">
+      <div class="form-row">
+        <div class="form-group" style="flex:1">
+          <label>${t('settings.claude_plans.form.id')}</label>
+          <input class="input" id="cpFormId" placeholder="personal-2">
+        </div>
+        <div class="form-group" style="flex:1">
+          <label>${t('settings.claude_plans.form.label')}</label>
+          <input class="input" id="cpFormLabel" placeholder="Second Pro">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group" style="flex:2">
+          <label>${t('settings.claude_plans.form.config_dir')}</label>
+          <input class="input" id="cpFormConfigDir" placeholder="~/.claude-second">
+        </div>
+        <div class="form-group" style="flex:1">
+          <label>${t('settings.claude_plans.form.type')}</label>
+          <select class="input" id="cpFormType">
+            <option value="personal">${t('settings.claude_plans.form.type_personal')}</option>
+            <option value="team">${t('settings.claude_plans.form.type_team')}</option>
+          </select>
+        </div>
+      </div>
+      <label class="claude-plans-checkbox-row">
+        <input type="checkbox" id="cpFormChannelsAllowed" checked>
+        <span>${t('settings.claude_plans.form.channels_allowed')}</span>
+      </label>
+      <div id="cpFormError" class="settings-row-error" hidden></div>
+      <button class="btn-secondary btn-compact" id="cpFormAddBtn" style="margin-top:12px">${t('settings.claude_plans.form.add_btn')}</button>
+    </div>
+  `
+
+  document.getElementById('cpFormAddBtn').addEventListener('click', () => addClaudePlan())
+  for (const id of ['cpFormId', 'cpFormLabel', 'cpFormConfigDir']) {
+    document.getElementById(id).addEventListener('keydown', (e) => { if (e.key === 'Enter') addClaudePlan() })
+  }
+
+  await loadClaudePlansList()
+}
+
+async function addClaudePlan() {
+  const errEl = document.getElementById('cpFormError')
+  errEl.hidden = true
+  const id = document.getElementById('cpFormId').value.trim()
+  const label = document.getElementById('cpFormLabel').value.trim()
+  const configDir = document.getElementById('cpFormConfigDir').value.trim()
+  const planType = document.getElementById('cpFormType').value
+  const channelsAllowed = document.getElementById('cpFormChannelsAllowed').checked
+
+  if (!id || !label || !configDir) {
+    errEl.textContent = t('settings.claude_plans.form.error_required')
+    errEl.hidden = false
+    return
+  }
+
+  try {
+    const res = await fetch('/api/claude-plans', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id, label, configDir, planType, channelsAllowed }),
+    })
+    const data = await res.json()
+    if (!res.ok) {
+      errEl.textContent = data.error || t('settings.claude_plans.form.error_generic')
+      errEl.hidden = false
+      return
+    }
+    document.getElementById('cpFormId').value = ''
+    document.getElementById('cpFormLabel').value = ''
+    document.getElementById('cpFormConfigDir').value = ''
+    document.getElementById('cpFormChannelsAllowed').checked = true
+    await loadClaudePlansList()
+  } catch {
+    errEl.textContent = t('settings.claude_plans.form.error_generic')
+    errEl.hidden = false
+  }
+}
+
+async function deleteClaudePlan(id) {
+  if (!confirm(t('settings.claude_plans.confirm_delete', { id }))) return
+  await fetch(`/api/claude-plans/${encodeURIComponent(id)}`, { method: 'DELETE' })
+  await loadClaudePlansList()
+}
+
+async function loadClaudePlansList() {
+  const list = document.getElementById('claudePlansList')
+  if (!list) return
+  list.innerHTML = `<p style="color:var(--text-muted);font-size:13px">${t('common.loading')}</p>`
+  try {
+    const [plansRes, stateRes] = await Promise.all([
+      fetch('/api/claude-plans'),
+      fetch('/api/claude-plans/state'),
+    ])
+    const plans = plansRes.ok ? await plansRes.json() : []
+    const state = stateRes.ok ? await stateRes.json() : { activePlanByAgent: {}, plans: {} }
+
+    if (!plans.length) {
+      list.innerHTML = `<p style="color:var(--text-muted);font-size:13px">${t('settings.claude_plans.empty')}</p>`
+      return
+    }
+
+    list.innerHTML = ''
+    for (const plan of plans) {
+      const observed = state.plans?.[plan.id]
+      const fiveHour = observed?.windows?.five_hour
+      const isActive = state.activePlanByAgent?.[mainAgentId()] === plan.id
+
+      const row = document.createElement('div')
+      row.className = 'claude-plan-row'
+
+      const main = document.createElement('div')
+      main.style.flex = '1'
+      const mainLine = document.createElement('div')
+      mainLine.className = 'claude-plan-row-main'
+      mainLine.innerHTML = `
+        ${isActive ? `<span class="claude-plan-active-dot" title="${t('settings.claude_plans.active')}"></span>` : ''}
+        <strong>${escapeHtml(plan.label)}</strong>
+        <span class="claude-plan-badge">${plan.planType === 'team' ? t('settings.claude_plans.form.type_team') : t('settings.claude_plans.form.type_personal')}</span>
+        ${!plan.channelsAllowed ? `<span class="claude-plan-badge claude-plan-badge-muted">${t('settings.claude_plans.no_channels')}</span>` : ''}
+        ${fiveHour ? `<span class="claude-plan-badge">${t('settings.claude_plans.last_known', { pct: Math.round(fiveHour.usedPercent) })}</span>` : ''}
+      `
+      main.appendChild(mainLine)
+
+      const meta = document.createElement('div')
+      meta.className = 'claude-plan-row-meta'
+      meta.textContent = `${plan.id} · ${plan.configDir}`
+      main.appendChild(meta)
+
+      row.appendChild(main)
+
+      const delBtn = document.createElement('button')
+      delBtn.className = 'claude-plan-delete'
+      delBtn.title = t('common.btn.delete')
+      delBtn.textContent = '×'
+      delBtn.addEventListener('click', () => deleteClaudePlan(plan.id))
+      row.appendChild(delBtn)
+
+      list.appendChild(row)
+    }
+  } catch {
+    list.innerHTML = `<p style="color:var(--danger);font-size:13px">${t('settings.error')}</p>`
+  }
+}
+
+function buildSettingRow(def) {
+  const row = document.createElement('div')
+  row.className = 'settings-row'
+
+  const info = document.createElement('div')
+  info.className = 'settings-row-info'
+
+  const title = document.createElement('div')
+  title.className = 'settings-row-key'
+  title.textContent = def.key
+  if (def.requiresRestart) {
+    const badge = document.createElement('span')
+    badge.className = 'settings-restart-badge'
+    badge.textContent = t('settings.restart_badge')
+    title.appendChild(badge)
+  }
+  info.appendChild(title)
+
+  const desc = document.createElement('div')
+  desc.className = 'settings-row-desc'
+  desc.textContent = t('settings.desc.' + def.key) || def.description
+  info.appendChild(desc)
+
+  const meta = document.createElement('div')
+  meta.className = 'settings-row-meta'
+  const metaParts = []
+  if (Array.isArray(def.valueSet) && def.valueSet.length) metaParts.push(t('settings.meta.values') + ': ' + def.valueSet.join(', '))
+  if (def.type === 'int' && (def.min !== undefined || def.max !== undefined)) {
+    metaParts.push(t('settings.meta.range') + ': ' + (def.min ?? '–') + '–' + (def.max ?? '–'))
+  }
+  if (def.type === 'color') metaParts.push(t('settings.meta.format') + ': #rrggbb')
+  metaParts.push(t('settings.meta.default') + ': ' + def.default)
+  meta.textContent = metaParts.join(' · ')
+  info.appendChild(meta)
+
+  row.appendChild(info)
+
+  const editor = document.createElement('div')
+  editor.className = 'settings-row-editor'
+
+  const originalValue = String(def.value)
+  let valueInput
+  if (Array.isArray(def.valueSet) && def.valueSet.length) {
+    valueInput = document.createElement('select')
+    valueInput.className = 'input'
+    for (const opt of def.valueSet) {
+      const o = document.createElement('option')
+      o.value = opt
+      o.textContent = opt
+      valueInput.appendChild(o)
+    }
+    valueInput.value = originalValue
+  } else if (def.type === 'boolean') {
+    valueInput = document.createElement('input')
+    valueInput.type = 'checkbox'
+    valueInput.className = 'settings-toggle'
+    valueInput.checked = String(def.value) === '1'
+  } else if (def.type === 'color') {
+    valueInput = document.createElement('input')
+    valueInput.type = 'color'
+    valueInput.className = 'settings-color-input'
+    valueInput.value = def.value
+  } else if (def.type === 'int') {
+    valueInput = document.createElement('input')
+    valueInput.type = 'number'
+    valueInput.className = 'input'
+    if (def.min !== undefined) valueInput.min = def.min
+    if (def.max !== undefined) valueInput.max = def.max
+    valueInput.value = def.value
+  } else {
+    valueInput = document.createElement('input')
+    valueInput.type = 'text'
+    valueInput.className = 'input'
+    valueInput.value = def.value
+  }
+  valueInput.dataset.settingKey = def.key
+  valueInput.dataset.settingType = def.type
+  valueInput.dataset.originalValue = originalValue
+  editor.appendChild(valueInput)
+
+  const errorEl = document.createElement('div')
+  errorEl.className = 'settings-row-error'
+  editor.appendChild(errorEl)
+
+  valueInput.addEventListener('input', () => markSettingDirty(def.key, valueInput, originalValue, def.type, errorEl))
+  valueInput.addEventListener('change', () => markSettingDirty(def.key, valueInput, originalValue, def.type, errorEl))
+
+  row.appendChild(editor)
+  return row
+}
+
+async function saveAllSettings() {
+  if (settingsDirty.size === 0) return
+  const btn = document.getElementById('settingsSaveAllBtn')
+  if (btn) { btn.disabled = true; btn.textContent = t('settings.save_btn.saving') }
+
+  const errors = []
+  let needsRestart = false
+
+  for (const [key, { input, type, errorEl }] of settingsDirty) {
+    errorEl.textContent = ''
+    const raw = type === 'int' ? Number(input.value) : settingInputValue(input, type)
+    try {
+      const res = await fetch('/api/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ key, value: raw }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        errorEl.textContent = data.error || 'Hiba'
+        errors.push(`${key}: ${data.error || 'hiba'}`)
+      } else {
+        input.dataset.originalValue = String(raw)
+        if (data.requiresRestart) needsRestart = true
+      }
+    } catch {
+      errorEl.textContent = 'Kapcsolati hiba'
+      errors.push(`${key}: kapcsolati hiba`)
+    }
+  }
+
+  // Remove successfully saved keys from dirty map
+  for (const [key, { input, type }] of settingsDirty) {
+    if (settingInputValue(input, type) === input.dataset.originalValue) settingsDirty.delete(key)
+  }
+  updateSettingsSaveBar()
+
+  if (btn) { btn.disabled = false; btn.textContent = t('settings.btn.save') }
+  if (errors.length) {
+    showToast(t('settings.toast.partial_error'), 'error')
+  } else {
+    showToast(needsRestart ? t('settings.toast.saved_restart') : t('settings.toast.saved'))
+  }
+}
+
+function resetAllSettings() {
+  for (const [key, { input, originalValue }] of settingsDirty) {
+    input.value = originalValue
+    const errorEl = document.querySelector(`[data-setting-key="${key}"]`)?.closest('.settings-row')?.querySelector('.settings-row-error')
+    if (errorEl) errorEl.textContent = ''
+  }
+  settingsDirty.clear()
+  updateSettingsSaveBar()
+}
+
+document.getElementById('settingsSaveAllBtn')?.addEventListener('click', saveAllSettings)
+document.getElementById('settingsResetBtn')?.addEventListener('click', resetAllSettings)
+
+// === connectors.hu install banner ===
+;(function () {
+  const DISMISSED_KEY = 'cxhu_banner_dismissed'
+  const banner = document.getElementById('cxhuBanner')
+  const closeBtn = document.getElementById('cxhuBannerClose')
+  if (!banner || !closeBtn) return
+  if (localStorage.getItem(DISMISSED_KEY) === '1') { banner.hidden = true; return }
+
+  // dismiss with animation
+  closeBtn.addEventListener('click', () => {
+    banner.style.transition = 'opacity 0.2s ease, max-height 0.3s ease'
+    banner.style.overflow = 'hidden'
+    banner.style.opacity = '0'
+    banner.style.maxHeight = banner.offsetHeight + 'px'
+    requestAnimationFrame(() => { banner.style.maxHeight = '0' })
+    setTimeout(() => { banner.hidden = true }, 300)
+    localStorage.setItem(DISMISSED_KEY, '1')
+  })
+
+  // --- state machine ---
+  const states = ['Loading','Done','Install','Installing','Token','Configuring','Error']
+  function showState(name) {
+    states.forEach(s => {
+      const el = document.getElementById('cxhuState' + s)
+      if (el) el.hidden = (s !== name)
+    })
+  }
+
+  let lastError = null
+
+  async function checkStatus() {
+    showState('Loading')
+    try {
+      const res = await fetch('/api/connectors-hu/status')
+      if (!res.ok) throw new Error('HTTP ' + res.status)
+      const data = await res.json()
+      if (data.installed && data.configured) {
+        showState('Done')
+      } else if (data.installed) {
+        showState('Token')
+      } else {
+        showState('Install')
+      }
+    } catch (e) {
+      showError(e.message || t('status.error.fetch'), checkStatus)
+    }
+  }
+
+  function showError(msg, retryFn) {
+    document.getElementById('cxhuErrorMsg').textContent = msg
+    showState('Error')
+    const retryBtn = document.getElementById('cxhuRetryBtn')
+    retryBtn.onclick = retryFn || checkStatus
+  }
+
+  // Telepítés gomb
+  const installBtn = document.getElementById('cxhuInstallBtn')
+  if (installBtn) {
+    installBtn.addEventListener('click', async () => {
+      showState('Installing')
+      try {
+        const res = await fetch('/api/connectors-hu/install', { method: 'POST' })
+        const data = await res.json().catch(() => ({}))
+        if (!res.ok || !data.ok) throw new Error(data.error || t('connectors.error.install'))
+        showState('Token')
+      } catch (e) {
+        showError(e.message, () => { showState('Install') })
+      }
+    })
+  }
+
+  // Mentés és szinkron gomb
+  const configureBtn = document.getElementById('cxhuConfigureBtn')
+  if (configureBtn) {
+    configureBtn.addEventListener('click', async () => {
+      const token = (document.getElementById('cxhuTokenInput') || {}).value || ''
+      if (!token.trim()) {
+        document.getElementById('cxhuTokenInput').focus()
+        return
+      }
+      showState('Configuring')
+      try {
+        const res = await fetch('/api/connectors-hu/configure', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token: token.trim() }),
+        })
+        const data = await res.json().catch(() => ({}))
+        if (!res.ok || !data.ok) throw new Error(data.error || t('connectors.error.configure'))
+        showState('Done')
+      } catch (e) {
+        showError(e.message, () => { showState('Token') })
+      }
+    })
+  }
+
+  // Enter key a token inputban
+  const tokenInput = document.getElementById('cxhuTokenInput')
+  if (tokenInput) {
+    tokenInput.addEventListener('keydown', e => { if (e.key === 'Enter') configureBtn && configureBtn.click() })
+  }
+
+  checkStatus()
+})()
+
+// === Token Usage Monitor ===
+const TU_COLORS = {
+  marveen: '#6366f1',
+  codi: '#f59e0b',
+  dexi: '#ec4899',
+  finci: '#10b981',
+  hilti: '#ef4444',
+  szurcsi: '#8b5cf6',
+}
+let tuSelectedAgent = ''
+let tuChartState = null
+
+// Model pricing in USD per million tokens (input / output / cache-write / cache-read).
+// Fallback row is used when model is unknown or not yet captured.
+// cache-write is 1.25x input, cache-read is 0.1x input -- keep the derived
+// columns consistent with `in` when editing a row.
+// Sonnet 5 launched on introductory pricing (2 / 10) that ends 2026-08-31;
+// the standard rate (3 / 15) applies from 2026-09-01. Resolved by date at load
+// time instead of pinned to one of the two, so the table neither understates
+// spend today nor silently overstates it the morning the intro rate expires.
+const TU_SONNET5_INTRO_END = Date.parse('2026-09-01T00:00:00Z')
+const TU_SONNET5_PRICE = Date.now() < TU_SONNET5_INTRO_END
+  ? { in: 2.0, out: 10.0, cw: 2.50, cr: 0.20 }
+  : { in: 3.0, out: 15.0, cw: 3.75, cr: 0.30 }
+
+const TU_MODEL_PRICING = {
+  // INFERRED, not from the published catalogue: Opus 5 is not listed in the
+  // model reference this table was checked against. The value follows the rest
+  // of the current Opus tier (4.6/4.7/4.8 at 5 / 25); treat it as an estimate
+  // until a published rate confirms it.
+  'claude-opus-5':       { in: 5.0,   out: 25.0,  cw: 6.25,  cr: 0.50 },
+  'claude-opus-4-8':     { in: 5.0,   out: 25.0,  cw: 6.25,  cr: 0.50 },
+  'claude-opus-4-7':     { in: 5.0,   out: 25.0,  cw: 6.25,  cr: 0.50 },
+  'claude-opus-4-6':     { in: 5.0,   out: 25.0,  cw: 6.25,  cr: 0.50 },
+  // Opus 4.0 / 4.1 -- the last generation still on the old Opus pricing.
+  'claude-opus-4':       { in: 15.0,  out: 75.0,  cw: 18.75, cr: 1.50 },
+  'claude-sonnet-5':     TU_SONNET5_PRICE,
+  'claude-sonnet-4-6':   { in: 3.0,   out: 15.0,  cw: 3.75,  cr: 0.30 },
+  'claude-sonnet-4-5':   { in: 3.0,   out: 15.0,  cw: 3.75,  cr: 0.30 },
+  'claude-fable-5':      { in: 10.0,  out: 50.0,  cw: 12.50, cr: 1.00 },
+  'claude-mythos-5':     { in: 10.0,  out: 50.0,  cw: 12.50, cr: 1.00 },
+  'claude-haiku-4-5':    { in: 1.0,   out: 5.0,   cw: 1.25,  cr: 0.10 },
+  default:               { in: 3.0,   out: 15.0,  cw: 3.75,  cr: 0.30 },
+}
+
+// Longest-prefix wins. A plain first-match loop is order-dependent and silently
+// wrong here: 'claude-opus-4-8' also startsWith 'claude-opus-4', so whichever
+// key the object happens to list first decides the price -- that is how Opus 4.8
+// was billed at the Opus 4.1 rate even once it had its own row.
+function tuPriceForModel(model) {
+  if (!model) return TU_MODEL_PRICING.default
+  const keys = Object.keys(TU_MODEL_PRICING)
+    .filter((k) => k !== 'default')
+    .sort((a, b) => b.length - a.length)
+  for (const key of keys) {
+    if (model.startsWith(key)) return TU_MODEL_PRICING[key]
+  }
+  return TU_MODEL_PRICING.default
+}
+
+function tuCalcCostUSD(inputTokens, outputTokens, cacheReadTokens, cacheCreationTokens, model) {
+  const p = tuPriceForModel(model)
+  return (
+    (inputTokens || 0) * p.in +
+    (outputTokens || 0) * p.out +
+    (cacheCreationTokens || 0) * p.cw +
+    (cacheReadTokens || 0) * p.cr
+  ) / 1_000_000
+}
+
+function tuFormatCostUSD(usd) {
+  if (usd < 0.001) return '<$0.001'
+  if (usd < 1) return '$' + usd.toFixed(3)
+  return '$' + usd.toFixed(2)
+}
+
+// Pie chart color palette for model distribution (distinct from agent colors)
+const TU_MODEL_COLORS = ['#6366f1','#06b6d4','#f59e0b','#22c55e','#ef4444','#8b5cf6','#ec4899','#10b981']
+
+function tuGetModelColor(idx) { return TU_MODEL_COLORS[idx % TU_MODEL_COLORS.length] }
+
+function tuGetColor(agent) {
+  return TU_COLORS[agent] || '#64748b'
+}
+
+function tuMcpServerFromTool(toolName) {
+  if (!toolName || !toolName.startsWith('mcp__')) return null
+  const parts = toolName.split('__')
+  // parts: ['mcp', '<server>', '<tool>'] for a full tool name, or
+  // ['mcp', '<server>'] for a tuMcpGroupKey() group key -- without accepting
+  // the 2-part form, every grouped MCP row would be mislabelled as builtin.
+  return parts.length >= 2 && parts[1] ? parts[1] : null
+}
+
+function tuMcpGroupKey(toolName) {
+  if (!toolName || !toolName.startsWith('mcp__')) return toolName
+  const parts = toolName.split('__')
+  return parts.length >= 3 ? 'mcp__' + parts[1] : toolName
+}
+
+function tuFormatTokens(n) {
+  if (n == null || isNaN(n)) return '0'
+  if (n >= 1e9) return (n / 1e9).toFixed(1) + 'B'
+  if (n >= 1e6) return (n / 1e6).toFixed(1) + 'M'
+  if (n >= 1e3) return (n / 1e3).toFixed(1) + 'K'
+  return String(n)
+}
+
+function tuGetTimeRange() {
+  const period = document.getElementById('tuPeriod')?.value || '7d'
+  const now = Math.floor(Date.now() / 1000)
+  if (period === '1h') return { from: now - 3600, to: now }
+  if (period === '24h') return { from: now - 86400, to: now }
+  if (period === '7d') return { from: now - 7 * 86400, to: now }
+  if (period === '30d') return { from: now - 30 * 86400, to: now }
+  return { from: undefined, to: undefined }
+}
+
+async function loadTokenUsage() {
+  const { from, to } = tuGetTimeRange()
+  const agent = tuSelectedAgent
+
+  const params = new URLSearchParams()
+  if (from) params.set('from', from)
+  if (to) params.set('to', to)
+
+  const summaryRes = await fetch('/api/token-usage/summary?' + params)
+  if (!summaryRes.ok) return
+  const summary = await summaryRes.json()
+  summary.sort((a, b) => {
+    const aTotal = (a.totalInput || 0) + (a.totalCacheRead || 0) + (a.totalCacheCreation || 0)
+    const bTotal = (b.totalInput || 0) + (b.totalCacheRead || 0) + (b.totalCacheCreation || 0)
+    return bTotal - aTotal
+  })
+  renderTuSummary(summary)
+
+  const agentSelect = document.getElementById('tuAgent')
+  if (agentSelect && agentSelect.options.length <= 1) {
+    for (const s of summary) {
+      const opt = document.createElement('option')
+      opt.value = s.agent
+      opt.textContent = s.agent
+      agentSelect.appendChild(opt)
+    }
+  }
+  if (agentSelect) agentSelect.value = agent
+
+  const period = document.getElementById('tuPeriod')?.value || '7d'
+  const bucketMin = period === '1h' ? 5 : 60
+  const tlParams = new URLSearchParams(params)
+  tlParams.set('bucket', String(bucketMin))
+  const tlRes = await fetch('/api/token-usage/timeline?' + tlParams)
+  if (!tlRes.ok) return
+  const timeline = await tlRes.json()
+  renderTuTimeline(timeline, agent)
+  renderTuBudgetCards()
+
+  tuDetailSearch = ''
+  const searchEl = document.getElementById('tuSearchInput')
+  if (searchEl) searchEl.value = ''
+
+  const agentParam = agent ? '&agent=' + encodeURIComponent(agent) : ''
+  const baseQuery = params.toString()
+
+  const [modelDistRes, toolStatsRes] = await Promise.all([
+    fetch('/api/token-usage/model-dist?' + baseQuery + agentParam),
+    fetch('/api/token-usage/tool-stats?' + baseQuery + agentParam),
+  ])
+  if (modelDistRes.ok) renderTuModelDist(await modelDistRes.json())
+  if (toolStatsRes.ok) renderTuToolStats(await toolStatsRes.json())
+
+  await tuFetchDetails()
+}
+
+function renderTuSummary(summary) {
+  const el = document.getElementById('tuSummaryCards')
+  if (!el) return
+  if (!summary.length) {
+    el.innerHTML = `<div class="overview-stat"><div class="overview-stat-label">${t('tokenUsage.no_data')}</div><div class="overview-stat-value">0</div><div class="overview-stat-sub">${t('tokenUsage.collect_hint')}</div></div>`
+    return
+  }
+  el.innerHTML = summary.map(s => {
+    const totalIn = (s.totalInput || 0) + (s.totalCacheRead || 0) + (s.totalCacheCreation || 0)
+    const isActive = tuSelectedAgent === s.agent
+    const dimmed = tuSelectedAgent && !isActive
+    const costUSD = Array.isArray(s.perModel) && s.perModel.length
+      ? s.perModel.reduce((sum, m) => sum + tuCalcCostUSD(m.totalInput || 0, m.totalOutput || 0, m.totalCacheRead || 0, m.totalCacheCreation || 0, m.model && m.model !== '(unknown)' ? m.model : null), 0)
+      : tuCalcCostUSD(s.totalInput, s.totalOutput, s.totalCacheRead, s.totalCacheCreation, null)
+    const sessions = s.totalSessions || 0
+    const tokPerSession = sessions > 0 ? Math.round(totalIn / sessions) : 0
+    const costPerSession = sessions > 0 ? costUSD / sessions : 0
+    return `
+      <div class="overview-stat tu-agent-card${isActive ? ' tu-active' : ''}" data-agent="${escapeHtml(s.agent)}"
+        style="border-left:3px solid ${tuGetColor(s.agent)};cursor:pointer;${dimmed ? 'opacity:0.4;' : ''}transition:opacity 0.2s">
+        <div class="overview-stat-label">${escapeHtml(s.agent)}</div>
+        <div class="overview-stat-value">${tuFormatTokens(totalIn)}</div>
+        <div class="overview-stat-sub">${t('tokenUsage.calls_sub', { calls: (s.totalCalls || 0).toLocaleString(), out: tuFormatTokens(s.totalOutput) })}</div>
+        <div class="overview-stat-sub" style="margin-top:4px;color:var(--text-secondary)">${tuFormatCostUSD(costUSD)} &middot; ${sessions} sess</div>
+        <div class="overview-stat-sub" style="font-size:11px;color:var(--text-secondary)">${tuFormatTokens(tokPerSession)} tok/sess &middot; ${tuFormatCostUSD(costPerSession)}/sess</div>
+      </div>`
+  }).join('')
+
+  el.querySelectorAll('.tu-agent-card').forEach(card => {
+    card.addEventListener('click', () => {
+      const clickedAgent = card.dataset.agent
+      if (tuSelectedAgent === clickedAgent) {
+        tuSelectedAgent = ''
+      } else {
+        tuSelectedAgent = clickedAgent
+      }
+      const agentSelect = document.getElementById('tuAgent')
+      if (agentSelect) agentSelect.value = tuSelectedAgent
+      loadTokenUsage()
+    })
+  })
+}
+
+function tuGetResetLines(bucketStart, bucketEnd) {
+  const lines = []
+  // 5h session lines
+  const win5h = 5 * 3600
+  let t5 = bucketStart - (bucketStart % win5h) + win5h
+  while (t5 < bucketEnd) {
+    lines.push({ ts: t5, type: '5h', label: '5h' })
+    t5 += win5h
+  }
+  // Daily midnight + weekly Monday midnight
+  const d = new Date(bucketStart * 1000)
+  d.setHours(0, 0, 0, 0)
+  d.setDate(d.getDate() + 1)
+  while (d.getTime() / 1000 < bucketEnd) {
+    const ts = Math.floor(d.getTime() / 1000)
+    const isMonday = d.getDay() === 1
+    const near5h = lines.find(l => l.type === '5h' && Math.abs(l.ts - ts) < 1800)
+    if (!near5h) lines.push({ ts, type: isMonday ? 'weekly' : 'daily', label: isMonday ? t('tokenUsage.chart.week') : t('tokenUsage.chart.day') })
+    else if (isMonday) { near5h.type = 'weekly'; near5h.label = t('tokenUsage.chart.week') }
+    d.setDate(d.getDate() + 1)
+  }
+  return lines
+}
+
+function tuFillBuckets(data, bucketSeconds) {
+  if (!data.length) return data
+  const agents = [...new Set(data.map(d => d.agent))]
+  const bucketMap = {}
+  for (const d of data) {
+    const key = d.bucket + ':' + d.agent
+    bucketMap[key] = d
+  }
+  const minB = Math.min(...data.map(d => d.bucket))
+  const maxB = Math.max(...data.map(d => d.bucket))
+  const filled = []
+  for (let b = minB; b <= maxB; b += bucketSeconds) {
+    for (const agent of agents) {
+      const key = b + ':' + agent
+      filled.push(bucketMap[key] || { bucket: b, agent, calls: 0, inputTokens: 0, outputTokens: 0 })
+    }
+  }
+  return filled
+}
+
+function tuFormatLocalDate(ts) {
+  return new Date(ts * 1000).toLocaleString(undefined, { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })
+}
+
+function tuFormatLocalShort(ts) {
+  const d = new Date(ts * 1000)
+  const period = document.getElementById('tuPeriod')?.value || '7d'
+  if (period === '1h' || period === '24h') {
+    return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`
+  }
+  return `${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:00`
+}
+
+function tuIsPeakHour(ts) {
+  const d = new Date(ts * 1000)
+  if (d.getDay() === 0 || d.getDay() === 6) return false
+  try {
+    const ptHour = parseInt(d.toLocaleString('en-US', { timeZone: 'America/Los_Angeles', hour: 'numeric', hour12: false }))
+    return ptHour >= 5 && ptHour < 11
+  } catch { return false }
+}
+
+function tuCalcCumulativeWindows(buckets, bucketTotals, windowSeconds) {
+  const result = []
+  let windowStart = null
+  let cumulative = 0
+  for (const b of buckets) {
+    const total = bucketTotals[b] || 0
+    if (windowStart === null) {
+      if (total > 0) { windowStart = b; cumulative = total }
+      else { cumulative = 0 }
+    } else if (b >= windowStart + windowSeconds) {
+      if (total > 0) { windowStart = b; cumulative = total }
+      else { windowStart = null; cumulative = 0 }
+    } else {
+      cumulative += total
+    }
+    result.push({ bucket: b, cumulative })
+  }
+  return result
+}
+
+let tuBudgetView = ''
+
+function renderTuTimeline(data, filterAgent) {
+  const canvas = document.getElementById('tuCanvas')
+  if (!canvas) return
+  const container = canvas.parentElement
+  const dpr = window.devicePixelRatio || 1
+  const cssW = container.offsetWidth
+  const cssH = 360
+  canvas.width = cssW * dpr
+  canvas.height = cssH * dpr
+  canvas.style.width = cssW + 'px'
+  canvas.style.height = cssH + 'px'
+  const ctx = canvas.getContext('2d')
+  ctx.scale(dpr, dpr)
+  ctx.clearRect(0, 0, cssW, cssH)
+
+  const textSecondary = getComputedStyle(document.documentElement).getPropertyValue('--text-secondary').trim() || '#64748b'
+  const textPrimary = getComputedStyle(document.documentElement).getPropertyValue('--text-primary').trim() || '#1e293b'
+  const borderColor = getComputedStyle(document.documentElement).getPropertyValue('--border').trim() || '#e2e8f0'
+
+  if (!data.length) {
+    ctx.fillStyle = textSecondary
+    ctx.font = '14px sans-serif'
+    ctx.textAlign = 'center'
+    ctx.fillText(t('tokenUsage.no_period_data'), cssW / 2, 160)
+    tuChartState = null
+    return
+  }
+
+  renderTuTimeline.__lastData = data
+  renderTuTimeline.__lastAgent = filterAgent
+  const period = document.getElementById('tuPeriod')?.value || '7d'
+  const bucketSec = period === '1h' ? 300 : 3600
+  const filled = tuFillBuckets(data, bucketSec)
+  const agents = [...new Set(filled.map(d => d.agent))]
+  const buckets = [...new Set(filled.map(d => d.bucket))].sort((a, b) => a - b)
+  const pad = { top: 20, right: 65, bottom: 70, left: 70 }
+  const w = cssW - pad.left - pad.right
+  const h = cssH - pad.top - pad.bottom
+
+  const bucketMap = {}
+  for (const d of filled) {
+    if (!bucketMap[d.bucket]) bucketMap[d.bucket] = {}
+    bucketMap[d.bucket][d.agent] = (bucketMap[d.bucket][d.agent] || 0) + (d.inputTokens || 0)
+  }
+
+  const bucketTotals = {}
+  for (const b of buckets) {
+    let sum = 0
+    for (const a of agents) sum += (bucketMap[b]?.[a] || 0)
+    bucketTotals[b] = sum
+  }
+
+  let maxVal = 0
+  for (const b of buckets) {
+    if (filterAgent) {
+      const v = bucketMap[b]?.[filterAgent] || 0
+      if (v > maxVal) maxVal = v
+    } else {
+      if (bucketTotals[b] > maxVal) maxVal = bucketTotals[b]
+    }
+  }
+  if (maxVal === 0) maxVal = 1
+
+  const barW = Math.max(2, Math.min(20, w / buckets.length - 1))
+  const barGap = Math.max(0, (w / buckets.length) - barW)
+  const bucketRange = buckets[buckets.length - 1] - buckets[0] + bucketSec
+
+  // Peak hours shading
+  for (let i = 0; i < buckets.length; i++) {
+    if (tuIsPeakHour(buckets[i])) {
+      const x = pad.left + (i / buckets.length) * w
+      ctx.fillStyle = 'rgba(239, 68, 68, 0.06)'
+      ctx.fillRect(x, pad.top, barW + barGap, h)
+    }
+  }
+
+  // Day/week reset lines
+  const resetLines = tuGetResetLines(buckets[0], buckets[buckets.length - 1] + 3600)
+  for (const rl of resetLines) {
+    const frac = (rl.ts - buckets[0]) / bucketRange
+    if (frac < 0 || frac > 1) continue
+    const x = pad.left + frac * w
+    ctx.save()
+    ctx.strokeStyle = rl.type === 'weekly' ? '#ef444480' : rl.type === '5h' ? '#3b82f680' : '#f59e0b60'
+    ctx.lineWidth = rl.type === 'weekly' ? 1.5 : 1
+    ctx.setLineDash(rl.type === 'weekly' ? [6, 4] : rl.type === '5h' ? [3, 3] : [4, 4])
+    ctx.beginPath()
+    ctx.moveTo(x, pad.top)
+    ctx.lineTo(x, pad.top + h)
+    ctx.stroke()
+    ctx.restore()
+  }
+
+  // Bars (dimmed when budget view is active)
+  const barDimmed = tuBudgetView !== ''
+  const barRects = []
+  for (let i = 0; i < buckets.length; i++) {
+    const x = pad.left + (i / buckets.length) * w
+    let yOffset = 0
+    const segments = []
+    const drawAgents = filterAgent ? [filterAgent] : agents
+    for (const agent of drawAgents) {
+      const val = bucketMap[buckets[i]]?.[agent] || 0
+      const barH = (val / maxVal) * h
+      ctx.globalAlpha = barDimmed ? 0.2 : 1
+      ctx.fillStyle = tuGetColor(agent)
+      ctx.fillRect(x, pad.top + h - yOffset - barH, barW, barH)
+      ctx.globalAlpha = 1
+      if (val > 0) segments.push({ agent, val })
+      yOffset += barH
+    }
+    barRects.push({ x, w: barW + barGap, bucket: buckets[i], segments, totalH: yOffset })
+  }
+
+  // Cumulative budget lines
+  const win5h = tuCalcCumulativeWindows(buckets, bucketTotals, 5 * 3600)
+  const winWeekly = tuCalcCumulativeWindows(buckets, bucketTotals, 7 * 86400)
+  const maxCum = Math.max(
+    ...win5h.map(w => w.cumulative),
+    ...winWeekly.map(w => w.cumulative),
+    1
+  )
+
+  function drawCumLine(windows, color, lineW, active) {
+    ctx.save()
+    ctx.strokeStyle = color
+    ctx.lineWidth = active ? lineW + 1 : lineW
+    ctx.globalAlpha = active ? 1 : (tuBudgetView === '' ? 0.7 : 0.15)
+    ctx.setLineDash([])
+    ctx.beginPath()
+    let prevCum = 0
+    for (let i = 0; i < windows.length; i++) {
+      const x = pad.left + (i / buckets.length) * w + barW / 2
+      const y = pad.top + h - (windows[i].cumulative / maxCum) * h
+      if (i === 0) { ctx.moveTo(x, y) }
+      else if (windows[i].cumulative < prevCum) {
+        ctx.stroke()
+        ctx.beginPath()
+        ctx.moveTo(x, pad.top + h)
+        ctx.lineTo(x, y)
+      } else {
+        ctx.lineTo(x, y)
+      }
+      prevCum = windows[i].cumulative
+    }
+    ctx.stroke()
+    ctx.restore()
+  }
+
+  const is5hActive = tuBudgetView === '5h'
+  const isWeeklyActive = tuBudgetView === 'weekly'
+  drawCumLine(winWeekly, '#8b5cf6', 1.5, isWeeklyActive)
+  drawCumLine(win5h, '#06b6d4', 2, is5hActive)
+
+  // X axis
+  ctx.strokeStyle = borderColor
+  ctx.lineWidth = 1
+  ctx.setLineDash([])
+  ctx.beginPath()
+  ctx.moveTo(pad.left, pad.top + h)
+  ctx.lineTo(pad.left + w, pad.top + h)
+  ctx.stroke()
+
+  // X labels
+  ctx.fillStyle = textSecondary
+  ctx.font = '11px sans-serif'
+  ctx.textAlign = 'center'
+  const labelInterval = Math.max(1, Math.floor(buckets.length / 8))
+  for (let i = 0; i < buckets.length; i += labelInterval) {
+    const x = pad.left + (i / buckets.length) * w + barW / 2
+    ctx.fillText(tuFormatLocalShort(buckets[i]), x, pad.top + h + 18)
+  }
+
+  // Left Y axis (per-bucket)
+  ctx.textAlign = 'right'
+  ctx.fillStyle = textSecondary
+  ctx.font = '10px sans-serif'
+  for (let i = 0; i <= 4; i++) {
+    const val = (maxVal / 4) * i
+    const y = pad.top + h - (i / 4) * h
+    ctx.fillText(tuFormatTokens(val), pad.left - 8, y + 4)
+  }
+
+  // Right Y axis (cumulative)
+  ctx.textAlign = 'left'
+  ctx.fillStyle = '#06b6d4'
+  for (let i = 0; i <= 4; i++) {
+    const val = (maxCum / 4) * i
+    const y = pad.top + h - (i / 4) * h
+    ctx.fillText(tuFormatTokens(val), pad.left + w + 6, y + 4)
+  }
+
+  // Legend: single dynamic row with wrapping
+  let legendY = pad.top + h + 38
+  let legendX = pad.left
+  const maxLegW = cssW - pad.right
+  function legWrap(needed) { if (legendX + needed > maxLegW) { legendX = pad.left; legendY += 16 } }
+
+  ctx.font = '11px sans-serif'
+  ctx.textAlign = 'left'
+  for (const agent of agents) {
+    const tw = ctx.measureText(agent).width + 28
+    legWrap(tw)
+    ctx.fillStyle = tuGetColor(agent)
+    ctx.fillRect(legendX, legendY - 7, 10, 10)
+    ctx.fillStyle = textPrimary
+    ctx.fillText(agent, legendX + 14, legendY + 2)
+    legendX += tw
+  }
+
+  const legendHits = []
+  const lineItems = [
+    { label: t('tokenUsage.chart.window_5h'), color: '#06b6d4', lw: 2, dash: [], id: '5h', active: is5hActive },
+    { label: t('tokenUsage.chart.window_weekly'), color: '#8b5cf6', lw: 1.5, dash: [], id: 'weekly', active: isWeeklyActive },
+    { label: '5h', color: '#3b82f680', lw: 1, dash: [3, 3] },
+    { label: t('tokenUsage.chart.day'), color: '#f59e0b60', lw: 1, dash: [4, 4] },
+    { label: t('tokenUsage.chart.week'), color: '#ef444480', lw: 1.5, dash: [6, 4] },
+  ]
+  for (const li of lineItems) {
+    const tw = ctx.measureText(li.label).width + 34
+    legWrap(tw)
+    ctx.save()
+    ctx.strokeStyle = li.color; ctx.lineWidth = li.lw; ctx.setLineDash(li.dash)
+    ctx.beginPath(); ctx.moveTo(legendX, legendY - 1); ctx.lineTo(legendX + 16, legendY - 1); ctx.stroke()
+    ctx.restore()
+    ctx.fillStyle = li.active ? li.color : textSecondary
+    ctx.font = li.active ? 'bold 10px sans-serif' : '10px sans-serif'
+    ctx.fillText(li.label, legendX + 20, legendY + 2)
+    if (li.id) legendHits.push({ x: legendX, y: legendY - 10, w: tw, h: 16, id: li.id })
+    legendX += tw
+  }
+  legWrap(70)
+  ctx.fillStyle = 'rgba(239, 68, 68, 0.15)'
+  ctx.fillRect(legendX, legendY - 7, 10, 10)
+  ctx.fillStyle = textSecondary; ctx.font = '10px sans-serif'
+  ctx.fillText('csúcsidő', legendX + 14, legendY + 2)
+
+  // Store legend hit areas for click handling
+  tuChartState = { barRects, pad, h, cssW, cssH, maxVal, maxCum, win5h, winWeekly, legendHits }
+}
+
+;(function setupTuTooltip() {
+  const canvas = document.getElementById('tuCanvas')
+  if (!canvas) return
+  let tooltip = document.getElementById('tuTooltip')
+  if (!tooltip) {
+    tooltip = document.createElement('div')
+    tooltip.id = 'tuTooltip'
+    tooltip.style.cssText = 'position:absolute;background:var(--bg-elevated,#1e293b);color:var(--text-primary,#f8fafc);padding:8px 12px;border-radius:6px;font-size:12px;pointer-events:none;z-index:100;display:none;box-shadow:0 4px 12px rgba(0,0,0,0.3);max-width:240px;line-height:1.5'
+    canvas.parentElement.appendChild(tooltip)
+  }
+
+  canvas.addEventListener('mousemove', e => {
+    if (!tuChartState) return
+    const rect = canvas.getBoundingClientRect()
+    const mx = e.clientX - rect.left
+    const my = e.clientY - rect.top
+    const { barRects, pad, h } = tuChartState
+
+    let hit = null
+    for (const br of barRects) {
+      if (mx >= br.x && mx < br.x + br.w) { hit = br; break }
+    }
+
+    if (hit && my >= pad.top && my <= pad.top + h) {
+      const isPeak = tuIsPeakHour(hit.bucket)
+      let html = `<div style="font-weight:600;margin-bottom:4px">${tuFormatLocalShort(hit.bucket)}${isPeak ? ` <span style="color:#ef4444;font-size:10px">${t('tokenUsage.chart.peak')}</span>` : ''}</div>`
+      let total = 0
+      for (const seg of hit.segments) {
+        html += `<div><span style="color:${tuGetColor(seg.agent)}">&#9632;</span> ${seg.agent}: ${tuFormatTokens(seg.val)}</div>`
+        total += seg.val
+      }
+      if (hit.segments.length > 1) html += `<div style="border-top:1px solid rgba(255,255,255,0.2);margin-top:4px;padding-top:4px;font-weight:600">${t('tokenUsage.total')} ${tuFormatTokens(total)}</div>`
+      if (tuChartState.win5h || tuChartState.winWeekly) {
+        const idx = barRects.indexOf(hit)
+        if (idx >= 0) {
+          const c5 = tuChartState.win5h?.[idx]
+          const cw = tuChartState.winWeekly?.[idx]
+          html += '<div style="border-top:1px solid rgba(255,255,255,0.2);margin-top:4px;padding-top:4px;font-size:11px">'
+          if (c5) html += `<div><span style="color:#06b6d4">━</span> 5h ablak: ${tuFormatTokens(c5.cumulative)}</div>`
+          if (cw) html += `<div><span style="color:#8b5cf6">━</span> Heti ablak: ${tuFormatTokens(cw.cumulative)}</div>`
+          html += '</div>'
+        }
+      }
+      tooltip.innerHTML = html
+      tooltip.style.display = 'block'
+      const tx = Math.min(e.clientX - rect.left + 12, canvas.parentElement.offsetWidth - 250)
+      tooltip.style.left = tx + 'px'
+      tooltip.style.top = (my - 10) + 'px'
+    } else {
+      tooltip.style.display = 'none'
+    }
+  })
+
+  canvas.addEventListener('mouseleave', () => {
+    tooltip.style.display = 'none'
+  })
+
+  canvas.addEventListener('click', e => {
+    if (!tuChartState?.legendHits) return
+    const rect = canvas.getBoundingClientRect()
+    const mx = e.clientX - rect.left
+    const my = e.clientY - rect.top
+    for (const lh of tuChartState.legendHits) {
+      if (mx >= lh.x && mx <= lh.x + lh.w && my >= lh.y && my <= lh.y + lh.h) {
+        tuBudgetView = tuBudgetView === lh.id ? '' : lh.id
+        if (renderTuTimeline.__lastData) renderTuTimeline(renderTuTimeline.__lastData, renderTuTimeline.__lastAgent)
+        return
+      }
+    }
+  })
+})()
+
+function renderTuBudgetCards() {
+  const el = document.getElementById('tuBudgetCards')
+  if (!el || !tuChartState) return
+  const { win5h, winWeekly } = tuChartState
+  const cur5h = win5h?.length ? win5h[win5h.length - 1].cumulative : 0
+  const curWeekly = winWeekly?.length ? winWeekly[winWeekly.length - 1].cumulative : 0
+
+  el.innerHTML = `
+    <div class="overview-stat tu-budget-card${tuBudgetView === '5h' ? ' tu-active' : ''}" data-budget="5h"
+      style="border-left:3px solid #06b6d4;cursor:pointer;${tuBudgetView === 'weekly' ? 'opacity:0.4;' : ''}transition:opacity 0.2s">
+      <div class="overview-stat-label">${t('tokenUsage.window_5h_label')}</div>
+      <div class="overview-stat-value" style="color:#06b6d4">${tuFormatTokens(cur5h)}</div>
+      <div class="overview-stat-sub">${t('tokenUsage.cumulative_sub')}</div>
+    </div>
+    <div class="overview-stat tu-budget-card${tuBudgetView === 'weekly' ? ' tu-active' : ''}" data-budget="weekly"
+      style="border-left:3px solid #8b5cf6;cursor:pointer;${tuBudgetView === '5h' ? 'opacity:0.4;' : ''}transition:opacity 0.2s">
+      <div class="overview-stat-label">${t('tokenUsage.window_weekly_label')}</div>
+      <div class="overview-stat-value" style="color:#8b5cf6">${tuFormatTokens(curWeekly)}</div>
+      <div class="overview-stat-sub">${t('tokenUsage.cumulative_sub')}</div>
+    </div>`
+
+  el.querySelectorAll('.tu-budget-card').forEach(card => {
+    card.addEventListener('click', () => {
+      const id = card.dataset.budget
+      tuBudgetView = tuBudgetView === id ? '' : id
+      if (renderTuTimeline.__lastData) renderTuTimeline(renderTuTimeline.__lastData, renderTuTimeline.__lastAgent)
+      renderTuBudgetCards()
+    })
+  })
+}
+
+let tuDetailData = []
+let tuDetailSort = { col: 'timestamp', dir: 'desc' }
+let tuDetailSearch = ''
+let tuSearchTimer = null
+
+function tuSortDetails(data) {
+  return [...data].sort((a, b) => {
+    const { col, dir } = tuDetailSort
+    let va, vb
+    if (col === 'input') {
+      va = (a.input_tokens || 0) + (a.cache_read_tokens || 0) + (a.cache_creation_tokens || 0)
+      vb = (b.input_tokens || 0) + (b.cache_read_tokens || 0) + (b.cache_creation_tokens || 0)
+    } else if (col === 'output') {
+      va = a.output_tokens || 0; vb = b.output_tokens || 0
+    } else if (col === 'agent') {
+      va = a.agent || ''; vb = b.agent || ''
+      return dir === 'asc' ? va.localeCompare(vb) : vb.localeCompare(va)
+    } else {
+      va = a.timestamp || 0; vb = b.timestamp || 0
+    }
+    return dir === 'asc' ? va - vb : vb - va
+  })
+}
+
+function renderTuDetailsTable() {
+  const tbody = document.getElementById('tuDetailsTbody')
+  const countEl = document.getElementById('tuDetailsCount')
+  if (!tbody) return
+
+  const sorted = tuSortDetails(tuDetailData)
+  if (countEl) countEl.textContent = `${sorted.length} sor`
+
+  if (!sorted.length) {
+    tbody.innerHTML = `<tr><td colspan="5" style="color:var(--text-secondary);font-size:13px;text-align:center;padding:16px">${t('tokenUsage.no_calls')}</td></tr>`
+    return
+  }
+
+  tbody.innerHTML = sorted.map(d => {
+    const totalIn = (d.input_tokens || 0) + (d.cache_read_tokens || 0) + (d.cache_creation_tokens || 0)
+    const timeStr = tuFormatLocalDate(d.timestamp)
+    const preview = d.content_preview ? d.content_preview.slice(0, 80) + (d.content_preview.length > 80 ? '...' : '') : ''
+    const taskInfo = d.task_title ? `<span style="color:var(--text-secondary);font-size:11px"> [${escapeHtml(d.task_title)}]</span>` : ''
+    return `<tr>
+      <td style="white-space:nowrap">${timeStr}</td>
+      <td><span style="color:${tuGetColor(d.agent)};font-weight:600">${escapeHtml(d.agent)}</span>${taskInfo}</td>
+      <td style="text-align:right;font-variant-numeric:tabular-nums">${tuFormatTokens(totalIn)}</td>
+      <td style="text-align:right;font-variant-numeric:tabular-nums">${tuFormatTokens(d.output_tokens)}</td>
+      <td style="font-size:12px;color:var(--text-secondary);max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${escapeHtml(preview || '')}">${d.tool_name ? '<code>' + escapeHtml(d.tool_name) + '</code> ' : ''}${escapeHtml(preview)}</td>
+    </tr>`
+  }).join('')
+}
+
+function renderTuDetails(data) {
+  if (data) tuDetailData = data
+  const el = document.getElementById('tuDetailsTable')
+  if (!el) return
+
+  if (!document.getElementById('tuDetailsTbody')) {
+    const arrow = col => tuDetailSort.col === col ? (tuDetailSort.dir === 'asc' ? ' ▲' : ' ▼') : ''
+    const thStyle = 'cursor:pointer;user-select:none'
+    const thStyleR = thStyle + ';text-align:right'
+    el.innerHTML = `<div style="margin-bottom:8px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+      <input id="tuSearchInput" type="text" placeholder="${t('tokenUsage.search_placeholder')}"
+        style="padding:4px 8px;border:1px solid var(--border);border-radius:4px;background:var(--bg-primary);color:var(--text-primary);width:260px;font-size:13px">
+      <span id="tuDetailsCount" style="color:var(--text-secondary);font-size:12px"></span>
+    </div>
+    <div style="overflow-x:auto"><table class="mem-table" style="width:100%;min-width:600px">
+      <thead><tr>
+        <th style="${thStyle}" data-sort="timestamp">${t('tokenUsage.col.time')}${arrow('timestamp')}</th>
+        <th style="${thStyle}" data-sort="agent">${t('tokenUsage.col.agent')}${arrow('agent')}</th>
+        <th style="${thStyleR}" data-sort="input">Input${arrow('input')}</th>
+        <th style="${thStyleR}" data-sort="output">Output${arrow('output')}</th>
+        <th>${t('tokenUsage.col.content')}</th>
+      </tr></thead>
+      <tbody id="tuDetailsTbody"></tbody>
+    </table></div>`
+
+    el.querySelectorAll('th[data-sort]').forEach(th => {
+      th.addEventListener('click', () => {
+        const col = th.dataset.sort
+        if (tuDetailSort.col === col) {
+          tuDetailSort.dir = tuDetailSort.dir === 'asc' ? 'desc' : 'asc'
+        } else {
+          tuDetailSort = { col, dir: col === 'agent' ? 'asc' : 'desc' }
+        }
+        th.closest('thead').querySelectorAll('th[data-sort]').forEach(h => {
+          const c = h.dataset.sort
+          const arrow = tuDetailSort.col === c ? (tuDetailSort.dir === 'asc' ? ' ▲' : ' ▼') : ''
+          const labels = { timestamp: t('tokenUsage.col.time'), agent: t('tokenUsage.col.agent'), input: 'Input', output: 'Output' }
+          h.textContent = (labels[c] || c) + arrow
+        })
+        renderTuDetailsTable()
+      })
+    })
+
+    document.getElementById('tuSearchInput').addEventListener('input', e => {
+      tuDetailSearch = e.target.value
+      clearTimeout(tuSearchTimer)
+      tuSearchTimer = setTimeout(() => tuFetchDetails(), 400)
+    })
+  }
+
+  renderTuDetailsTable()
+}
+
+async function tuFetchDetails() {
+  const { from, to } = tuGetTimeRange()
+  const agent = tuSelectedAgent
+  const minTokens = document.getElementById('tuMinTokens')?.value || '50000'
+  const params = new URLSearchParams()
+  if (from) params.set('from', from)
+  if (to) params.set('to', to)
+  if (agent) params.set('agent', agent)
+  if (!tuDetailSearch) params.set('min_tokens', minTokens)
+  if (tuDetailSearch) params.set('q', tuDetailSearch)
+  params.set('limit', '200')
+  const detailRes = await fetch('/api/token-usage?' + params)
+  if (!detailRes.ok) return
+  const details = await detailRes.json()
+  renderTuDetails(details)
+}
+
+document.getElementById('tuCollectBtn')?.addEventListener('click', async () => {
+  const btn = document.getElementById('tuCollectBtn')
+  btn.disabled = true
+  btn.textContent = t('tokenUsage.collect_btn.collecting')
+  try {
+    const res = await fetch('/api/token-usage/collect', { method: 'POST' }).then(r => r.json())
+    btn.textContent = t('tokenUsage.collect_done', { n: res.inserted || 0 })
+    setTimeout(() => { btn.textContent = t('tokenUsage.collect_btn.collect'); btn.disabled = false }, 2000)
+    loadTokenUsage()
+  } catch {
+    btn.textContent = t('tokenUsage.collect_error')
+    setTimeout(() => { btn.textContent = t('tokenUsage.collect_btn.collect'); btn.disabled = false }, 2000)
+  }
+})
+
+document.getElementById('tuPeriod')?.addEventListener('change', () => { tuSelectedAgent = ''; loadTokenUsage() })
+document.getElementById('tuAgent')?.addEventListener('change', () => { tuSelectedAgent = document.getElementById('tuAgent').value; loadTokenUsage() })
+document.getElementById('tuMinTokens')?.addEventListener('change', () => tuFetchDetails())
+document.getElementById('tuToolAgentBreakdown')?.addEventListener('change', () => {
+  if (tuToolStatsData) renderTuToolStats(tuToolStatsData)
+})
+
+window.addEventListener('resize', () => {
+  if (!document.getElementById('tokenUsagePage')?.hidden) {
+    if (tuChartState && renderTuTimeline.__lastData) renderTuTimeline(renderTuTimeline.__lastData, renderTuTimeline.__lastAgent)
+    if (tuModelDistData) renderTuModelDist(tuModelDistData)
+  }
+})
+
+// ============================================================
+// Token Monitor: Model distribution pie chart
+// ============================================================
+let tuModelDistData = null
+
+function renderTuModelDist(data) {
+  tuModelDistData = data
+  const section = document.getElementById('tuModelDistSection')
+  const tableEl = document.getElementById('tuModelDistTable')
+  const canvas = document.getElementById('tuModelPieCanvas')
+  if (!section || !tableEl || !canvas) return
+
+  if (!data || !data.length) {
+    tableEl.innerHTML = `<span style="color:var(--text-secondary);font-size:13px">${t('tokenUsage.model_dist_no_data')}</span>`
+    const ctx = canvas.getContext('2d')
+    ctx.clearRect(0, 0, canvas.width, canvas.height)
+    return
+  }
+
+  // Pie chart
+  const dpr = window.devicePixelRatio || 1
+  const size = 180
+  canvas.width = size * dpr
+  canvas.height = size * dpr
+  canvas.style.width = size + 'px'
+  canvas.style.height = size + 'px'
+  const ctx = canvas.getContext('2d')
+  ctx.scale(dpr, dpr)
+  ctx.clearRect(0, 0, size, size)
+
+  const total = data.reduce((s, d) => s + (d.count || 0), 0)
+  const cx = size / 2, cy = size / 2, r = size / 2 - 8
+  let startAngle = -Math.PI / 2
+  for (let i = 0; i < data.length; i++) {
+    const frac = (data[i].count || 0) / total
+    const endAngle = startAngle + frac * Math.PI * 2
+    ctx.beginPath()
+    ctx.moveTo(cx, cy)
+    ctx.arc(cx, cy, r, startAngle, endAngle)
+    ctx.closePath()
+    ctx.fillStyle = tuGetModelColor(i)
+    ctx.fill()
+    // Thin separator
+    ctx.strokeStyle = 'var(--bg-primary, #0f172a)'
+    ctx.lineWidth = 1.5
+    ctx.stroke()
+    startAngle = endAngle
+  }
+
+  // Center hole (donut effect)
+  ctx.beginPath()
+  ctx.arc(cx, cy, r * 0.5, 0, Math.PI * 2)
+  ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--bg-elevated') || '#1e293b'
+  ctx.fill()
+
+  // Legend + table
+  const thStyle = 'text-align:left;padding:4px 8px 4px 0;font-size:12px;color:var(--text-secondary);border-bottom:1px solid var(--border);font-weight:600'
+  const tdStyle = 'padding:4px 8px 4px 0;font-size:13px;vertical-align:middle'
+  const tdRStyle = tdStyle + ';text-align:right'
+
+  let rows = data.map((d, i) => {
+    const pct = total > 0 ? ((d.count / total) * 100).toFixed(1) : '0.0'
+    const costUSD = tuCalcCostUSD(d.totalInput, d.totalOutput, d.totalCacheRead, d.totalCacheCreation, d.model !== '(unknown)' ? d.model : null)
+    return `<tr>
+      <td style="${tdStyle}">
+        <span style="display:inline-block;width:10px;height:10px;background:${tuGetModelColor(i)};border-radius:2px;margin-right:6px;vertical-align:middle"></span>
+        <code style="font-size:12px">${escapeHtml(d.model)}</code>
+      </td>
+      <td style="${tdRStyle}">${(d.count || 0).toLocaleString()}</td>
+      <td style="${tdRStyle}">${pct}%</td>
+      <td style="${tdRStyle}">${tuFormatCostUSD(costUSD)}</td>
+    </tr>`
+  }).join('')
+
+  tableEl.innerHTML = `<div style="overflow-x:auto"><table style="border-collapse:collapse;width:100%;min-width:300px">
+    <thead><tr>
+      <th style="${thStyle}">Modell</th>
+      <th style="${thStyle.replace('text-align:left','text-align:right')}">${t('tokenUsage.model_dist_calls', { n: '' }).trim()}</th>
+      <th style="${thStyle.replace('text-align:left','text-align:right')}">%</th>
+      <th style="${thStyle.replace('text-align:left','text-align:right')}">Becsült USD</th>
+    </tr></thead>
+    <tbody>${rows}</tbody>
+  </table></div>`
+}
+
+// ============================================================
+// Token Monitor: MCP tool usage grid
+// ============================================================
+let tuToolStatsData = null
+
+function renderTuToolStats(data) {
+  tuToolStatsData = data
+  const el = document.getElementById('tuToolStatsContent')
+  if (!el) return
+
+  if (!data || !data.length) {
+    el.innerHTML = `<span style="color:var(--text-secondary);font-size:13px">${t('tokenUsage.tool_stats_no_data')}</span>`
+    return
+  }
+
+  // Aggregate per-model rows into one entry per tool (MCP tools grouped by server)
+  const byTool = new Map()
+  for (const row of data) {
+    const key = tuMcpGroupKey(row.tool_name)
+    let entry = byTool.get(key)
+    if (!entry) {
+      entry = { tool_name: key, count: 0, agentSet: new Set(), costUSD: 0 }
+      byTool.set(key, entry)
+    }
+    entry.count += row.count || 0
+    ;(row.agents || '').split(',').forEach(a => { const s = a.trim(); if (s) entry.agentSet.add(s) })
+    entry.costUSD += tuCalcCostUSD(row.totalInput || 0, row.totalOutput || 0, row.totalCacheRead || 0, row.totalCacheCreation || 0, row.model || null)
+  }
+  const aggregated = Array.from(byTool.values()).sort((a, b) => b.count - a.count).slice(0, 50)
+
+  const showAgents = document.getElementById('tuToolAgentBreakdown')?.checked
+  const thStyle = 'text-align:left;padding:4px 8px 4px 0;font-size:12px;color:var(--text-secondary);border-bottom:1px solid var(--border);font-weight:600'
+  const tdStyle = 'padding:4px 8px 4px 0;font-size:13px;overflow:hidden;text-overflow:ellipsis;max-width:260px;white-space:nowrap'
+  const tdRStyle = 'padding:4px 8px 4px 0;font-size:13px;text-align:right;font-variant-numeric:tabular-nums'
+
+  const maxCount = Math.max(...aggregated.map(d => d.count || 0))
+
+  const rows = aggregated.map(d => {
+    const barPct = maxCount > 0 ? Math.round((d.count / maxCount) * 100) : 0
+    const server = tuMcpServerFromTool(d.tool_name)
+    const serverLabel = server
+      ? `<span style="font-size:11px;color:var(--text-secondary)">${escapeHtml(server)}</span>`
+      : `<span style="font-size:11px;color:var(--text-secondary);opacity:0.6">${t('tokenUsage.tool_stats_builtin')}</span>`
+    const agentChips = Array.from(d.agentSet).map(a => {
+      const color = tuGetColor(a)
+      return `<span style="display:inline-block;padding:1px 6px;border-radius:10px;font-size:11px;font-weight:500;border:1px solid ${color};color:${color};margin:1px 2px 1px 0;white-space:nowrap">${escapeHtml(a)}</span>`
+    }).join('')
+    const agentCell = showAgents ? `<td style="${tdStyle};white-space:normal">${agentChips}</td>` : ''
+    return `<tr>
+      <td style="${tdStyle}" title="${escapeHtml(d.tool_name)}"><code style="font-size:12px">${escapeHtml(d.tool_name)}</code></td>
+      <td style="${tdRStyle}">${(d.count || 0).toLocaleString()}</td>
+      <td style="padding:4px 8px 4px 0;vertical-align:middle;min-width:70px">
+        <div style="background:var(--accent,#6366f1);height:6px;border-radius:3px;width:${barPct}%;opacity:0.7"></div>
+      </td>
+      <td style="${tdStyle}">${serverLabel}</td>
+      <td style="${tdRStyle}">${tuFormatCostUSD(d.costUSD)}</td>
+      ${agentCell}
+    </tr>`
+  }).join('')
+
+  const agentHeader = showAgents ? `<th style="${thStyle}">${t('tokenUsage.tool_stats_col_agents')}</th>` : ''
+
+  el.innerHTML = `<div style="overflow-x:auto"><table style="border-collapse:collapse;width:100%;min-width:400px">
+    <thead><tr>
+      <th style="${thStyle}">${t('tokenUsage.tool_stats_col_tool')}</th>
+      <th style="${thStyle.replace('text-align:left','text-align:right')}">${t('tokenUsage.tool_stats_col_calls')}</th>
+      <th style="${thStyle}"></th>
+      <th style="${thStyle}">${t('tokenUsage.tool_stats_col_server')}</th>
+      <th style="${thStyle.replace('text-align:left','text-align:right')}">${t('tokenUsage.tool_stats_col_cost')}</th>
+      ${agentHeader}
+    </tr></thead>
+    <tbody>${rows}</tbody>
+  </table></div>`
+}
+
+// ============================================================
+// Ideas (Ötletláda)
+// ============================================================
+let ideas = []
+let ideasAll = []
+let ideasPromoteId = null
+let ideaEditId = null
+let ideaDetailId = null
+const IDEA_SCOPE_STORAGE_KEY = 'ideas-scope-filter'
+let ideaScope = (() => {
+  try {
+    const saved = localStorage.getItem(IDEA_SCOPE_STORAGE_KEY)
+    return ['munka', 'szemelyes', 'all'].includes(saved) ? saved : 'munka'
+  } catch { return 'munka' }
+})()
+const STATUS_COLORS = { new: 'var(--accent)', reviewed: '#f59e0b', kanban: '#22c55e', rejected: '#ef4444' }
+const STATUS_LABELS = { new: () => t('ideas.status.new'), reviewed: () => t('ideas.status.reviewed'), kanban: () => t('ideas.status.kanban'), rejected: () => t('ideas.status.rejected') }
+
+async function loadIdeasPage() {
+  const statusFilter = document.getElementById('ideaStatusFilter')?.value ?? 'active'
+  const categoryFilter = document.getElementById('ideaCategoryFilter')?.value || ''
+  const params = new URLSearchParams()
+  // Status narrowing happens client-side on the full fetch: the stats row must
+  // count every status, and a server-side status filter starved it — after the
+  // first promote the "Kanbanban" box showed 0 with the item hidden, which read
+  // as data loss on the first live promote (2026-08-20).
+  if (categoryFilter) params.set('category', categoryFilter)
+  if (ideaScope !== 'all') params.set('scope', ideaScope)
+  const [ideasRes, catsRes] = await Promise.all([fetch('/api/ideas?' + params), fetch('/api/ideas/categories')])
+  ideasAll = await ideasRes.json()
+  if (statusFilter === 'active') ideas = ideasAll.filter(i => i.status === 'new' || i.status === 'reviewed')
+  else if (statusFilter) ideas = ideasAll.filter(i => i.status === statusFilter)
+  else ideas = ideasAll
+  const cats = await catsRes.json()
+  const catSel = document.getElementById('ideaCategoryFilter')
+  if (catSel) {
+    const prev = catSel.value
+    catSel.innerHTML = `<option value="">${t('ideas.filter.all_categories')}</option>` + cats.map(c => `<option value="${escapeHtml(c)}" ${c === prev ? 'selected' : ''}>${escapeHtml(c)}</option>`).join('')
+  }
+  renderIdeasStats()
+  renderIdeasList()
+  document.querySelectorAll('#ideaScopeFilter [data-scope]').forEach(button => button.classList.toggle('active', button.dataset.scope === ideaScope))
+}
+
+document.getElementById('ideaUploadInput')?.addEventListener('change', async (event) => {
+  const input = event.target
+  const files = Array.from(input.files || [])
+  const button = document.getElementById('ideaUploadBtn')
+  let uploaded = 0
+  const failures = []
+  input.disabled = true
+  button.disabled = true
+  try {
+    for (const file of files) {
+      button.textContent = t('ideas.upload.uploading', { name: file.name })
+      const form = new FormData()
+      form.append('file', file)
+      form.append('scope', ideaScope === 'all' ? 'munka' : ideaScope)
+      try {
+        const res = await fetch('/api/ideas/upload', { method: 'POST', body: form })
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}))
+          throw new Error(data.error || t('ideas.upload.error'))
+        }
+        uploaded++
+      } catch (err) {
+        failures.push(`${file.name}: ${err.message || t('ideas.upload.error')}`)
+      }
+    }
+    if (files.length) {
+      const summary = t('ideas.upload.summary', { uploaded, failed: failures.length })
+      showToast(failures.length ? `${summary} (${failures.join('; ')})` : summary, failures.length ? 'error' : undefined)
+      await loadIdeasPage()
+    }
+  } finally {
+    input.value = ''
+    input.disabled = false
+    button.disabled = false
+    button.textContent = t('ideas.upload.button')
+  }
+})
+
+document.getElementById('ideaUploadBtn')?.addEventListener('click', () => document.getElementById('ideaUploadInput')?.click())
+
+function renderIdeasStats() {
+  const counts = { new: 0, reviewed: 0, kanban: 0, rejected: 0 }
+  for (const i of ideasAll) counts[i.status] = (counts[i.status] || 0) + 1
+  const el = document.getElementById('ideasStats')
+  if (!el) return
+  el.innerHTML = Object.entries(counts).map(([s, n]) =>
+    `<div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:10px 16px;min-width:90px">
+      <div style="font-size:22px;font-weight:700;color:${STATUS_COLORS[s]}">${n}</div>
+      <div style="font-size:12px;color:var(--text-muted)">${typeof STATUS_LABELS[s] === 'function' ? STATUS_LABELS[s]() : STATUS_LABELS[s]}</div>
+    </div>`
+  ).join('')
+}
+
+function renderIdeasList() {
+  const el = document.getElementById('ideasList')
+  if (!el) return
+  if (!ideas.length) { el.innerHTML = `<div style="color:var(--text-muted);padding:32px;text-align:center">${t('ideas.empty')}</div>`; return }
+  const byCategory = {}
+  for (const idea of ideas) {
+    if (!byCategory[idea.category]) byCategory[idea.category] = []
+    byCategory[idea.category].push(idea)
+  }
+  el.innerHTML = Object.entries(byCategory).map(([cat, items]) => `
+    <div style="margin-bottom:8px">
+      <div style="font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--text-muted);padding:4px 0 6px">${escapeHtml(cat)}</div>
+      ${items.map(renderIdeaCard).join('')}
+    </div>`).join('')
+}
+
+function ideaScoreBadge(idea) {
+  if (!idea.impact || !idea.effort) return ''
+  const score = idea.impact - idea.effort
+  const color = score > 0 ? '#22c55e' : score < 0 ? '#ef4444' : 'var(--text-muted)'
+  return `<span style="font-size:11px;color:${color};border:1px solid ${color};border-radius:4px;padding:2px 5px" title="Impact ${idea.impact} - Effort ${idea.effort}">I${idea.impact}·E${idea.effort}</span>`
+}
+
+function renderIdeaCard(idea) {
+  const statusColor = STATUS_COLORS[idea.status] || 'var(--text-muted)'
+  const statusLabelRaw = STATUS_LABELS[idea.status]; const statusLabel = statusLabelRaw ? (typeof statusLabelRaw === 'function' ? statusLabelRaw() : statusLabelRaw) : idea.status
+  const desc = idea.description ? `<div style="font-size:12px;color:var(--text-muted);margin-top:4px">${escapeHtml(idea.description.slice(0, 120))}${idea.description.length > 120 ? '…' : ''}</div>` : ''
+  const staleBadge = idea.stale ? `<span style="font-size:11px;background:#92400e22;color:#d97706;border:1px solid #d97706;border-radius:4px;padding:2px 5px" title="${t('ideas.stale_tooltip')}">${t('ideas.stale_badge')}</span>` : ''
+  return `<div class="card" style="padding:12px 16px;margin-bottom:4px${idea.stale ? ';border-left:3px solid #d97706' : ''}">
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">
+      <div style="flex:1;min-width:0">
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+          <span class="idea-title-link" style="font-weight:600;font-size:14px;cursor:pointer" onclick="openIdeaDetail('${idea.id}')">${escapeHtml(idea.title)}</span>
+          <span style="font-size:11px;color:${statusColor};padding:2px 6px;border:1px solid ${statusColor};border-radius:4px">${statusLabel}</span>
+          ${ideaScoreBadge(idea)}
+          ${staleBadge}
+        </div>
+        ${desc}
+      </div>
+      <div style="display:flex;gap:4px;flex-shrink:0;flex-wrap:wrap;justify-content:flex-end">
+        ${idea.status !== 'reviewed' && idea.status !== 'kanban' ? `<button class="btn-secondary btn-compact" onclick="setIdeaStatus('${idea.id}','reviewed')" style="font-size:11px">${t('ideas.btn.reviewed')}</button>` : ''}
+        ${idea.status !== 'rejected' ? `<button class="btn-secondary btn-compact" onclick="setIdeaStatus('${idea.id}','rejected')" style="font-size:11px;color:#ef4444">${t('ideas.btn.rejected')}</button>` : ''}
+        ${idea.status === 'reviewed' || idea.status === 'rejected' ? `<button class="btn-secondary btn-compact" onclick="setIdeaStatus('${idea.id}','new')" style="font-size:11px">${t('ideas.btn.reopen')}</button>` : ''}
+        <button class="btn-secondary btn-compact" onclick="openIdeaEdit('${idea.id}')" style="font-size:11px">${t('ideas.btn.edit')}</button>
+        ${idea.status !== 'kanban' && idea.status !== 'rejected' ? `<button class="btn-primary btn-compact" onclick="openIdeaBreakdown('${idea.id}')" style="font-size:11px">${t('ideas.btn.kanban_ai')}</button>` : ''}
+        <button class="btn-secondary btn-compact" onclick="deleteIdeaItem('${idea.id}')" style="font-size:11px;color:#ef4444">${t('ideas.btn.delete')}</button>
+      </div>
+    </div>
+  </div>`
+}
+
+function applyIdeaModalI18n() {
+  const labels = document.querySelectorAll('#ideaModalOverlay .form-label')
+  const keys = ['ideas.modal.title_label', 'ideas.modal.desc_label', 'ideas.scope.label', 'ideas.modal.category_label', 'ideas.modal.impact_label', 'ideas.modal.effort_label']
+  labels.forEach((el, i) => { if (keys[i]) el.textContent = t(keys[i]) })
+  const saveBtn = document.getElementById('ideaModalSave')
+  const cancelBtn = document.getElementById('ideaModalCancel')
+  if (saveBtn) saveBtn.textContent = t('ideas.modal.save_btn')
+  if (cancelBtn) cancelBtn.textContent = t('ideas.modal.cancel_btn')
+}
+
+function openIdeaNew() {
+  ideaEditId = null
+  document.getElementById('ideaModalTitle').textContent = t('ideas.modal.title_new')
+  document.getElementById('ideaTitleInput').value = ''
+  document.getElementById('ideaDescInput').value = ''
+  document.getElementById('ideaScopeInput').value = ideaScope === 'all' ? 'munka' : ideaScope
+  applyIdeaModalI18n()
+  openModal(document.getElementById('ideaModalOverlay'))
+}
+
+function openIdeaEdit(id) {
+  const idea = ideas.find(i => i.id === id)
+  if (!idea) return
+  ideaEditId = id
+  document.getElementById('ideaModalTitle').textContent = t('ideas.modal.title_edit')
+  document.getElementById('ideaTitleInput').value = idea.title
+  document.getElementById('ideaDescInput').value = idea.description || ''
+  document.getElementById('ideaCategoryInput').value = idea.category
+  document.getElementById('ideaScopeInput').value = idea.scope
+  document.getElementById('ideaImpactInput').value = idea.impact ?? ''
+  document.getElementById('ideaEffortInput').value = idea.effort ?? ''
+  openModal(document.getElementById('ideaModalOverlay'))
+}
+
+async function saveIdea() {
+  const title = document.getElementById('ideaTitleInput').value.trim()
+  if (!title) { showToast(t('common.title') + ' ' + t('common.error'), 'error'); return }
+  const impactRaw = document.getElementById('ideaImpactInput').value
+  const effortRaw = document.getElementById('ideaEffortInput').value
+  const body = {
+    title,
+    description: document.getElementById('ideaDescInput').value.trim() || undefined,
+    category: document.getElementById('ideaCategoryInput').value,
+    scope: document.getElementById('ideaScopeInput').value,
+    source: 'manual',
+    impact: impactRaw ? parseInt(impactRaw) : null,
+    effort: effortRaw ? parseInt(effortRaw) : null,
+  }
+  if (ideaEditId) {
+    await fetch(`/api/ideas/${ideaEditId}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+  } else {
+    await fetch('/api/ideas', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...body, status: 'new' }) })
+  }
+  closeModal(document.getElementById('ideaModalOverlay'))
+  loadIdeasPage()
+}
+
+async function deleteIdeaItem(id) {
+  if (!confirm(t('kanban.confirm.delete'))) return
+  await fetch(`/api/ideas/${id}`, { method: 'DELETE' })
+  loadIdeasPage()
+}
+
+// --- Idea detail modal (comments + impact/effort view) ---
+
+async function openIdeaDetail(id) {
+  const idea = ideas.find(i => i.id === id)
+  if (!idea) return
+  ideaDetailId = id
+  const statusLabel = STATUS_LABELS[idea.status] || idea.status
+  document.getElementById('ideaDetailTitle').textContent = idea.title
+  document.getElementById('ideaDetailMeta').textContent = `${idea.category} · ${statusLabel}`
+  document.getElementById('ideaDetailDesc').textContent = idea.description || t('ideas.no_description')
+  const otherScope = idea.scope === 'munka' ? 'szemelyes' : 'munka'
+  document.getElementById('ideaDetailScope').textContent = t('ideas.scope.current', { scope: t(`ideas.scope.${idea.scope}`) })
+  document.getElementById('ideaDetailScopeMove').textContent = t('ideas.scope.move', { scope: t(`ideas.scope.${otherScope}`) })
+  document.getElementById('ideaDetailScopeMove').dataset.scope = otherScope
+  document.getElementById('ideaDetailImpact').value = idea.impact ?? ''
+  document.getElementById('ideaDetailEffort').value = idea.effort ?? ''
+  updateDetailScoreChip()
+  document.getElementById('ideaCommentsList').innerHTML = ''
+  document.getElementById('ideaAttachmentsList').innerHTML = ''
+  document.getElementById('ideaAttachmentStatus').style.display = 'none'
+  document.getElementById('ideaCommentContent').value = ''
+  openModal(document.getElementById('ideaDetailOverlay'))
+  await Promise.all([loadIdeaComments(id), loadIdeaAttachments(id)])
+}
+
+function formatIdeaAttachmentSize(bytes) {
+  if (bytes < 1024) return `${bytes} B`
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+}
+
+async function loadIdeaAttachments(id) {
+  const list = document.getElementById('ideaAttachmentsList')
+  try {
+    const res = await fetch(`/api/ideas/${encodeURIComponent(id)}/attachments`)
+    if (!res.ok) throw new Error('HTTP ' + res.status)
+    const data = await res.json()
+    if (!data.attachments || !data.attachments.length) {
+      list.innerHTML = `<div style="color:var(--text-muted);font-size:12px;padding:3px 0">${t('ideas.detail.attach.empty')}</div>`
+      return
+    }
+    list.innerHTML = data.attachments.map(a => `
+      <div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-top:1px solid var(--border)">
+        <div style="flex:1;min-width:0">
+          <div style="font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${escapeHtml(a.filename)}">${escapeHtml(a.filename)}</div>
+          <div style="font-size:11px;color:var(--text-muted)">${formatIdeaAttachmentSize(a.size)}${a.has_text ? ` · <span title="${t('ideas.detail.attach.has_text')}" style="color:var(--success)">✓ ${t('ideas.detail.attach.text_marker')}</span>` : ''}</div>
+        </div>
+        <a class="btn-secondary btn-compact" style="font-size:11px;text-decoration:none" href="/api/ideas/attachments/${encodeURIComponent(a.id)}/download">${t('ideas.detail.attach.download')}</a>
+        <button class="btn-secondary btn-compact" style="font-size:11px;color:var(--danger)" onclick="deleteIdeaAttachmentItem('${encodeURIComponent(a.id)}')">${t('ideas.detail.attach.delete')}</button>
+      </div>`).join('')
+  } catch {
+    list.innerHTML = `<div style="color:var(--danger);font-size:12px">${t('ideas.detail.attach.load_error')}</div>`
+  }
+}
+
+document.getElementById('ideaAttachmentInput')?.addEventListener('change', async (event) => {
+  if (!ideaDetailId) return
+  const input = event.target
+  const files = Array.from(input.files || [])
+  const label = document.getElementById('ideaAttachmentUploadLabel')
+  const status = document.getElementById('ideaAttachmentStatus')
+  input.disabled = true
+  label.style.opacity = '0.6'
+  status.style.display = ''
+  try {
+    for (const file of files) {
+      status.textContent = t('ideas.detail.attach.uploading', { name: file.name })
+      const form = new FormData()
+      form.append('file', file)
+      const res = await fetch(`/api/ideas/${encodeURIComponent(ideaDetailId)}/attachments`, { method: 'POST', body: form })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        throw new Error(data.error || t('ideas.detail.attach.upload_error'))
+      }
+    }
+    if (files.length) showToast(t('ideas.detail.attach.uploaded'))
+    await loadIdeaAttachments(ideaDetailId)
+  } catch (err) {
+    showToast(err.message || t('ideas.detail.attach.upload_error'), 'error')
+  } finally {
+    input.value = ''
+    input.disabled = false
+    label.style.opacity = ''
+    status.style.display = 'none'
+  }
+})
+
+async function deleteIdeaAttachmentItem(encodedId) {
+  if (!confirm(t('ideas.detail.attach.confirm_delete'))) return
+  try {
+    const res = await fetch(`/api/ideas/attachments/${encodedId}`, { method: 'DELETE' })
+    if (!res.ok) throw new Error('HTTP ' + res.status)
+    if (ideaDetailId) await loadIdeaAttachments(ideaDetailId)
+  } catch { showToast(t('ideas.detail.attach.delete_error'), 'error') }
+}
+
+function updateDetailScoreChip() {
+  const chip = document.getElementById('ideaDetailScoreChip')
+  if (!chip) return
+  const impact = Number(document.getElementById('ideaDetailImpact').value) || 0
+  const effort = Number(document.getElementById('ideaDetailEffort').value) || 0
+  if (!impact && !effort) { chip.textContent = ''; return }
+  if (!impact || !effort) { chip.textContent = ''; return }
+  const score = impact - effort
+  const color = score > 0 ? '#22c55e' : score < 0 ? '#ef4444' : 'var(--text-muted)'
+  chip.innerHTML = `<span class="idea-score-chip" style="border-color:${color};color:${color}">Pont: <strong>${score >= 0 ? '+' : ''}${score}</strong></span>`
+}
+
+document.getElementById('ideaDetailImpact')?.addEventListener('change', updateDetailScoreChip)
+document.getElementById('ideaDetailEffort')?.addEventListener('change', updateDetailScoreChip)
+
+document.getElementById('ideaDetailScoreSave')?.addEventListener('click', async () => {
+  if (!ideaDetailId) return
+  const impact = document.getElementById('ideaDetailImpact').value
+  const effort = document.getElementById('ideaDetailEffort').value
+  try {
+    const res = await fetch(`/api/ideas/${encodeURIComponent(ideaDetailId)}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        impact: impact ? Number(impact) : null,
+        effort: effort ? Number(effort) : null,
+      }),
+    })
+    if (!res.ok) { showToast(t('ideas.toast.score_saved_error'), 'error'); return }
+    // update local cache so card chip refreshes on close
+    const idea = ideas.find(i => i.id === ideaDetailId)
+    if (idea) {
+      idea.impact = impact ? Number(impact) : null
+      idea.effort = effort ? Number(effort) : null
+    }
+    updateDetailScoreChip()
+    showToast(t('ideas.toast.score_saved'))
+    renderIdeasList()
+  } catch { showToast(t('ideas.toast.score_saved_error'), 'error') }
+})
+
+async function loadIdeaComments(id) {
+  const list = document.getElementById('ideaCommentsList')
+  try {
+    const res = await fetch(`/api/ideas/${encodeURIComponent(id)}/comments`)
+    const data = await res.json()
+    if (!data.comments || !data.comments.length) {
+      list.innerHTML = `<div style="color:var(--text-muted);font-size:12px;padding:6px 0">${t('ideas.comments.empty')}</div>`
+      return
+    }
+    list.innerHTML = ''
+    for (const c of data.comments) {
+      const date = new Date(c.created_at * 1000).toLocaleString('hu-HU', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+      const div = document.createElement('div')
+      div.className = 'comment-item'
+      div.innerHTML = `<div style="display:flex;align-items:baseline;gap:6px;margin-bottom:4px"><span class="comment-author">${escapeHtml(c.author)}</span><span class="comment-date">${date}</span></div><div class="comment-body">${escapeHtml(c.content)}</div>`
+      list.appendChild(div)
+    }
+  } catch {
+    list.innerHTML = `<div style="color:var(--danger);font-size:12px">${t('ideas.comments.error')}</div>`
+  }
+}
+
+document.getElementById('ideaCommentSubmit')?.addEventListener('click', async () => {
+  if (!ideaDetailId) return
+  const content = document.getElementById('ideaCommentContent').value.trim()
+  if (!content) { document.getElementById('ideaCommentContent').focus(); return }
+  try {
+    const res = await fetch(`/api/ideas/${encodeURIComponent(ideaDetailId)}/comments`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ content }),
+    })
+    if (!res.ok) { showToast(t('ideas.toast.comment_error'), 'error'); return }
+    document.getElementById('ideaCommentContent').value = ''
+    await loadIdeaComments(ideaDetailId)
+  } catch { showToast(t('ideas.toast.comment_error'), 'error') }
+})
+
+document.getElementById('ideaDetailClose')?.addEventListener('click', () => closeModal(document.getElementById('ideaDetailOverlay')))
+document.getElementById('ideaDetailCloseBtn')?.addEventListener('click', () => closeModal(document.getElementById('ideaDetailOverlay')))
+document.getElementById('ideaDetailEditBtn')?.addEventListener('click', () => {
+  if (!ideaDetailId) return
+  closeModal(document.getElementById('ideaDetailOverlay'))
+  openIdeaEdit(ideaDetailId)
+})
+document.getElementById('ideaDetailScopeMove')?.addEventListener('click', async (event) => {
+  if (!ideaDetailId) return
+  const scope = event.currentTarget.dataset.scope
+  try {
+    const res = await fetch(`/api/ideas/${encodeURIComponent(ideaDetailId)}`, {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ scope }),
+    })
+    if (!res.ok) throw new Error('HTTP ' + res.status)
+    closeModal(document.getElementById('ideaDetailOverlay'))
+    await loadIdeasPage()
+  } catch { showToast(t('ideas.scope.move_error'), 'error') }
+})
+
+function openIdeaPromote(id) {
+  ideasPromoteId = id
+  openModal(document.getElementById('ideaPromoteOverlay'))
+}
+
+async function promoteIdea(phase) {
+  if (!ideasPromoteId) return
+  const res = await fetch(`/api/ideas/${ideasPromoteId}/promote`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ phase }) })
+  const data = await res.json()
+  ideasPromoteId = null
+  closeModal(document.getElementById('ideaPromoteOverlay'))
+  if (data.ok) showToast(t('kanban.toast.card_created') + ': ' + data.kanban_id)
+  loadIdeasPage()
+}
+
+async function setIdeaStatus(id, status) {
+  try {
+    const res = await fetch(`/api/ideas/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status }) })
+    if (!res.ok) { showToast(t('ideas.toast.status_error')); return }
+    loadIdeasPage()
+  } catch { showToast(t('ideas.toast.status_error')) }
+}
+
+// Promote an idea to the board via AI breakdown + per-subtask approval.
+// Reuses the shared breakdown modal (breakdownMode='idea').
+async function openIdeaBreakdown(id) {
+  const idea = ideas.find(i => i.id === id)
+  if (!idea) return
+  // The breakdown modal's assignee dropdown reads kanbanAssignees, which is only
+  // populated by loadKanban(). If the user lands here without visiting the board,
+  // fetch it so the AI-suggested assignees are selectable.
+  if (!kanbanAssignees.length) {
+    try { kanbanAssignees = await (await fetch('/api/kanban/assignees')).json() } catch { /* dropdown falls back to "nincs" */ }
+  }
+  showToast(t('ideas.toast.ai_elaborating'))
+  try {
+    const res = await fetch(`/api/ideas/${id}/breakdown`, { method: 'POST', headers: { 'Content-Type': 'application/json' } })
+    const data = await res.json()
+    if (!res.ok) { showToast(data.error || 'Breakdown hiba'); return }
+    if (!data.subtasks || !data.subtasks.length) { showToast('Az AI nem adott vissza alfeladatot'); return }
+    breakdownMode = 'idea'
+    breakdownIdeaId = id
+    breakdownSubtasks = data.subtasks
+    showBreakdownModal(data.subtasks, { title: idea.title })
+    // Show DoD field only in idea mode
+    const dodSection = document.getElementById('breakdownDoDSection')
+    if (dodSection) { dodSection.style.display = ''; document.getElementById('breakdownSuccessCriteria').value = '' }
+  } catch {
+    showToast('Breakdown hiba')
+  }
+}
+
+document.getElementById('ideaNewBtn')?.addEventListener('click', openIdeaNew)
+document.getElementById('ideaModalClose')?.addEventListener('click', () => { closeModal(document.getElementById('ideaModalOverlay')) })
+document.getElementById('ideaModalCancel')?.addEventListener('click', () => { closeModal(document.getElementById('ideaModalOverlay')) })
+document.getElementById('ideaModalSave')?.addEventListener('click', saveIdea)
+document.getElementById('ideaPromoteClose')?.addEventListener('click', () => { closeModal(document.getElementById('ideaPromoteOverlay')) })
+document.getElementById('ideaPromoteCancel')?.addEventListener('click', () => { closeModal(document.getElementById('ideaPromoteOverlay')) })
+document.getElementById('ideaPromoteDetail')?.addEventListener('click', () => promoteIdea('detail'))
+document.getElementById('ideaPromotePlan')?.addEventListener('click', () => promoteIdea('plan'))
+document.getElementById('ideaStatusFilter')?.addEventListener('change', loadIdeasPage)
+document.getElementById('ideaCategoryFilter')?.addEventListener('change', loadIdeasPage)
+document.getElementById('ideaScopeFilter')?.addEventListener('click', (event) => {
+  const button = event.target.closest('[data-scope]')
+  if (!button) return
+  ideaScope = button.dataset.scope
+  try { localStorage.setItem(IDEA_SCOPE_STORAGE_KEY, ideaScope) } catch { /* storage blocked */ }
+  loadIdeasPage()
+})
+
+
+// === Agent reauth login flow ===
+async function handleAgentLogin(agentName, btn) {
+  const phase = btn.dataset.phase || 'start'
+  btn.disabled = true
+  const origText = btn.textContent
+  btn.textContent = phase === 'start' ? t('agents.auth.btn_starting') : t('agents.auth.btn_confirming')
+  try {
+    const res = await fetch(`/api/agents/${encodeURIComponent(agentName)}/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ phase }),
+    })
+    if (!res.ok) { const err = await res.json().catch(() => ({})); throw new Error(err.error || 'HTTP ' + res.status) }
+    if (phase === 'start') {
+      btn.dataset.phase = 'confirm'
+      btn.textContent = t('agents.auth.btn_confirm')
+      btn.disabled = false
+      showToast(t('agents.auth.toast_started'))
+    } else {
+      btn.textContent = t('agents.auth.btn_logged_in')
+      showToast(t('agents.auth.toast_success'))
+      setTimeout(() => loadAgents(), 1500)
+    }
+  } catch (e) {
+    showToast('Hiba: ' + (e.message || e))
+    btn.textContent = origText
+    btn.dataset.phase = 'start'
+    btn.disabled = false
+  }
+}
+
+// === Agent terminal modal (xterm.js) ===
+let terminalInstance = null
+let terminalSSE = null
+let terminalFit = null
+// Master input gate (mirrors the server-side terminal-input toggle). Keystrokes
+// are dropped locally when OFF so we never spam the audit log with 403s; the
+// server enforces the same gate independently (fail-closed). Owner flips it via
+// the checkbox in the modal header (POST /api/terminal-input).
+let terminalInputEnabled = false
+
+function syncTerminalInputToggleUI() {
+  const cb = document.getElementById('terminalInputToggle')
+  const label = document.getElementById('terminalInputToggleLabel')
+  if (cb) cb.checked = terminalInputEnabled
+  if (label) {
+    label.textContent = terminalInputEnabled ? 'Input on' : 'Input off'
+    label.style.color = terminalInputEnabled ? '#8fbf6f' : '#b8b2a6'
+  }
+}
+
+function openTerminalModal(agentName) {
+  const overlay = document.getElementById('terminalOverlay')
+  const container = document.getElementById('terminalContainer')
+  const title = document.getElementById('terminalModalTitle')
+  if (!overlay || !container) return
+
+  title.textContent = agentName + ' - Terminal'
+
+  // Read the current server-side gate so the modal reflects reality on open.
+  fetch('/api/terminal-input')
+    .then(r => r.ok ? r.json() : { enabled: false })
+    .then(d => { terminalInputEnabled = d.enabled === true; syncTerminalInputToggleUI() })
+    .catch(() => { terminalInputEnabled = false; syncTerminalInputToggleUI() })
+
+  // Cleanup previous
+  if (terminalSSE) { terminalSSE.close(); terminalSSE = null }
+  if (terminalInstance) { terminalInstance.dispose(); terminalInstance = null }
+  container.innerHTML = ''
+
+  // Init xterm — fontSize 12 + wider modal fits ~140 chars of tmux output
+  const term = new window.Terminal({
+    theme: { background: '#1a1a1a', foreground: '#e8e4da' },
+    fontFamily: 'JetBrains Mono, Menlo, monospace',
+    fontSize: 12,
+    cursorBlink: false,
+    disableStdin: false,
+    scrollback: 4000,
+    convertEol: true,
+    allowProposedApi: true,
+  })
+  const fitAddon = new window.FitAddon.FitAddon()
+  term.loadAddon(fitAddon)
+  term.open(container)
+  fitAddon.fit()
+  terminalInstance = term
+  terminalFit = fitAddon
+
+  openModal(overlay)
+  setTimeout(() => term.focus(), 50)
+
+  // SSE pane stream.
+  // The pane snapshot now includes scrollback history (server uses
+  // `capture-pane -S -2000`), so the user can scroll back. To keep scrolling
+  // stable we (a) only repaint when the snapshot actually changed, and (b) only
+  // repaint while the viewport is at the bottom — if the user has scrolled up we
+  // freeze their view and resume painting when they return to the bottom (the
+  // onScroll handler below). The repaint clears the scrollback (CSI 3 J) before
+  // rewriting the full snapshot so frames don't accumulate duplicate history.
+  let latestPane = null
+  let paintedPane = null
+  const isAtBottom = () => {
+    const buf = term.buffer.active
+    return buf.viewportY >= buf.baseY
+  }
+  const repaint = () => {
+    if (latestPane === null || latestPane === paintedPane) return
+    if (!isAtBottom()) return // user scrolled up — keep their view put
+    paintedPane = latestPane
+    term.write('\x1b[3J\x1b[2J\x1b[H' + latestPane)
+  }
+  // EventSource cannot set an Authorization header. In token mode we pass the
+  // token via ?token=; in password-login (session-cookie) mode there is no
+  // token, so we open a plain URL and the browser attaches the mv_session
+  // cookie automatically -- the gate's cookie branch covers the SSE path.
+  const token = localStorage.getItem('marveen-dashboard-token') || ''
+  const streamBase = `/api/agents/${encodeURIComponent(agentName)}/pane/stream`
+  const sse = new EventSource(token ? `${streamBase}?token=${encodeURIComponent(token)}` : streamBase)
+  sse.onmessage = (e) => {
+    try {
+      const msg = JSON.parse(e.data)
+      if (msg.pane !== undefined) {
+        latestPane = msg.pane.replace(/\x1b]8;[^\x1b]*\x1b\\/g, '')
+        repaint()
+      }
+    } catch {}
+  }
+  sse.onerror = () => term.write(`\r\n${t('terminal.stream_error')}\r\n`)
+  terminalSSE = sse
+  // When the user scrolls back down to the bottom, resume live repainting.
+  term.onScroll(() => { if (isAtBottom()) repaint() })
+
+  // Single onData handler — maps escape sequences to {special}, plain chars to {keys}
+  // Using onData only (no onKey) avoids double-firing on arrow/Enter keys.
+  // PageUp/PageDown are intentionally NOT forwarded: they scroll the xterm
+  // scrollback locally (history viewing) instead of going to the agent.
+  const ESC_TO_SPECIAL = {
+    '\r': 'Enter', '\x1b': 'Escape',
+    '\x1b[A': 'Up', '\x1b[B': 'Down', '\x1b[C': 'Right', '\x1b[D': 'Left',
+    '\x7f': 'BSpace', '\t': 'Tab', '\x1b[Z': 'S-Tab',
+    '\x03': 'C-c', '\x04': 'C-d', '\x15': 'C-u', '\x0c': 'C-l',
+  }
+  term.onData(data => {
+    if (data === '\x1b[5~') { term.scrollPages(-1); return } // PageUp -> scroll history up
+    if (data === '\x1b[6~') { term.scrollPages(1); return }  // PageDown -> scroll history down
+    if (!terminalInputEnabled) {
+      // Read-only mode: input gate is OFF. Drop the keystroke locally (server
+      // would 403 it anyway) and nudge the user to the toggle.
+      showToast('Terminal input is off. Enable it with the header toggle first.')
+      return
+    }
+    const special = ESC_TO_SPECIAL[data]
+    const body = special ? { special } : { keys: data }
+    fetch(`/api/agents/${encodeURIComponent(agentName)}/keys`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    }).catch(() => {})
+  })
+
+  // Resize fit on modal resize — observe the modal wrapper (not the xterm container
+  // itself) to avoid a ResizeObserver->fit->resize->ResizeObserver infinite loop
+  let fitTimer = null
+  const ro = new ResizeObserver(() => {
+    clearTimeout(fitTimer)
+    fitTimer = setTimeout(() => { try { fitAddon.fit() } catch {} }, 50)
+  })
+  const modalEl = container.closest('.terminal-modal') || container.parentElement
+  if (modalEl) ro.observe(modalEl)
+}
+
+document.getElementById('terminalClose')?.addEventListener('click', () => {
+  const overlay = document.getElementById('terminalOverlay')
+  if (overlay) closeModal(overlay)
+  if (terminalSSE) { terminalSSE.close(); terminalSSE = null }
+  if (terminalInstance) { terminalInstance.dispose(); terminalInstance = null }
+})
+
+// Owner flips the master terminal-input gate. Optimistically reflect the desired
+// state, POST it, then reconcile with the server's authoritative response.
+document.getElementById('terminalInputToggle')?.addEventListener('change', (e) => {
+  const desired = e.target.checked === true
+  fetch('/api/terminal-input', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ enabled: desired }),
+  })
+    .then(r => r.ok ? r.json() : Promise.reject(new Error('HTTP ' + r.status)))
+    .then(d => {
+      terminalInputEnabled = d.enabled === true
+      syncTerminalInputToggleUI()
+      showToast(terminalInputEnabled ? 'Terminal input enabled (audit-logged)' : 'Terminal input disabled')
+    })
+    .catch(() => {
+      terminalInputEnabled = false
+      syncTerminalInputToggleUI()
+      showToast('Could not change terminal input state')
+    })
+})
+
+// === Agent conversation (readable transcript) modal ===
+// Renders the agent's Claude Code transcript as a chat-style timeline: inbound
+// Telegram messages, the agent's replies, and (optionally) its notes/actions.
+// Solves what the raw terminal can't: a readable, searchable review of what
+// actually happened -- also the support view for customer-hosted Webinár Máguss.
+const CONVERSATION_PAGE_SIZE = 400
+let conversationEntries = []
+let conversationAgentName = null
+let conversationHasOlder = false
+let conversationLoadingOlder = false
+
+async function openConversationModal(agentName, displayName) {
+  const overlay = document.getElementById('conversationOverlay')
+  const container = document.getElementById('conversationContainer')
+  const title = document.getElementById('conversationModalTitle')
+  if (!overlay || !container) return
+  conversationAgentName = agentName
+  title.textContent = t('conversation.title', { name: displayName || agentName })
+  container.innerHTML = `<div class="conversation-empty">${t('conversation.loading')}</div>`
+  openModal(overlay)
+  await loadConversation()
+}
+
+// Latest page (offset=0); resets the loaded window.
+async function loadConversation() {
+  const container = document.getElementById('conversationContainer')
+  const token = localStorage.getItem('marveen-dashboard-token') || ''
+  try {
+    const r = await fetch(`/api/agents/${encodeURIComponent(conversationAgentName)}/conversation?limit=${CONVERSATION_PAGE_SIZE}&offset=0`, {
+      headers: { 'Authorization': 'Bearer ' + token },
+    })
+    const d = await r.json()
+    conversationEntries = Array.isArray(d.entries) ? d.entries : []
+    conversationHasOlder = !!d.hasOlder
+    renderConversation()
+  } catch {
+    if (container) container.innerHTML = `<div class="conversation-empty">${t('conversation.error')}</div>`
+  }
+}
+
+// Page further back: fetch the window of entries immediately before the oldest
+// loaded one and PREPEND it, keeping the scroll position so the view does not
+// jump. Lets the operator read history beyond the on-screen window (and beyond
+// the old fixed cap).
+async function loadOlderConversation() {
+  if (conversationLoadingOlder || !conversationHasOlder) return
+  conversationLoadingOlder = true
+  const btn = document.getElementById('conversationLoadOlder')
+  if (btn) { btn.disabled = true; btn.textContent = t('conversation.loading') }
+  const token = localStorage.getItem('marveen-dashboard-token') || ''
+  try {
+    const offset = conversationEntries.length
+    const r = await fetch(`/api/agents/${encodeURIComponent(conversationAgentName)}/conversation?limit=${CONVERSATION_PAGE_SIZE}&offset=${offset}`, {
+      headers: { 'Authorization': 'Bearer ' + token },
+    })
+    const d = await r.json()
+    const older = Array.isArray(d.entries) ? d.entries : []
+    conversationHasOlder = !!d.hasOlder
+    if (older.length) {
+      conversationEntries = older.concat(conversationEntries)
+      renderConversation({ preserveScroll: true })
+    } else {
+      renderConversation()
+    }
+  } catch {
+    if (btn) { btn.disabled = false; btn.textContent = t('conversation.load_more') }
+  } finally {
+    conversationLoadingOlder = false
+  }
+}
+
+function fmtConvTs(ts) {
+  if (!ts) return ''
+  try {
+    return new Date(ts).toLocaleString('hu-HU', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })
+  } catch { return '' }
+}
+
+function renderConversation(opts = {}) {
+  const container = document.getElementById('conversationContainer')
+  if (!container) return
+  const prevH = container.scrollHeight
+  const prevTop = container.scrollTop
+  const q = (document.getElementById('conversationSearch')?.value || '').toLowerCase().trim()
+  const showActions = document.getElementById('conversationShowActions')?.checked
+  let list = conversationEntries
+  if (!showActions) list = list.filter(e => e.kind === 'in' || e.kind === 'out')
+  if (q) list = list.filter(e => (e.text || '').toLowerCase().includes(q))
+  // "Korábbiak betöltése" sits at the top so the operator can page further back;
+  // shown whenever the server still has older entries beyond the loaded window.
+  const olderBtn = conversationHasOlder
+    ? `<button id="conversationLoadOlder" class="conv-load-older">${t('conversation.load_more')}</button>`
+    : ''
+  if (!list.length) {
+    container.innerHTML = olderBtn || `<div class="conversation-empty">${t('conversation.empty')}</div>`
+  } else {
+    container.innerHTML = olderBtn + list.map(renderConvEntry).join('')
+  }
+  document.getElementById('conversationLoadOlder')?.addEventListener('click', loadOlderConversation)
+  if (opts.preserveScroll) {
+    // After prepending older messages, keep the previously-visible ones in place.
+    container.scrollTop = prevTop + (container.scrollHeight - prevH)
+  } else {
+    container.scrollTop = container.scrollHeight
+  }
+}
+
+function renderConvEntry(e) {
+  const ts = fmtConvTs(e.ts)
+  const txt = escapeHtml(e.text || '').replace(/\n/g, '<br>')
+  if (e.kind === 'in') {
+    return `<div class="conv-row conv-in"><div class="conv-bubble"><div class="conv-meta">Telegram be · ${ts}</div><div class="conv-text">${txt}</div></div></div>`
+  }
+  if (e.kind === 'out') {
+    const lbl = escapeHtml(e.label || t('messages.conv.reply_label'))
+    return `<div class="conv-row conv-out"><div class="conv-bubble"><div class="conv-meta">${lbl} · ${ts}</div><div class="conv-text">${txt}</div></div></div>`
+  }
+  if (e.kind === 'note') {
+    return `<div class="conv-row conv-note"><div class="conv-note-text">📝 ${txt}</div></div>`
+  }
+  return `<div class="conv-row conv-action"><div class="conv-action-text">⚙ ${txt}<span class="conv-action-ts">${ts}</span></div></div>`
+}
+
+document.getElementById('conversationClose')?.addEventListener('click', () => {
+  const overlay = document.getElementById('conversationOverlay')
+  if (overlay) closeModal(overlay)
+})
+document.getElementById('conversationSearch')?.addEventListener('input', () => renderConversation())
+document.getElementById('conversationShowActions')?.addEventListener('change', () => renderConversation())
+document.getElementById('conversationRefresh')?.addEventListener('click', () => loadConversation())
+
+// === Federation page ===
+// State lets live BEFORE the router IIFE (top-level code runs in order; a
+// first-load #federation route must not hit a TDZ on these).
+let fedPageWired = false
+let fedPeersViewCache = null
+
+async function loadFederationPage() {
+  wireFederationPage()
+  const statsEl = document.getElementById('federationStats')
+  const masterEl = document.getElementById('federationMaster')
+  const peersEl = document.getElementById('federationPeers')
+  if (!statsEl || !masterEl || !peersEl) return
+  peersEl.innerHTML = `<p style="color:var(--text-muted);font-size:13px">${t('common.loading')}</p>`
+  try {
+    const [peersRes, statusRes] = await Promise.all([
+      fetch('/api/federation/peers'),
+      fetch('/api/federation/status').then((r) => (r.ok ? r.json() : null)).catch(() => null),
+    ])
+    if (!peersRes.ok) throw new Error('HTTP ' + peersRes.status)
+    fedPeersViewCache = await peersRes.json()
+    if (statusRes && Array.isArray(statusRes.peers)) federatedPeerStatus = statusRes.peers
+    renderFederationPage()
+  } catch (e) {
+    peersEl.innerHTML = `<p style="color:var(--danger)">${t('federation.error', { msg: escapeHtml(String(e.message || e)) })}</p>`
+  }
+}
+
+function fedStateLabel(state) {
+  const key = 'federation.peer_state.' + (state || 'unknown')
+  return t(key)
+}
+
+function renderFederationPage() {
+  const view = fedPeersViewCache
+  if (!view) return
+  const statsEl = document.getElementById('federationStats')
+  const masterEl = document.getElementById('federationMaster')
+  const peersEl = document.getElementById('federationPeers')
+  const statusById = new Map(federatedPeerStatus.map((p) => [p.id, p]))
+  const okCount = federatedPeerStatus.filter((p) => p.state === 'ok').length
+
+  const statBox = (value, label) => `<div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:10px 16px;min-width:110px">
+    <div style="font-size:20px;font-weight:600">${value}</div>
+    <div style="font-size:12px;color:var(--text-muted)">${label}</div>
+  </div>`
+  statsEl.innerHTML = [
+    statBox(view.enabled ? t('common.yes') : t('common.no'), t('federation.stat.enabled')),
+    statBox(String(view.peers.length), t('federation.stat.peers')),
+    statBox(String(okCount), t('federation.stat.reachable')),
+    statBox(escapeHtml(view.systemId || '-'), t('federation.stat.system_id')),
+  ].join('')
+
+  const routingMode = view.routingMode || 'catalog-first'
+  const routingRadios = ['strong', 'catalog-first', 'advisory'].map((m) => `
+    <label style="display:flex;align-items:flex-start;gap:8px;cursor:pointer;padding:5px 0">
+      <input type="radio" name="fedRoutingMode" value="${m}" ${routingMode === m ? 'checked' : ''} style="margin-top:3px;accent-color:var(--accent)">
+      <span>
+        <span style="font-weight:600">${t('federation.routing.mode.' + m + '.label')}</span>
+        <span style="display:block;font-size:12px;color:var(--text-muted)">${t('federation.routing.mode.' + m + '.hint')}</span>
+      </span>
+    </label>`).join('')
+  masterEl.innerHTML = `
+    <label style="display:flex;align-items:center;gap:10px;cursor:pointer">
+      <input type="checkbox" id="fedEnabledToggle" style="width:16px;height:16px;accent-color:var(--accent)" ${view.enabled ? 'checked' : ''}>
+      <span style="font-weight:600">${t('federation.master_label')}</span>
+    </label>
+    <p style="font-size:12px;color:var(--text-muted);margin:6px 0 0 26px">${t('federation.master_hint')}</p>
+    <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border)">
+      <div style="font-weight:600">${t('federation.routing.title')}</div>
+      <p style="font-size:12px;color:var(--text-muted);margin:2px 0 8px 0">${t('federation.routing.subtitle')}</p>
+      ${routingRadios}
+      <p style="font-size:12px;color:var(--text-muted);margin:8px 0 0 0">${t('federation.routing.apply_note')}</p>
+    </div>`
+  document.getElementById('fedEnabledToggle').addEventListener('change', async (e) => {
+    const enabled = e.target.checked
+    if (!enabled && !confirm(t('federation.confirm.disable'))) { e.target.checked = true; return }
+    try {
+      const res = await fetch('/api/federation/enabled', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ enabled }) })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) { showToast(t('federation.toast.error', { msg: data.error || ('HTTP ' + res.status) })); e.target.checked = !enabled; return }
+      showToast(enabled ? t('federation.toast.enabled') : t('federation.toast.disabled'))
+      fedRefreshAndReload()
+    } catch (err) { showToast(t('federation.toast.error', { msg: String(err.message || err) })); e.target.checked = !enabled }
+  })
+  document.querySelectorAll('input[name="fedRoutingMode"]').forEach((radio) => {
+    radio.addEventListener('change', async (e) => {
+      const mode = e.target.value
+      try {
+        const res = await fetch('/api/federation/routing-mode', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ mode }) })
+        const data = await res.json().catch(() => ({}))
+        if (!res.ok) { showToast(t('federation.toast.error', { msg: data.error || ('HTTP ' + res.status) })); return }
+        showToast(t('federation.routing.toast_set', { mode: t('federation.routing.mode.' + mode + '.label') }))
+      } catch (err) { showToast(t('federation.toast.error', { msg: String(err.message || err) })) }
+    })
+  })
+
+  if (!view.peers.length) {
+    peersEl.innerHTML = `<p style="color:var(--text-muted);font-size:13px">${t('federation.peers_empty')}</p>`
+    return
+  }
+  peersEl.innerHTML = ''
+  for (const peer of view.peers) {
+    const st = statusById.get(peer.id)
+    const state = peer.hasOutboundToken ? (st ? st.state : 'unknown') : 'unpaired'
+    const reachable = state === 'ok'
+    const lastOk = st && st.lastOkAt ? new Date(st.lastOkAt).toLocaleString() : '-'
+    const agentCount = st && st.manifest && Array.isArray(st.manifest.agents) ? String(st.manifest.agents.length) : '-'
+    const card = document.createElement('div')
+    card.className = 'card'
+    card.style.cssText = 'padding:12px 16px;display:flex;flex-direction:column;gap:8px'
+    // Peer ids/baseUrls are OWNER-entered and segment-validated; state labels
+    // come from t(). Still: text nodes only, escapeHtml everywhere.
+    card.innerHTML = `
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+        <strong style="font-size:15px">${escapeHtml(peer.id)}</strong>
+        <span class="tg-status"><span class="tg-dot ${reachable ? 'connected' : 'disconnected'}"></span> ${fedStateLabel(state)}</span>
+        <span style="color:var(--text-muted);font-size:12px;margin-left:auto">${t('federation.card.last_ok')}: ${escapeHtml(lastOk)} · ${t('federation.card.agents')}: ${escapeHtml(agentCount)}</span>
+      </div>
+      <div style="font-size:13px;color:var(--text-muted);word-break:break-all">${escapeHtml(peer.baseUrl)}</div>
+      ${st && st.error ? `<div style="font-size:12px;color:var(--danger)">${escapeHtml(st.error)}</div>` : ''}
+      <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text-muted);cursor:pointer">
+        <input type="checkbox" class="fed-share-cap" ${peer.shareCapabilitySummaries ? 'checked' : ''} style="accent-color:var(--accent)">
+        ${t('federation.share_cap_label')}
+      </label>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        <button class="btn-secondary btn-compact" data-action="reveal">${t('federation.btn.reveal')}</button>
+        <button class="btn-secondary btn-compact" data-action="rotate">${t('federation.btn.rotate')}</button>
+        <button class="btn-secondary btn-compact" data-action="edit">${t('common.edit')}</button>
+        <button class="btn-secondary btn-compact" data-action="delete" style="color:var(--danger)">${t('common.delete')}</button>
+      </div>
+      <div class="fed-token-reveal" hidden style="font-family:monospace;font-size:12px;background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:8px;word-break:break-all"></div>`
+    card.querySelector('[data-action="reveal"]').addEventListener('click', () => fedRevealToken(peer.id, card))
+    card.querySelector('[data-action="rotate"]').addEventListener('click', () => fedRotateToken(peer.id))
+    card.querySelector('[data-action="edit"]').addEventListener('click', () => fedOpenPeerModal(peer))
+    card.querySelector('[data-action="delete"]').addEventListener('click', () => fedDeletePeer(peer.id))
+    card.querySelector('.fed-share-cap').addEventListener('change', (e) => fedToggleShareCap(peer.id, e.target.checked))
+    peersEl.appendChild(card)
+  }
+}
+
+async function fedRevealToken(peerId, card) {
+  const box = card.querySelector('.fed-token-reveal')
+  if (!box.hidden) { box.hidden = true; box.textContent = ''; return }
+  try {
+    const res = await fetch(`/api/federation/peers/${encodeURIComponent(peerId)}/inbound-token`)
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok) { showToast(t('federation.toast.error', { msg: data.error || ('HTTP ' + res.status) })); return }
+    box.textContent = data.inboundToken
+    box.hidden = false
+    navigator.clipboard?.writeText(data.inboundToken).then(
+      () => showToast(t('federation.toast.token_copied')),
+      () => {},
+    )
+  } catch (err) { showToast(t('federation.toast.error', { msg: String(err.message || err) })) }
+}
+
+async function fedRotateToken(peerId) {
+  if (!confirm(t('federation.confirm.rotate', { peer: peerId }))) return
+  try {
+    const res = await fetch(`/api/federation/peers/${encodeURIComponent(peerId)}/rotate-inbound-token`, { method: 'POST' })
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok) { showToast(t('federation.toast.error', { msg: data.error || ('HTTP ' + res.status) })); return }
+    showToast(t('federation.toast.rotated'))
+    loadFederationPage()
+  } catch (err) { showToast(t('federation.toast.error', { msg: String(err.message || err) })) }
+}
+
+async function fedToggleShareCap(peerId, share) {
+  try {
+    const res = await fetch(`/api/federation/peers/${encodeURIComponent(peerId)}`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ shareCapabilitySummaries: share }),
+    })
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok) { showToast(t('federation.toast.error', { msg: data.error || ('HTTP ' + res.status) })); loadFederationPage(); return }
+    showToast(share ? t('federation.toast.share_cap_on') : t('federation.toast.share_cap_off'))
+  } catch (err) { showToast(t('federation.toast.error', { msg: String(err.message || err) })); loadFederationPage() }
+}
+
+async function fedDeletePeer(peerId) {
+  if (!confirm(t('federation.confirm.delete_peer', { peer: peerId }))) return
+  try {
+    const res = await fetch(`/api/federation/peers/${encodeURIComponent(peerId)}`, { method: 'DELETE' })
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok) { showToast(t('federation.toast.error', { msg: data.error || ('HTTP ' + res.status) })); return }
+    // Sweep browser leftovers scoped to the removed peer.
+    for (let i = localStorage.length - 1; i >= 0; i--) {
+      const key = localStorage.key(i)
+      if (key && key.startsWith('chat_last_seen_' + peerId + '/')) localStorage.removeItem(key)
+    }
+    if (chatSelectedAgent && chatSelectedAgent.startsWith(peerId + '/')) chatSelectedAgent = null
+    showToast(t('federation.toast.peer_deleted'))
+    loadFederationPage()
+  } catch (err) { showToast(t('federation.toast.error', { msg: String(err.message || err) })) }
+}
+
+// Apply federation config changes to the RUNNING main agent by restarting it
+// (it reloads CLAUDE.md, which carries the federation onboarding + delegation
+// directive). Reuses the existing main-agent restart endpoint -- no new
+// backend, no terminal command for the operator.
+async function fedApplyToMainAgent() {
+  if (!confirm(t('federation.confirm.apply'))) return
+  try {
+    // Server-side apply: restarts the main channels agent by MAIN_AGENT_ID,
+    // so the client does not depend on window._marveen being loaded (the
+    // Federation page does not populate it -> the old /api/agents/:name path
+    // 404'd when it fell back to the 'marveen' default).
+    const res = await fetch('/api/federation/apply', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}',
+    })
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok) { showToast(t('federation.toast.error', { msg: data.error || ('HTTP ' + res.status) })); return }
+    showToast(t('federation.toast.applied'))
+  } catch (err) { showToast(t('federation.toast.error', { msg: String(err.message || err) })) }
+}
+
+// Re-poll peer reachability then re-render. Called after config mutations
+// (enable, peer add/edit) so the status shows fresh -- there is no separate
+// manual "refresh" button anymore (the apply action owns the top-right slot).
+async function fedRefreshAndReload() {
+  try { await fetch('/api/federation/refresh', { method: 'POST' }) } catch { /* best effort */ }
+  loadFederationPage()
+}
+
+let fedPeerModalEditId = null
+
+function fedOpenPeerModal(peer) {
+  fedPeerModalEditId = peer ? peer.id : null
+  document.getElementById('fedPeerModalTitle').textContent = peer ? t('federation.modal.edit_title', { peer: peer.id }) : t('federation.modal.add_title')
+  const idInput = document.getElementById('fedPeerId')
+  idInput.value = peer ? peer.id : ''
+  idInput.disabled = !!peer
+  document.getElementById('fedPeerBaseUrl').value = peer ? peer.baseUrl : ''
+  document.getElementById('fedPeerOutboundToken').value = ''
+  document.getElementById('fedPeerOutboundToken').placeholder = peer && peer.hasOutboundToken ? t('federation.modal.outbound_keep') : ''
+  document.getElementById('fedPeerAbandonWindow').value = peer && peer.abandonWindowMinutes ? String(peer.abandonWindowMinutes) : ''
+  openModal(document.getElementById('fedPeerModalOverlay'))
+}
+
+async function fedSavePeerModal() {
+  // Ids are case-insensitive server-side (stored lowercase); fold here too so
+  // the operator immediately sees the canonical form.
+  const id = document.getElementById('fedPeerId').value.trim().toLowerCase()
+  const baseUrl = document.getElementById('fedPeerBaseUrl').value.trim()
+  const outbound = document.getElementById('fedPeerOutboundToken').value.trim()
+  const abandonRaw = document.getElementById('fedPeerAbandonWindow').value.trim()
+  try {
+    let res, data
+    if (fedPeerModalEditId) {
+      const body = { baseUrl }
+      if (outbound) body.outboundToken = outbound
+      if (abandonRaw) body.abandonWindowMinutes = parseInt(abandonRaw, 10)
+      else body.abandonWindowMinutes = null
+      res = await fetch(`/api/federation/peers/${encodeURIComponent(fedPeerModalEditId)}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+      data = await res.json().catch(() => ({}))
+      if (!res.ok) { showToast(t('federation.toast.error', { msg: data.error || ('HTTP ' + res.status) })); return }
+      showToast(t('federation.toast.peer_saved'))
+    } else {
+      const body = { id, baseUrl }
+      if (outbound) body.outboundToken = outbound
+      res = await fetch('/api/federation/peers', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+      data = await res.json().catch(() => ({}))
+      if (!res.ok) { showToast(t('federation.toast.error', { msg: data.error || ('HTTP ' + res.status) })); return }
+      // The minted inbound token is shown ONCE right away: the owner hands it
+      // to the peer's operator during pairing.
+      prompt(t('federation.modal.minted_token_hint'), data.inboundToken)
+      showToast(t('federation.toast.peer_added'))
+    }
+    closeModal(document.getElementById('fedPeerModalOverlay'))
+    fedRefreshAndReload()
+  } catch (err) { showToast(t('federation.toast.error', { msg: String(err.message || err) })) }
+}
+
+async function fedRemoveAll() {
+  if (!confirm(t('federation.confirm.remove'))) return
+  try {
+    const res = await fetch('/api/federation/remove', { method: 'POST' })
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok) { showToast(t('federation.toast.error', { msg: data.error || ('HTTP ' + res.status) })); return }
+    federatedPeerStatus = []
+    // Sweep browser leftovers for ALL federated (qualified) threads -- the
+    // per-peer DELETE path does this per peer, full removal must do it wholesale.
+    for (let i = localStorage.length - 1; i >= 0; i--) {
+      const key = localStorage.key(i)
+      if (key && /^chat_last_seen_[^/]+\//.test(key)) localStorage.removeItem(key)
+    }
+    if (chatSelectedAgent && chatSelectedAgent.includes('/')) chatSelectedAgent = null
+    showToast(t('federation.toast.removed'))
+    loadFederationPage()
+  } catch (err) { showToast(t('federation.toast.error', { msg: String(err.message || err) })) }
+}
+
+function wireFederationPage() {
+  if (fedPageWired) return
+  fedPageWired = true
+  const fedApplyBtn = document.getElementById('federationApplyBtn')
+  if (fedApplyBtn) { fedApplyBtn.title = t('federation.apply_hint'); fedApplyBtn.addEventListener('click', fedApplyToMainAgent) }
+  document.getElementById('federationAddPeerBtn')?.addEventListener('click', () => fedOpenPeerModal(null))
+  document.getElementById('federationRemoveBtn')?.addEventListener('click', fedRemoveAll)
+  document.getElementById('fedPeerModalSave')?.addEventListener('click', fedSavePeerModal)
+  document.getElementById('fedPeerModalCancel')?.addEventListener('click', () => closeModal(document.getElementById('fedPeerModalOverlay')))
+  document.getElementById('fedPeerModalClose')?.addEventListener('click', () => closeModal(document.getElementById('fedPeerModalOverlay')))
+  const overlay = document.getElementById('fedPeerModalOverlay')
+  overlay?.addEventListener('click', (e) => { if (e.target === overlay) closeModal(overlay) })
+}
+
+;(() => {
+  function routeFromHash() {
+    let pageId = decodeURIComponent((location.hash || '').replace(/^#/, ''))
+    if (!pageId) pageId = new URLSearchParams(window.location.search).get('page') || ''
+    // 'team' page is merged into 'agents' (org-chart view toggle).
+    if (pageId === 'team') { pageId = 'agents'; _agentsActiveView = 'tree' }
+    if (pageId && document.getElementById(pageId + 'Page')) switchPage(pageId)
+  }
+  window.addEventListener('hashchange', routeFromHash)
+  routeFromHash()
+})()
+
+// ============================================================
+// === Docs (read-only viewer for the project's docs/ folder) ===
+// ============================================================
+
+function escapeAttr(s) {
+  return escapeHtml(String(s)).replace(/"/g, '&quot;')
+}
+
+// Minimal, dependency-free Markdown -> HTML renderer. Inputs come from the
+// repo's own docs/ folder (trusted), but we HTML-escape everything anyway and
+// only emit a fixed set of tags. Covers the constructs our docs use: fenced
+// code, headings, hr, tables, ordered/unordered lists, blockquotes, paragraphs,
+// and inline code/bold/italic/links.
+function mdInline(text) {
+  let s = escapeHtml(text)
+  s = s.replace(/`([^`]+)`/g, (m, c) => '<code>' + c + '</code>')
+  s = s.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+  s = s.replace(/\*([^*]+)\*/g, '<em>$1</em>')
+  s = s.replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, (m, txt, url) =>
+    '<a href="' + escapeAttr(url) + '" target="_blank" rel="noopener noreferrer">' + txt + '</a>')
+  return s
+}
+
+function renderMarkdown(md) {
+  const lines = String(md).replace(/\r\n/g, '\n').split('\n')
+  const out = []
+  let i = 0
+  const isBlockStart = (l) =>
+    /^```/.test(l) || /^(#{1,6})\s/.test(l) || /^\s*[-*]\s+/.test(l) ||
+    /^\s*\d+\.\s+/.test(l) || /^\s*\|.*\|\s*$/.test(l) || /^\s*>\s?/.test(l) ||
+    /^\s*([-*_])\1{2,}\s*$/.test(l) || /^\s*$/.test(l)
+  while (i < lines.length) {
+    const line = lines[i]
+    const fence = line.match(/^```(\w*)\s*$/)
+    if (fence) {
+      const code = []
+      i++
+      while (i < lines.length && !/^```\s*$/.test(lines[i])) { code.push(lines[i]); i++ }
+      i++
+      out.push('<pre><code' + (fence[1] ? ' class="language-' + escapeHtml(fence[1]) + '"' : '') + '>' + escapeHtml(code.join('\n')) + '</code></pre>')
+      continue
+    }
+    const h = line.match(/^(#{1,6})\s+(.*)$/)
+    if (h) { const lvl = h[1].length; out.push('<h' + lvl + '>' + mdInline(h[2].trim()) + '</h' + lvl + '>'); i++; continue }
+    if (/^\s*([-*_])\1{2,}\s*$/.test(line)) { out.push('<hr>'); i++; continue }
+    if (/^\s*\|.*\|\s*$/.test(line) && i + 1 < lines.length &&
+        /^\s*\|?[\s:|-]+\|?\s*$/.test(lines[i + 1]) && lines[i + 1].includes('-')) {
+      const parseRow = (r) => r.trim().replace(/^\|/, '').replace(/\|$/, '').split('|').map(c => c.trim())
+      const headers = parseRow(line)
+      i += 2
+      const rows = []
+      while (i < lines.length && /^\s*\|.*\|\s*$/.test(lines[i])) { rows.push(parseRow(lines[i])); i++ }
+      let t = '<table><thead><tr>' + headers.map(c => '<th>' + mdInline(c) + '</th>').join('') + '</tr></thead><tbody>'
+      for (const r of rows) t += '<tr>' + r.map(c => '<td>' + mdInline(c) + '</td>').join('') + '</tr>'
+      t += '</tbody></table>'
+      out.push(t)
+      continue
+    }
+    if (/^\s*[-*]\s+/.test(line)) {
+      const items = []
+      while (i < lines.length && /^\s*[-*]\s+/.test(lines[i])) { items.push(lines[i].replace(/^\s*[-*]\s+/, '')); i++ }
+      out.push('<ul>' + items.map(it => '<li>' + mdInline(it) + '</li>').join('') + '</ul>')
+      continue
+    }
+    if (/^\s*\d+\.\s+/.test(line)) {
+      const items = []
+      while (i < lines.length && /^\s*\d+\.\s+/.test(lines[i])) { items.push(lines[i].replace(/^\s*\d+\.\s+/, '')); i++ }
+      out.push('<ol>' + items.map(it => '<li>' + mdInline(it) + '</li>').join('') + '</ol>')
+      continue
+    }
+    if (/^\s*>\s?/.test(line)) {
+      const q = []
+      while (i < lines.length && /^\s*>\s?/.test(lines[i])) { q.push(lines[i].replace(/^\s*>\s?/, '')); i++ }
+      out.push('<blockquote>' + q.map(mdInline).join('<br>') + '</blockquote>')
+      continue
+    }
+    if (/^\s*$/.test(line)) { i++; continue }
+    const para = []
+    while (i < lines.length && !isBlockStart(lines[i])) { para.push(lines[i]); i++ }
+    if (para.length) out.push('<p>' + para.map(mdInline).join('<br>') + '</p>')
+  }
+  return out.join('\n')
+}
+
+async function loadDocs() {
+  const listEl = document.getElementById('docsList')
+  const contentEl = document.getElementById('docsContent')
+  if (!listEl) return
+  listEl.innerHTML = '<p class="muted">' + t('docs.loading') + '</p>'
+  let docs = []
+  try {
+    const res = await fetch('/api/docs')
+    docs = await res.json()
+    if (!Array.isArray(docs)) docs = []
+  } catch (e) {
+    listEl.innerHTML = '<p class="muted">' + t('docs.list_load_error') + ': ' + escapeHtml(String(e.message || e)) + '</p>'
+    return
+  }
+  if (!docs.length) {
+    listEl.innerHTML = '<p class="muted">' + t('docs.empty_list') + '</p>'
+    if (contentEl) contentEl.innerHTML = '<p class="muted">' + t('docs.empty_content') + '</p>'
+    return
+  }
+  listEl.innerHTML = docs.map(d =>
+    '<a href="#" class="docs-list-item" data-doc="' + escapeAttr(d.name) + '">' +
+      '<span class="docs-list-title">' + escapeHtml(d.title || d.name) + '</span>' +
+      (d.created ? '<span class="docs-list-date">' + escapeHtml(d.created) + '</span>' : '') +
+    '</a>'
+  ).join('')
+  listEl.querySelectorAll('.docs-list-item').forEach(a => {
+    a.addEventListener('click', (e) => {
+      e.preventDefault()
+      listEl.querySelectorAll('.docs-list-item').forEach(x => x.classList.remove('active'))
+      a.classList.add('active')
+      openDoc(a.dataset.doc)
+    })
+  })
+  const first = listEl.querySelector('.docs-list-item')
+  if (first) { first.classList.add('active'); openDoc(first.dataset.doc) }
+}
+
+async function openDoc(name) {
+  const contentEl = document.getElementById('docsContent')
+  if (!contentEl) return
+  contentEl.innerHTML = '<p class="muted">' + t('docs.loading') + '</p>'
+  try {
+    const res = await fetch('/api/docs/' + encodeURIComponent(name))
+    if (!res.ok) throw new Error('HTTP ' + res.status)
+    const doc = await res.json()
+    const content = doc.content || ''
+    // Toolbar with a raw-.md download, then the rendered markdown.
+    contentEl.innerHTML =
+      '<div class="docs-content-toolbar">' +
+        '<button class="btn-secondary btn-compact" id="docsDownloadBtn">' + t('docs.download_btn') + '</button>' +
+      '</div>' +
+      '<div class="docs-rendered markdown-body md-rendered">' + renderMarkdown(content) + '</div>'
+    const dl = document.getElementById('docsDownloadBtn')
+    if (dl) dl.addEventListener('click', () => downloadMarkdown(name, content))
+  } catch (e) {
+    contentEl.innerHTML = '<p class="muted">' + t('docs.open_error') + ': ' + escapeHtml(String(e.message || e)) + '</p>'
+  }
+}
+
+// Download a doc's raw markdown as a .md file (client-side Blob, no server).
+function downloadMarkdown(name, content) {
+  try {
+    const blob = new Blob([content], { type: 'text/markdown;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = /\.md$/.test(name) ? name : (name + '.md')
+    document.body.appendChild(a)
+    a.click()
+    a.remove()
+    setTimeout(() => URL.revokeObjectURL(url), 1000)
+  } catch (e) {
+    showToast(t('common.toast.download_failed', { msg: String(e && e.message || e) }))
+  }
+}
+
+// === Research (read-only viewer for each agent's research/ folder) ===
+// Mirrors the Docs tab above, but the API groups docs by agent
+// ([{agent, docs:[{name,title,updated}]}]), so the list needs a per-agent
+// header and each item's dataset carries both agent+name for the detail
+// fetch. Reuses escapeHtml/escapeAttr/renderMarkdown/downloadMarkdown as-is.
+async function loadResearch() {
+  const listEl = document.getElementById('researchList')
+  const contentEl = document.getElementById('researchContent')
+  if (!listEl) return
+  listEl.innerHTML = '<p class="muted">' + t('research.loading') + '</p>'
+  let groups = []
+  try {
+    const res = await fetch('/api/research')
+    groups = await res.json()
+    if (!Array.isArray(groups)) groups = []
+  } catch (e) {
+    listEl.innerHTML = '<p class="muted">' + t('research.list_load_error') + ': ' + escapeHtml(String(e.message || e)) + '</p>'
+    return
+  }
+  if (!groups.length) {
+    listEl.innerHTML = '<p class="muted">' + t('research.empty_list') + '</p>'
+    if (contentEl) contentEl.innerHTML = '<p class="muted">' + t('research.empty_content') + '</p>'
+    return
+  }
+  listEl.innerHTML = groups.map(g =>
+    '<div class="docs-list-group-label">' + escapeHtml(g.agent) + '</div>' +
+    g.docs.map(d =>
+      '<a href="#" class="docs-list-item" data-agent="' + escapeAttr(g.agent) + '" data-doc="' + escapeAttr(d.name) + '">' +
+        '<span class="docs-list-title">' + escapeHtml(d.title || d.name) + '</span>' +
+        (d.updated ? '<span class="docs-list-date">' + escapeHtml(d.updated) + '</span>' : '') +
+      '</a>'
+    ).join('')
+  ).join('')
+  listEl.querySelectorAll('.docs-list-item').forEach(a => {
+    a.addEventListener('click', (e) => {
+      e.preventDefault()
+      listEl.querySelectorAll('.docs-list-item').forEach(x => x.classList.remove('active'))
+      a.classList.add('active')
+      openResearchDoc(a.dataset.agent, a.dataset.doc)
+    })
+  })
+  const first = listEl.querySelector('.docs-list-item')
+  if (first) { first.classList.add('active'); openResearchDoc(first.dataset.agent, first.dataset.doc) }
+}
+
+async function openResearchDoc(agent, name) {
+  const contentEl = document.getElementById('researchContent')
+  if (!contentEl) return
+  contentEl.innerHTML = '<p class="muted">' + t('research.loading') + '</p>'
+  try {
+    const res = await fetch('/api/research/' + encodeURIComponent(agent) + '/' + encodeURIComponent(name))
+    if (!res.ok) throw new Error('HTTP ' + res.status)
+    const doc = await res.json()
+    const content = doc.content || ''
+    contentEl.innerHTML =
+      '<div class="docs-content-toolbar">' +
+        '<button class="btn-secondary btn-compact" id="researchDownloadBtn">' + t('docs.download_btn') + '</button>' +
+      '</div>' +
+      '<div class="docs-rendered markdown-body">' + renderMarkdown(content) + '</div>'
+    const dl = document.getElementById('researchDownloadBtn')
+    if (dl) dl.addEventListener('click', () => downloadMarkdown(name, content))
+  } catch (e) {
+    contentEl.innerHTML = '<p class="muted">' + t('research.open_error') + ': ' + escapeHtml(String(e.message || e)) + '</p>'
+  }
+}
+
+// === Mobile login (QR of the ?token= bootstrap URL) ===
+// The desktop is already authenticated, so the token lives in localStorage.
+// We render it as a QR purely client-side and show it in a modal; the phone
+// scans it and stores the token locally. The token never travels through chat.
+(function setupMobileLogin() {
+  const btn = document.getElementById('mobileLoginBtn')
+  const overlay = document.getElementById('mobileLoginOverlay')
+  if (!btn || !overlay) return
+  const qrBox = document.getElementById('mobileLoginQr')
+  const closeBtn = document.getElementById('mobileLoginClose')
+
+  async function render() {
+    const token = localStorage.getItem('marveen-dashboard-token')
+    if (!token) {
+      qrBox.innerHTML = `<p class="muted">${t('mobile_login.no_token')}</p>`
+      return
+    }
+    if (typeof qrcode !== 'function') {
+      qrBox.innerHTML = `<p class="muted">${t('mobile_login.cdn_error')}</p>`
+      return
+    }
+    // The QR must encode a URL the phone can reach. If the desktop opened the
+    // dashboard on localhost/127.0.0.1, window.location.origin would put
+    // "localhost" in the QR and the phone would hit its OWN localhost. In that
+    // case ask the server for its LAN IP and build the QR from that. If the
+    // dashboard is already open on a LAN IP or a tunnel host, the origin works
+    // as-is.
+    let base = window.location.origin
+    const host = window.location.hostname
+    if (host === 'localhost' || host === '127.0.0.1') {
+      qrBox.innerHTML = `<p class="muted">${t('mobile_login.generating')}</p>`
+      try {
+        const r = await fetch('/api/network-info', { headers: { 'Authorization': 'Bearer ' + token } })
+        const info = r.ok ? await r.json() : {}
+        if (info.lan_ip) {
+          base = 'http://' + info.lan_ip + ':' + (info.port || window.location.port || '3420')
+        } else {
+          qrBox.innerHTML = `<p class="mobile-login-warn">${t('mobile_login.localhost_warn')}</p>`
+          return
+        }
+      } catch (e) {
+        qrBox.innerHTML = `<p class="mobile-login-warn">${t('mobile_login.lan_error')}</p>`
+        return
+      }
+    }
+    const url = base + '/?token=' + token
+    try {
+      const qr = qrcode(0, 'M') // typeNumber 0 = auto-fit, ECC level M
+      qr.addData(url)
+      qr.make()
+      qrBox.innerHTML = qr.createSvgTag({ cellSize: 6, margin: 4, scalable: true })
+    } catch (e) {
+      qrBox.innerHTML = `<p class="muted">${t('mobile_login.qr_error', { msg: escapeHtml(String(e && e.message || e)) })}</p>`
+    }
+  }
+
+  btn.addEventListener('click', () => { render(); openModal(overlay) })
+  if (closeBtn) closeBtn.addEventListener('click', () => closeModal(overlay))
+  overlay.addEventListener('click', (e) => { if (e.target === overlay) closeModal(overlay) })
+})()
+
+// === Archivalt kartyak ===
+;(() => {
+  let archivedInit = false
+
+  const STATUS_LABELS = {
+    planned:     () => t('kanban.status.planned'),
+    in_progress: () => t('kanban.status.in_progress'),
+    waiting:     () => t('kanban.status.waiting'),
+    done:        () => t('kanban.status.done')
+  }
+  const STATUS_COLORS = { planned: '#6b7280', in_progress: '#3b82f6', waiting: '#f59e0b', done: '#10b981' }
+  const PRIORITY_LABELS = {
+    low:    () => t('kanban.priority.low'),
+    normal: () => t('kanban.priority.normal'),
+    high:   () => t('kanban.priority.high'),
+    urgent: () => t('kanban.priority.urgent')
+  }
+  const PRIORITY_COLORS = { low: '#9ca3af', normal: '#6b7280', high: '#f59e0b', urgent: '#ef4444' }
+
+  function fmtDate(unix) {
+    if (!unix) return ''
+    return new Date(unix * 1000).toLocaleString('hu-HU', { dateStyle: 'short', timeStyle: 'short' })
+  }
+
+  // Render an archived card with the same visual language as the live board:
+  // project pill + #seq title + colored rounded priority/label chips, wrapped in
+  // the .kanban-card frame. The whole card opens a read-only detail modal on
+  // click; the restore button stops propagation so it doesn't also open it.
+  function renderArchivedCard(card) {
+    const prioColor = PRIORITY_COLORS[card.priority] || '#6b7280'
+    const prioLabel = PRIORITY_LABELS[card.priority]?.() ?? card.priority
+    const seqHtml = card.seq != null
+      ? `<span class="kanban-card-seq" style="font-family:monospace;font-size:11px;color:var(--text-muted);margin-right:5px">#${card.seq}</span>`
+      : ''
+    const projectHtml = card.project
+      ? `<span class="kanban-card-project">${esc(card.project)}</span>`
+      : ''
+    let labelsHtml = ''
+    if (Array.isArray(card.labels) && card.labels.length > 0) {
+      const pills = card.labels
+        .map(l => `<span class="kanban-card-label-pill" style="--label-color:${esc(l.color)}">#${esc(l.name)}</span>`)
+        .join('')
+      labelsHtml = `<div class="kanban-card-labels">${pills}</div>`
+    }
+    const prioPill = `<span class="archived-prio-pill" style="--prio-color:${prioColor}">${prioLabel}</span>`
+    return `<div class="kanban-card archived-card" data-id="${esc(card.id)}" data-priority="${esc(card.priority)}">
+      ${projectHtml}
+      <div class="kanban-card-title">${seqHtml}${esc(card.title)}</div>
+      <div class="kanban-card-footer">${prioPill}</div>
+      ${labelsHtml}
+      <div class="archived-card-foot">
+        <span class="archived-date">${t('archived.label.archived_at', {date: fmtDate(card.archived_at)})}</span>
+        <button class="btn-secondary btn-compact archived-restore-btn" data-id="${esc(card.id)}" title="${t('archived.btn.restore_to_board')}" style="white-space:nowrap;flex-shrink:0;">${t('archived.btn.restore')}</button>
+      </div>
+    </div>`
+  }
+
+  // Read-only detail modal for an archived card: meta grid, labels, description,
+  // comments -- no editing affordances. Restore button mirrors the card button.
+  async function showArchivedDetail(card) {
+    const seqPrefix = card.seq != null ? `#${card.seq} ` : ''
+    document.getElementById('archivedDetailTitle').textContent = `${seqPrefix}${card.title}`
+    const meta = document.getElementById('archivedDetailMeta')
+    const idLabel = (card.seq != null ? `#${card.seq} · ` : '') + card.id
+    meta.innerHTML = `
+      <div class="meta-item"><span class="meta-label">${t('kanban.meta.id')}</span><span class="meta-value" style="font-family:monospace">${esc(idLabel)}</span></div>
+      <div class="meta-item"><span class="meta-label">${t('kanban.meta.status')}</span><span class="meta-value">${STATUS_LABELS[card.status]?.() ?? card.status}</span></div>
+      <div class="meta-item"><span class="meta-label">${t('kanban.meta.assignee')}</span><span class="meta-value">${card.assignee ? esc(card.assignee) : t('kanban.meta.none')}</span></div>
+      <div class="meta-item"><span class="meta-label">${t('kanban.meta.priority')}</span><span class="meta-value">${PRIORITY_LABELS[card.priority]?.() ?? card.priority}</span></div>
+      <div class="meta-item"><span class="meta-label">${t('kanban.meta.project')}</span><span class="meta-value">${card.project ? esc(card.project) : t('kanban.meta.none')}</span></div>
+      <div class="meta-item"><span class="meta-label">${t('archived.meta.archived_at')}</span><span class="meta-value">${fmtDate(card.archived_at)}</span></div>
+    `
+    const labelsWrap = document.getElementById('archivedDetailLabelsWrap')
+    const labelsBox = document.getElementById('archivedDetailLabels')
+    if (Array.isArray(card.labels) && card.labels.length > 0) {
+      labelsBox.innerHTML = card.labels
+        .map(l => `<span class="kanban-card-label-pill" style="--label-color:${esc(l.color)}">#${esc(l.name)}</span>`)
+        .join('')
+      labelsWrap.style.display = ''
+    } else {
+      labelsWrap.style.display = 'none'
+    }
+    document.getElementById('archivedDetailDesc').textContent = card.description || ''
+
+    const commentsWrap = document.getElementById('archivedDetailCommentsWrap')
+    const commentsBox = document.getElementById('archivedDetailComments')
+    commentsBox.innerHTML = ''
+    try {
+      const res = await fetch(`/api/kanban/${encodeURIComponent(card.id)}/comments`)
+      const comments = res.ok ? await res.json() : []
+      if (Array.isArray(comments) && comments.length > 0) {
+        for (const c of comments) {
+          const date = new Date(c.created_at * 1000).toLocaleString('hu-HU')
+          const div = document.createElement('div')
+          div.className = 'comment-item'
+          div.innerHTML = `<div><span class="comment-author">${esc(c.author)}</span><span class="comment-date">${date}</span></div><div class="comment-body">${esc(c.content)}</div>`
+          commentsBox.appendChild(div)
+        }
+        commentsWrap.style.display = ''
+      } else {
+        commentsWrap.style.display = 'none'
+      }
+    } catch { commentsWrap.style.display = 'none' }
+
+    const restoreBtn = document.getElementById('archivedDetailRestoreBtn')
+    restoreBtn.disabled = false
+    restoreBtn.textContent = t('archived.btn.restore_to_board')
+    restoreBtn.onclick = async () => {
+      restoreBtn.disabled = true
+      restoreBtn.textContent = t('archived.btn.restoring')
+      try {
+        const resp = await fetch(`/api/kanban/${encodeURIComponent(card.id)}/unarchive`, { method: 'POST' })
+        if (resp.ok) {
+          closeModal(document.getElementById('archivedDetailOverlay'))
+          doArchivedSearch()
+        } else {
+          restoreBtn.disabled = false
+          restoreBtn.textContent = t('archived.btn.restore_to_board')
+          showToast(t('archived.restore_error'))
+        }
+      } catch {
+        restoreBtn.disabled = false
+        restoreBtn.textContent = t('archived.btn.restore_to_board')
+      }
+    }
+    openModal(document.getElementById('archivedDetailOverlay'))
+  }
+
+  async function populateArchivedProjects() {
+    try {
+      const r = await fetch('/api/kanban-projects')
+      if (!r.ok) return
+      const projects = await r.json()
+      const sel = document.getElementById('archivedProject')
+      const cur = sel.value
+      sel.innerHTML = '<option value="">' + t('archived.filter.all_projects') + '</option>'
+      for (const p of projects) {
+        const opt = document.createElement('option')
+        opt.value = p
+        opt.textContent = p
+        if (p === cur) opt.selected = true
+        sel.appendChild(opt)
+      }
+    } catch { /* best-effort */ }
+  }
+
+  async function doArchivedSearch() {
+    const list = document.getElementById('archivedList')
+    const summary = document.getElementById('archivedSummary')
+    list.className = ''
+    list.innerHTML = '<p class="naplo-empty">' + t('common.loading') + '</p>'
+    summary.textContent = ''
+
+    const params = new URLSearchParams()
+    const q = document.getElementById('archivedQ').value.trim()
+    const project = document.getElementById('archivedProject').value
+    const from = document.getElementById('archivedFrom').value
+    const to = document.getElementById('archivedTo').value
+    if (q) params.set('q', q)
+    if (project) params.set('project', project)
+    if (from) params.set('from', Math.floor(new Date(from).getTime() / 1000))
+    if (to) params.set('to', Math.floor(new Date(to + 'T23:59:59').getTime() / 1000))
+
+    try {
+      const r = await fetch('/api/kanban/archived?' + params.toString())
+      if (!r.ok) { list.innerHTML = '<p class="naplo-empty error">' + t('archived.error.http', {status: r.status}) + '</p>'; return }
+      const data = await r.json()
+      const cards = data.cards || []
+      summary.textContent = t('archived.summary', {count: cards.length, limit: data.limit})
+      if (cards.length === 0) { list.innerHTML = '<p class="naplo-empty">' + t('archived.empty') + '</p>'; return }
+      list.className = 'archived-grid'
+      list.innerHTML = cards.map(renderArchivedCard).join('')
+      const byId = new Map(cards.map(c => [c.id, c]))
+      // Whole card opens the read-only detail; restore button acts on its own.
+      list.querySelectorAll('.archived-card').forEach(el => {
+        el.addEventListener('click', () => {
+          const card = byId.get(el.dataset.id)
+          if (card) showArchivedDetail(card)
+        })
+      })
+      list.querySelectorAll('.archived-restore-btn').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+          e.stopPropagation()
+          const id = btn.dataset.id
+          btn.disabled = true
+          btn.textContent = '...'
+          try {
+            const resp = await fetch(`/api/kanban/${id}/unarchive`, { method: 'POST' })
+            if (resp.ok) {
+              const cardEl = btn.closest('.archived-card')
+              if (cardEl) cardEl.style.opacity = '0.4'
+              btn.textContent = t('archived.btn.restored')
+            } else {
+              btn.disabled = false
+              btn.textContent = t('archived.btn.restore')
+              showToast(t('archived.restore_error'))
+            }
+          } catch {
+            btn.disabled = false
+            btn.textContent = t('archived.btn.restore')
+          }
+        })
+      })
+    } catch (err) {
+      list.innerHTML = '<p class="naplo-empty error">' + t('common.error_network', {msg: err.message}) + '</p>'
+    }
+  }
+
+  function loadArchivedPage() {
+    if (!archivedInit) {
+      archivedInit = true
+      document.getElementById('archivedSearchBtn').addEventListener('click', doArchivedSearch)
+      document.getElementById('archivedRefreshBtn').addEventListener('click', doArchivedSearch)
+      document.getElementById('archivedQ').addEventListener('keydown', e => { if (e.key === 'Enter') doArchivedSearch() })
+      // Back button mirrors the kanban row's Archivaltak entry point; explicit
+      // switchPage (not history.back) so it works on direct-link arrivals too.
+      const backBtn = document.getElementById('archivedBackToKanban')
+      if (backBtn) backBtn.addEventListener('click', () => switchPage('kanban'))
+      const adOverlay = document.getElementById('archivedDetailOverlay')
+      document.getElementById('archivedDetailClose').addEventListener('click', () => closeModal(adOverlay))
+      attachOverlayCloseGuard(adOverlay)
+    }
+    populateArchivedProjects()
+    doArchivedSearch()
+  }
+
+  window.loadArchivedPage = loadArchivedPage
+})()
+
+// === Naplo (Audit Timeline) ===
+;(() => {
+  let naploInitialized = false
+  let naploActiveSource = ''
+
+  const SOURCE_LABELS = { config: () => t('naplo.source.config'), idea: () => t('naplo.source.idea'), store: () => t('naplo.source.store'), diary: () => t('naplo.source.diary') }
+  const SOURCE_COLORS = { config: '#3b82f6', idea: '#10b981', store: '#f59e0b', diary: '#8b5cf6' }
+  const DIARY_ENTRY_LABELS = { log: () => t('naplo.diary.log_badge'), memory: () => t('naplo.diary.memory_badge') }
+  const DIARY_ENTRY_COLORS = { log: '#6b7280', memory: '#a78bfa' }
+
+  function fmtTs(unix) {
+    return new Date(unix * 1000).toLocaleString('hu-HU', { dateStyle: 'short', timeStyle: 'short' })
+  }
+
+  function renderEntry(e) {
+    const sourceColor = SOURCE_COLORS[e.source] || '#6b7280'
+    const sourceLabelRaw = SOURCE_LABELS[e.source]; const sourceLabel = sourceLabelRaw ? (typeof sourceLabelRaw === 'function' ? sourceLabelRaw() : sourceLabelRaw) : e.source
+    const badge = `<span class="naplo-badge" style="background:${sourceColor}">${sourceLabel}</span>`
+    const ts = `<span class="naplo-ts">${fmtTs(e.created_at)}</span>`
+    let detail = ''
+    if (e.source === 'config') {
+      const oldV = e.old_value != null ? `<code>${esc(e.old_value)}</code>` : '<em>nincs</em>'
+      const newV = e.new_value != null ? `<code>${esc(e.new_value)}</code>` : '<em>nincs</em>'
+      detail = `<strong>${esc(e.key)}</strong> ${oldV} &rarr; ${newV} <span class="naplo-actor">${esc(e.actor || '')}</span>`
+    } else if (e.source === 'idea') {
+      const from = e.from_status ? `<code>${esc(e.from_status)}</code> &rarr; ` : ''
+      detail = `<strong>${esc(e.idea_id)}</strong> ${from}<code>${esc(e.to_status)}</code>`
+      if (e.note) detail += ` <span class="naplo-note">${esc(e.note)}</span>`
+      if (e.actor) detail += ` <span class="naplo-actor">${esc(e.actor)}</span>`
+    } else if (e.source === 'store') {
+      const sizeStr = e.file_size != null ? ` (${(e.file_size / 1024).toFixed(1)} KB)` : ''
+      const agentStr = e.agent ? ` <span class="naplo-actor">${esc(e.agent)}</span>` : ''
+      const sens = e.is_sensitive ? ` <span class="naplo-sensitive">${t('naplo.entry.sensitive')}</span>` : ''
+      detail = `<code>${esc(e.rel_path)}</code> <span class="naplo-event-type">${esc(e.event_type)}</span>${sizeStr}${agentStr}${sens}`
+    } else if (e.source === 'diary') {
+      const entryColor = DIARY_ENTRY_COLORS[e.entry_type] || '#6b7280'
+      const entryLabelRaw = DIARY_ENTRY_LABELS[e.entry_type]; const entryLabel = entryLabelRaw ? (typeof entryLabelRaw === 'function' ? entryLabelRaw() : entryLabelRaw) : e.entry_type
+      const entryBadge = `<span class="naplo-badge" style="background:${entryColor};font-size:10px">${entryLabel}</span>`
+      const agentStr = e.agent_id ? ` <span class="naplo-actor">${esc(e.agent_id)}</span>` : ''
+      let contentSnippet = esc(e.content || '').replace(/\n/g, ' ').slice(0, 200)
+      if ((e.content || '').length > 200) contentSnippet += '…'
+      const keywordsStr = e.keywords ? `<div class="naplo-note" style="margin-top:2px">Kulcsszavak: ${esc(e.keywords)}</div>` : ''
+      const catStr = e.category ? ` <span class="naplo-event-type">${esc(e.category)}</span>` : ''
+      detail = `${entryBadge}${catStr}${agentStr}<div class="naplo-diary-content">${contentSnippet}</div>${keywordsStr}`
+    }
+    return `<div class="naplo-entry"><div class="naplo-entry-meta">${ts}${badge}</div><div class="naplo-entry-detail">${detail}</div></div>`
+  }
+
+  async function doNaplo() {
+    const timeline = document.getElementById('naplo-timeline')
+    const summary = document.getElementById('naplo-summary')
+    timeline.innerHTML = `<p class="naplo-empty">${t('naplo.loading')}</p>`
+    summary.textContent = ''
+
+    const params = new URLSearchParams()
+    if (naploActiveSource) params.set('source', naploActiveSource)
+    const from = document.getElementById('naplo-from').value
+    const to = document.getElementById('naplo-to').value
+    const q = document.getElementById('naplo-q').value.trim()
+    const agentEl = document.getElementById('naplo-agent')
+    const agentVal = agentEl ? agentEl.value.trim() : ''
+    if (from) params.set('from', Math.floor(new Date(from).getTime() / 1000))
+    if (to)   params.set('to', Math.floor(new Date(to + 'T23:59:59').getTime() / 1000))
+    if (q)    params.set('q', q)
+    if (agentVal) params.set('agent', agentVal)
+    params.set('limit', '200')
+
+    try {
+      const res = await fetch('/api/audit-log?' + params.toString())
+      if (!res.ok) { timeline.innerHTML = `<p class="naplo-empty error">Hiba: ${res.status}</p>`; return }
+      const data = await res.json()
+      const entries = data.entries || []
+      summary.textContent = t('naplo.summary', { n: entries.length })
+      if (entries.length === 0) { timeline.innerHTML = `<p class="naplo-empty">${t('naplo.empty')}</p>`; return }
+      timeline.innerHTML = entries.map(renderEntry).join('')
+    } catch (err) {
+      timeline.innerHTML = `<p class="naplo-empty error">${t('naplo.error', { msg: err.message })}</p>`
+    }
+  }
+
+  function loadNaplo() {
+    if (!naploInitialized) {
+      naploInitialized = true
+      document.querySelectorAll('#naplo-source-tabs .naplo-tab').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          document.querySelectorAll('#naplo-source-tabs .naplo-tab').forEach((b) => b.classList.remove('active'))
+          btn.classList.add('active')
+          naploActiveSource = btn.dataset.source
+          const agentFilter = document.getElementById('naplo-agent-wrap')
+          if (agentFilter) agentFilter.style.display = naploActiveSource === 'diary' ? '' : 'none'
+          doNaplo()
+        })
+      })
+      document.getElementById('naplo-search-btn').addEventListener('click', doNaplo)
+      document.getElementById('naplo-q').addEventListener('keydown', (e) => { if (e.key === 'Enter') doNaplo() })
+      document.getElementById('naplo-refresh-btn').addEventListener('click', doNaplo)
+    }
+    doNaplo()
+  }
+
+  window.loadNaplo = loadNaplo
+})()
+
+// === Kanban Gantt / timeline view ===
+;(function () {
+  // --- State ---
+  let ganttPeriod = 'week'  // 'week' | 'month' | 'quarter'
+  let ganttPeriodOffset = 0  // periods stepped from the current one (0 = current, -1 = prev, +1 = next)
+  let ganttOverdueOnly = false
+  let _initialized = false
+
+  // --- Color map by status (vars from theme) ---
+  const STATUS_COLOR = {
+    planned:     { bg: 'var(--accent)',  border: 'var(--accent)' },
+    in_progress: { bg: '#4f8ef7',        border: '#3a7be0' },
+    waiting:     { bg: '#e8a838',        border: '#c88c20' },
+    done:        { bg: '#3dbf79',        border: '#28a560' },
+  }
+
+  // Period window: returns { rangeStart: Date, rangeEnd: Date } (midnight boundaries)
+  function periodWindow() {
+    const now = new Date()
+    const start = new Date(now)
+    start.setHours(0, 0, 0, 0)
+    const end = new Date(start)
+    if (ganttPeriod === 'week') {
+      // Mon..Sun of current week, shifted by ganttPeriodOffset weeks
+      const dow = (start.getDay() + 6) % 7  // Mon=0
+      start.setDate(start.getDate() - dow + ganttPeriodOffset * 7)
+      end.setTime(start.getTime())
+      end.setDate(start.getDate() + 7)
+    } else if (ganttPeriod === 'month') {
+      start.setDate(1)
+      start.setMonth(start.getMonth() + ganttPeriodOffset)
+      end.setFullYear(start.getFullYear(), start.getMonth() + 1, 1)
+    } else {  // quarter
+      const qStart = Math.floor(start.getMonth() / 3) * 3 + ganttPeriodOffset * 3
+      start.setMonth(qStart, 1)
+      end.setFullYear(start.getFullYear(), start.getMonth() + 3, 1)
+    }
+    return { rangeStart: start, rangeEnd: end }
+  }
+
+  // Format date as short label (e.g. "jún 15" / "Jun 15")
+  function fmtDateShort(d) {
+    return d.toLocaleDateString(typeof _lang !== 'undefined' && _lang === 'en' ? 'en-US' : 'hu-HU', { month: 'short', day: 'numeric' })
+  }
+
+  // Return header tick labels for the visible range
+  function buildHeaderTicks(rangeStart, rangeEnd) {
+    const ticks = []
+    const totalMs = rangeEnd - rangeStart
+    // Aim for ~5-8 ticks; snap to day boundaries
+    let stepDays = 1
+    if (ganttPeriod === 'month') stepDays = 7
+    else if (ganttPeriod === 'quarter') stepDays = 14
+    const cur = new Date(rangeStart)
+    while (cur < rangeEnd) {
+      ticks.push({
+        date: new Date(cur),
+        pct: (cur - rangeStart) / totalMs * 100,
+      })
+      cur.setDate(cur.getDate() + stepDays)
+    }
+    return ticks
+  }
+
+  // Group visible cards by project (or 'Nincs projekt' for null)
+  function groupCardsByProject(cards) {
+    const map = new Map()
+    for (const c of cards) {
+      const key = c.project || t('kanban.gantt.no_project')
+      if (!map.has(key)) map.set(key, [])
+      map.get(key).push(c)
+    }
+    return map
+  }
+
+  // Build and inject the Gantt DOM into #kanbanGanttView
+  function renderGantt() {
+    const container = document.getElementById('kanbanGanttView')
+    if (!container) return
+    container.innerHTML = ''
+
+    const { rangeStart, rangeEnd } = periodWindow()
+    const totalMs = rangeEnd - rangeStart
+    const nowMs = Date.now()
+    const todayPct = Math.max(0, Math.min(100, (nowMs - rangeStart) / totalMs * 100))
+
+    // Filter: cards that have a due_date
+    let cards = (Array.isArray(kanbanCards) ? kanbanCards : []).filter(c => c.due_date)
+
+    if (ganttOverdueOnly) {
+      // Keep cards that are overdue OR due within 7 days
+      const cutoff = (nowMs + 7 * 86400000) / 1000
+      cards = cards.filter(c => c.due_date <= cutoff / 1 && c.status !== 'done')
+    }
+
+    // Exclude cards whose entire bar lies outside the window
+    cards = cards.filter(c => {
+      const barStart = c.created_at ? c.created_at * 1000 : rangeStart.getTime()
+      const barEnd   = c.due_date * 1000
+      return barEnd >= rangeStart && barStart <= rangeEnd
+    })
+
+    if (cards.length === 0) {
+      container.innerHTML = `<p style="color:var(--muted);padding:24px 0;text-align:center;">${t('kanban.gantt.no_cards')}</p>`
+      return
+    }
+
+    const grouped = groupCardsByProject(cards)
+
+    // --- Outer layout ---
+    const wrap = document.createElement('div')
+    wrap.className = 'gantt-wrap'
+    wrap.style.cssText = 'display:flex;flex-direction:column;overflow:hidden;'
+
+    // --- Header row: left label + tick strip ---
+    const headerRow = document.createElement('div')
+    headerRow.style.cssText = 'display:flex;border-bottom:1px solid var(--border);margin-bottom:4px;'
+
+    const headerLabel = document.createElement('div')
+    headerLabel.style.cssText = 'width:220px;min-width:220px;font-size:12px;color:var(--muted);padding:4px 8px;border-right:1px solid var(--border);'
+    headerLabel.textContent = t('kanban.gantt.col_label')
+    headerRow.appendChild(headerLabel)
+
+    const headerTrack = document.createElement('div')
+    headerTrack.style.cssText = 'flex:1;position:relative;height:28px;overflow:hidden;'
+    const ticks = buildHeaderTicks(rangeStart, rangeEnd)
+    for (const tick of ticks) {
+      const el = document.createElement('div')
+      el.style.cssText = `position:absolute;left:${tick.pct.toFixed(2)}%;transform:translateX(-50%);font-size:11px;color:var(--muted);top:6px;white-space:nowrap;`
+      el.textContent = fmtDateShort(tick.date)
+      headerTrack.appendChild(el)
+    }
+    // Today marker in header
+    if (todayPct >= 0 && todayPct <= 100) {
+      const todayHead = document.createElement('div')
+      todayHead.style.cssText = `position:absolute;left:${todayPct.toFixed(2)}%;top:0;bottom:0;width:2px;background:var(--danger,#e05252);opacity:0.6;`
+      headerTrack.appendChild(todayHead)
+    }
+    headerRow.appendChild(headerTrack)
+    wrap.appendChild(headerRow)
+
+    // --- Body rows ---
+    const body = document.createElement('div')
+    body.style.cssText = 'overflow-y:auto;max-height:70vh;'
+
+    for (const [project, projCards] of grouped) {
+      // Group header
+      const groupHeader = document.createElement('div')
+      groupHeader.style.cssText = 'display:flex;align-items:center;background:var(--bg2,var(--sidebar-bg));border-bottom:1px solid var(--border);'
+      const ghLabel = document.createElement('div')
+      ghLabel.style.cssText = 'width:220px;min-width:220px;font-size:12px;font-weight:600;color:var(--fg);padding:5px 8px;border-right:1px solid var(--border);'
+      ghLabel.textContent = `${project} (${projCards.length})`
+      groupHeader.appendChild(ghLabel)
+      const ghStripe = document.createElement('div')
+      ghStripe.style.cssText = 'flex:1;height:26px;background:var(--bg2,var(--sidebar-bg));'
+      groupHeader.appendChild(ghStripe)
+      body.appendChild(groupHeader)
+
+      // Card rows
+      for (const card of projCards) {
+        const barStartMs = card.created_at ? card.created_at * 1000 : rangeStart.getTime()
+        const barEndMs   = card.due_date * 1000
+        const isOverdue  = card.status !== 'done' && barEndMs < nowMs
+
+        // Clamp to window
+        const clampedStart = Math.max(barStartMs, rangeStart.getTime())
+        const clampedEnd   = Math.min(barEndMs,   rangeEnd.getTime())
+        const leftPct  = (clampedStart - rangeStart) / totalMs * 100
+        const widthPct = Math.max(0.5, (clampedEnd - clampedStart) / totalMs * 100)
+
+        const col = isOverdue ? { bg: 'var(--danger,#e05252)', border: '#b83030' }
+                              : (STATUS_COLOR[card.status] || STATUS_COLOR.planned)
+
+        const row = document.createElement('div')
+        row.style.cssText = 'display:flex;align-items:center;border-bottom:1px solid var(--border);min-height:32px;'
+
+        const rowLabel = document.createElement('div')
+        rowLabel.style.cssText = 'width:220px;min-width:220px;font-size:12px;color:var(--fg);padding:4px 8px;border-right:1px solid var(--border);overflow:hidden;white-space:nowrap;text-overflow:ellipsis;cursor:pointer;'
+        rowLabel.title = card.title
+        // Show the running display number (#N, card.seq) like the board, not the hex id.
+        const seqLabel = card.seq != null ? `#${card.seq}` : `#${card.id}`
+        rowLabel.textContent = `${seqLabel} ${card.title}`
+        rowLabel.addEventListener('click', () => { if (typeof openCardDetail === 'function') openCardDetail(card.id) })
+
+        const rowTrack = document.createElement('div')
+        rowTrack.style.cssText = 'flex:1;position:relative;height:32px;overflow:hidden;'
+
+        // Today line (in each row)
+        if (todayPct >= 0 && todayPct <= 100) {
+          const tl = document.createElement('div')
+          tl.style.cssText = `position:absolute;left:${todayPct.toFixed(2)}%;top:0;bottom:0;width:2px;background:var(--danger,#e05252);z-index:1;pointer-events:none;`
+          rowTrack.appendChild(tl)
+        }
+
+        const bar = document.createElement('div')
+        bar.style.cssText = [
+          `position:absolute`,
+          `left:${leftPct.toFixed(2)}%`,
+          `width:${widthPct.toFixed(2)}%`,
+          `top:5px`,
+          `bottom:5px`,
+          `background:${col.bg}`,
+          `border:1px solid ${col.border}`,
+          `border-radius:4px`,
+          `overflow:hidden`,
+          `white-space:nowrap`,
+          `font-size:11px`,
+          `color:#fff`,
+          `display:flex`,
+          `align-items:center`,
+          `padding:0 6px`,
+          `box-sizing:border-box`,
+          `cursor:pointer`,
+          `z-index:2`,
+          isOverdue ? 'background-image:repeating-linear-gradient(45deg,rgba(0,0,0,.12) 0px,rgba(0,0,0,.12) 4px,transparent 4px,transparent 8px)' : '',
+        ].filter(Boolean).join(';')
+        bar.title = `${seqLabel} ${card.title}\n${fmtDateShort(new Date(barStartMs))} - ${fmtDateShort(new Date(barEndMs))}`
+        bar.textContent = `${seqLabel} ${card.title}`
+        bar.addEventListener('click', () => { if (typeof openCardDetail === 'function') openCardDetail(card.id) })
+        rowTrack.appendChild(bar)
+        row.appendChild(rowLabel)
+        row.appendChild(rowTrack)
+        body.appendChild(row)
+      }
+    }
+
+    wrap.appendChild(body)
+
+    // --- Legend ---
+    const legend = document.createElement('div')
+    legend.style.cssText = 'display:flex;align-items:center;gap:16px;margin-top:10px;font-size:12px;flex-wrap:wrap;'
+    const legendItems = [
+      { key: 'planned',     color: STATUS_COLOR.planned.bg },
+      { key: 'in_progress', color: STATUS_COLOR.in_progress.bg },
+      { key: 'waiting',     color: STATUS_COLOR.waiting.bg },
+      { key: 'done',        color: STATUS_COLOR.done.bg },
+      { key: 'overdue',     color: 'var(--danger,#e05252)' },
+    ]
+    for (const item of legendItems) {
+      const dot = document.createElement('span')
+      dot.innerHTML = `<span style="display:inline-block;width:12px;height:12px;border-radius:2px;background:${item.color};vertical-align:middle;margin-right:4px;"></span>${t('kanban.gantt.legend.' + item.key)}`
+      legend.appendChild(dot)
+    }
+    const todayLegend = document.createElement('span')
+    todayLegend.style.cssText = 'margin-left:auto;color:var(--muted);'
+    todayLegend.innerHTML = `<span style="display:inline-block;width:12px;height:2px;background:var(--danger,#e05252);vertical-align:middle;margin-right:4px;"></span>${t('kanban.gantt.legend.today')}`
+    legend.appendChild(todayLegend)
+    wrap.appendChild(legend)
+
+    container.appendChild(wrap)
+
+    // --- Period stepper (below the timeline): step back/forward by one period unit ---
+    const nav = document.createElement('div')
+    nav.style.cssText = 'display:flex;align-items:center;justify-content:center;gap:10px;margin-top:12px;'
+    const prevBtn = document.createElement('button')
+    prevBtn.className = 'view-btn'
+    prevBtn.style.cssText = 'width:auto;padding:0 14px;'
+    prevBtn.textContent = '‹ ' + t('kanban.gantt.nav_prev')
+    prevBtn.addEventListener('click', () => { ganttPeriodOffset--; renderGantt() })
+    const rangeLbl = document.createElement('span')
+    rangeLbl.style.cssText = 'font-size:12px;color:var(--muted);min-width:130px;text-align:center;'
+    rangeLbl.textContent = `${fmtDateShort(rangeStart)} - ${fmtDateShort(new Date(rangeEnd.getTime() - 1))}`
+    const nextBtn = document.createElement('button')
+    nextBtn.className = 'view-btn'
+    nextBtn.style.cssText = 'width:auto;padding:0 14px;'
+    nextBtn.textContent = t('kanban.gantt.nav_next') + ' ›'
+    nextBtn.addEventListener('click', () => { ganttPeriodOffset++; renderGantt() })
+    nav.append(prevBtn, rangeLbl, nextBtn)
+    container.appendChild(nav)
+  }
+
+  // --- View switcher init (called once after DOM ready) ---
+  function initGanttViewSwitcher() {
+    if (_initialized) return
+    _initialized = true
+
+    const boardBtn  = document.getElementById('kanbanViewBoard')
+    const ganttBtn  = document.getElementById('kanbanViewGantt')
+    const boardFilters = document.getElementById('kanbanBoardFilters')
+    const ganttFilters = document.getElementById('kanbanGanttFilters')
+    const boardEls  = [document.getElementById('kanbanBoard'), document.getElementById('kanbanSwimlaneBoard')]
+    const ganttEl   = document.getElementById('kanbanGanttView')
+
+    function activateBoard() {
+      boardBtn.classList.add('active')
+      ganttBtn.classList.remove('active')
+      boardFilters.style.display = 'flex'
+      ganttFilters.style.display = 'none'
+      boardEls.forEach(el => { if (el) el.style.removeProperty('display') })
+      ganttEl.style.display = 'none'
+    }
+
+    function activateGantt() {
+      ganttBtn.classList.add('active')
+      boardBtn.classList.remove('active')
+      ganttFilters.style.display = 'flex'
+      boardFilters.style.display = 'none'
+      boardEls.forEach(el => { if (el) el.style.display = 'none' })
+      ganttEl.style.display = 'block'
+      renderGantt()
+    }
+
+    boardBtn.addEventListener('click', activateBoard)
+    ganttBtn.addEventListener('click', activateGantt)
+
+    // Archived button: navigates AWAY to the archived page (its sidebar entry
+    // was removed -- this button is now the entry point). It never takes the
+    // 'active' state here because leaving the kanban page hides the row.
+    const archivedBtn = document.getElementById('kanbanViewArchived')
+    if (archivedBtn) archivedBtn.addEventListener('click', () => switchPage('archived'))
+
+    // Period buttons
+    document.querySelectorAll('#kanbanGanttFilters [data-period]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        ganttPeriod = btn.dataset.period
+        ganttPeriodOffset = 0  // recenter on the current period when switching granularity
+        document.querySelectorAll('#kanbanGanttFilters [data-period]').forEach(b => b.classList.remove('active'))
+        btn.classList.add('active')
+        renderGantt()
+      })
+    })
+
+    // Overdue toggle
+    const overdueChk = document.getElementById('ganttOverdueOnly')
+    if (overdueChk) {
+      overdueChk.addEventListener('change', () => {
+        ganttOverdueOnly = overdueChk.checked
+        renderGantt()
+      })
+    }
+
+    // Re-render on data refresh (hook into global loadKanban completion)
+    const _origRenderKanban = window.renderKanban
+    if (typeof _origRenderKanban === 'function') {
+      window.renderKanban = function () {
+        _origRenderKanban.apply(this, arguments)
+        if (ganttEl.style.display !== 'none') renderGantt()
+      }
+    }
+  }
+
+  window._initGanttViewSwitcher = initGanttViewSwitcher
+  window.renderGantt = renderGantt
+})()
+ + model.outputUsdPerM
+  return input + ' input / ' + output + ' output · 1M token'
+}
+
+function aiTierLabel(tier) {
+  if (tier === 'budget') return 'Legolcsóbb'
+  if (tier === 'premium') return 'Prémium'
+  return 'Ajánlott'
+}
+
+function renderAiProviderCards(data) {
+  const box = document.getElementById('onbAiProviderPicker')
+  if (!box) return
+  onboardingAiCatalog = data
+  const selectedId = data.selected && data.selected.provider
+  box.innerHTML = data.providers.map((p) => {
+    const active = selectedId === p.id
+    const rec = p.recommendation ? `<span class="onb-ai-rec">${escapeHtml(p.recommendation)}</span>` : ''
+    return `<button type="button" class="onb-ai-provider-card${active ? ' selected' : ''}" data-ai-provider="${escapeHtml(p.id)}">
+      <div class="onb-ai-provider-head">
+        <strong>${escapeHtml(p.name)}</strong>
+        ${rec}
+      </div>
+      <div class="onb-ai-badges">
+        <span>${escapeHtml(p.priceLabel)}</span>
+        <span>${escapeHtml(p.precisionLabel)}</span>
+        <span>${escapeHtml(p.hungarianLabel)}</span>
+      </div>
+      <p>${escapeHtml((p.recommendedFor || []).join(' · '))}</p>
+    </button>`
+  }).join('')
+  box.querySelectorAll('[data-ai-provider]').forEach((el) => {
+    el.addEventListener('click', () => selectOnboardingAiProvider(el.dataset.aiProvider))
+  })
+  if (selectedId) selectOnboardingAiProvider(selectedId)
+}
+
+function selectOnboardingAiProvider(providerId) {
+  if (!onboardingAiCatalog) return
+  const provider = onboardingAiCatalog.providers.find((p) => p.id === providerId)
+  if (!provider) return
+  onboardingAiSelectedProvider = provider
+  document.querySelectorAll('.onb-ai-provider-card').forEach((el) => {
+    el.classList.toggle('selected', el.dataset.aiProvider === providerId)
+  })
+  const panel = document.getElementById('onbAiModelPanel')
+  if (!panel) return
+  const selectedModel = (onboardingAiCatalog.selected && onboardingAiCatalog.selected.provider === providerId
+    ? onboardingAiCatalog.selected.model
+    : provider.recommendedModel) || provider.models[0]?.id
+  panel.hidden = false
+  panel.innerHTML = `
+    <div class="onb-ai-panel-head">
+      <div>
+        <h3>${escapeHtml(provider.name)}</h3>
+        <p>${escapeHtml(provider.recommendation || '')}</p>
+      </div>
+      <span class="onb-ai-hu-badge">${escapeHtml(provider.hungarianLabel)}</span>
+    </div>
+    <div class="onb-ai-model-list">
+      ${provider.models.map((m) => `
+        <label class="onb-ai-model-option${m.id === selectedModel ? ' selected' : ''}">
+          <input type="radio" name="onbAiModel" value="${escapeHtml(m.id)}" ${m.id === selectedModel ? 'checked' : ''}>
+          <div>
+            <div class="onb-ai-model-title"><strong>${escapeHtml(m.name)}</strong><span>${aiTierLabel(m.tier)}</span></div>
+            <div class="onb-ai-price">${escapeHtml(aiPriceText(m))}</div>
+            <div class="onb-ai-bestfor">${escapeHtml((m.bestFor || []).join(' · '))}</div>
+            ${m.priceNote ? `<div class="onb-ai-note">${escapeHtml(m.priceNote)}</div>` : ''}
+          </div>
+        </label>`).join('')}
+    </div>
+    ${provider.caveat ? `<div class="onb-ai-caveat">${escapeHtml(provider.caveat)}</div>` : ''}
+    <label class="form-label-sm">${escapeHtml(provider.name)} API kulcs</label>
+    <input id="onbAiApiKey" type="password" class="onb-input" placeholder="${escapeHtml(provider.id === 'anthropic' ? 'sk-ant-api...' : provider.id === 'google' ? 'AIza...' : 'sk-...')}" autocomplete="off">
+    <div class="onb-hint">A kulcsot titkosítva tároljuk a Webinár Mágus Vaultban, és nem írjuk bele a konfigurációs fájlba.</div>
+    <button class="btn-primary btn-compact" id="onbAiSaveBtn">Mentés és AI csapat indítása</button>
+    <div class="onb-ai-quality-note">${escapeHtml(onboardingAiCatalog.qualityNote || '')}</div>
+  `
+  panel.querySelectorAll('input[name="onbAiModel"]').forEach((radio) => {
+    radio.addEventListener('change', () => {
+      panel.querySelectorAll('.onb-ai-model-option').forEach((el) => el.classList.remove('selected'))
+      radio.closest('.onb-ai-model-option')?.classList.add('selected')
+    })
+  })
+  document.getElementById('onbAiSaveBtn')?.addEventListener('click', saveOnboardingAiProvider)
+}
+
+async function loadOnboardingAiProviders() {
+  const box = document.getElementById('onbAiProviderPicker')
+  if (!box) return
+  try {
+    const res = await fetch('/api/onboarding/ai-providers')
+    const data = await res.json()
+    if (!res.ok) throw new Error(data.error || 'AI szolgáltatók nem tölthetők be.')
+    renderAiProviderCards(data)
+  } catch (e) {
+    box.innerHTML = `<div class="onb-ai-error">${escapeHtml((e && e.message) || 'Hiba az AI szolgáltatók betöltésekor.')}</div>`
+  }
+}
+
+async function launchOnboardingFleet(button) {
+  if (button) button.disabled = true
+  onbMsg('AI csapat indítása...')
+  try {
+    const res = await fetch('/api/onboarding/launch', { method: 'POST' })
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok) {
+      if (button) button.disabled = false
+      onbMsg(data.error || 'Az AI csapat nem indult el.', true)
+      return
+    }
+    onbMsg('AI csapat indul. Ez az első indításkor 1–2 perc is lehet.')
+    let up = false
+    for (let i = 0; i < 40 && !up; i++) {
+      await new Promise((r) => setTimeout(r, 3000))
+      const st = await fetchOnboardingStatus()
+      if (st && st.agentsRunning) { up = true; break }
+    }
+    if (up) await refreshOnboarding()
+    else {
+      if (button) button.disabled = false
+      onbMsg('Az AI csapat még indul. Várj egy kicsit, majd próbáld újra.', true)
+    }
+  } catch (e) {
+    if (button) button.disabled = false
+    onbMsg((e && e.message) || 'Hiba az AI csapat indításakor.', true)
+  }
+}
+
+async function saveOnboardingAiProvider() {
+  const provider = onboardingAiSelectedProvider
+  const model = document.querySelector('input[name="onbAiModel"]:checked')?.value || ''
+  const apiKey = (document.getElementById('onbAiApiKey')?.value || '').trim()
+  const btn = document.getElementById('onbAiSaveBtn')
+  if (!provider || !model) { onbMsg('Válassz AI szolgáltatót és modellt.', true); return }
+  if (!apiKey) { onbMsg('Add meg az API kulcsot.', true); return }
+  if (btn) btn.disabled = true
+  onbMsg('API kapcsolat mentése...')
+  try {
+    const res = await fetch('/api/onboarding/ai-provider', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ provider: provider.id, model, apiKey }),
+    })
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok) {
+      if (btn) btn.disabled = false
+      onbMsg(data.error || 'Nem sikerült elmenteni az AI szolgáltatót.', true)
+      return
+    }
+    onbMsg('AI szolgáltató beállítva.')
+    await launchOnboardingFleet(btn)
+  } catch (e) {
+    if (btn) btn.disabled = false
+    onbMsg((e && e.message) || 'Hiba az AI szolgáltató mentésekor.', true)
+  }
 }
 function onbStep2Html(s) {
   const isSlack = onboardingChannelProvider === 'slack'
