@@ -26,7 +26,7 @@ describe('AI_PROVIDER_CATALOG', () => {
   it('uses the documented price/value defaults', () => {
     expect(findAiProvider('deepseek')?.recommendedModel).toBe('deepseek-flash')
     expect(findAiProvider('anthropic')?.recommendedModel).toBe('claude-sonnet-5')
-    expect(findAiProvider('openai')?.recommendedModel).toBe('gpt-5.6-terra')
+    expect(findAiProvider('openai')?.recommendedModel).toBe('gpt-6-sol')
     expect(findAiProvider('google')?.recommendedModel).toBe('gemini-3.8-flash')
   })
 })
