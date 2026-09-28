@@ -91,7 +91,7 @@ if [ "$OS" = "Darwin" ]; then
         <string>$WATCHDOG</string>
     </array>
     <!-- launchd's default PATH is minimal; the watchdog shells out to tmux. -->
-    <!-- MARVEEN_ROOT: launchd passes no shell env to a job, so the watchdog
+    <!-- WEBINAR_MAGUS_ROOT: launchd passes no shell env to a job, so the watchdog
          cannot see the operator's environment. It self-locates from its own
          path when run from the repo copy (see telegram_progress_watchdog.py),
          but this makes the install root explicit as a belt (TGWDOGVAK913). -->
@@ -99,7 +99,7 @@ if [ "$OS" = "Darwin" ]; then
     <dict>
         <key>PATH</key>
         <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
-        <key>MARVEEN_ROOT</key>
+        <key>WEBINAR_MAGUS_ROOT</key>
         <string>$INSTALL_DIR</string>
     </dict>
     <key>StartInterval</key>
@@ -127,10 +127,10 @@ Description=${BOT_NAME} Telegram progress-indicator watchdog (sentry)
 
 [Service]
 Type=oneshot
-# MARVEEN_ROOT belt (TGWDOGVAK913): the watchdog self-locates from its own path
+# WEBINAR_MAGUS_ROOT belt (TGWDOGVAK913): the watchdog self-locates from its own path
 # when run from the repo copy, but a systemd job gets no shell env either, so
 # make the install root explicit here too.
-Environment=MARVEEN_ROOT=$INSTALL_DIR
+Environment=WEBINAR_MAGUS_ROOT=$INSTALL_DIR
 ExecStart=$PY $WATCHDOG
 UNITEOF
   cat > "$UNIT_DIR/$SVC.timer" <<TIMEREOF
