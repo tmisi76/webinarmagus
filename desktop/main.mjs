@@ -9,6 +9,7 @@ const DEFAULT_RUNTIME_DIR = join(homedir(), 'webinar-magus')
 
 let mainWindow = null
 let runtimeStartedByApp = false
+let runtimeInstallChild = null
 
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms))
@@ -130,8 +131,57 @@ ipcMain.handle('webinar-magus:retry-runtime', async () => {
   return true
 })
 
+ipcMain.handle('webinar-magus:install-runtime', async () => {
+  if (runtimeInstallChild) return { ok: false, reason: 'already-running' }
+  if (process.platform !== 'darwin') {
+    return { ok: false, reason: 'unsupported-platform' }
+  }
+
+  const script = join(import.meta.dirname, 'bootstrap', 'macos.sh')
+  if (!existsSync(script)) return { ok: false, reason: 'bootstrap-missing' }
+
+  return await new Promise((resolve) => {
+    const child = spawn('/bin/bash', [script], {
+      cwd: import.meta.dirname,
+      env: { ...process.env, WEBINAR_MAGUS_RUNTIME: DEFAULT_RUNTIME_DIR },
+      stdio: ['ignore', 'pipe', 'pipe'],
+    })
+    runtimeInstallChild = child
+
+    const send = (type, chunk) => {
+      const line = String(chunk)
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('webinar-magus:install-log', { type, line })
+      }
+    }
+
+    child.stdout?.on('data', (chunk) => send('stdout', chunk))
+    child.stderr?.on('data', (chunk) => send('stderr', chunk))
+    child.on('error', (err) => {
+      runtimeInstallChild = null
+      resolve({ ok: false, reason: 'spawn-error', message: err.message })
+    })
+    child.on('exit', async (code) => {
+      runtimeInstallChild = null
+      if (code === 0) {
+        await ensureRuntimeAndLoad()
+        resolve({ ok: true })
+      } else if (code === 20) {
+        resolve({ ok: false, reason: 'homebrew-required' })
+      } else {
+        resolve({ ok: false, reason: 'install-failed', code })
+      }
+    })
+  })
+})
+
 ipcMain.handle('webinar-magus:open-runtime-help', async () => {
   await shell.openExternal('https://github.com/tmisi76/webinar-magus')
+  return true
+})
+
+ipcMain.handle('webinar-magus:open-homebrew', async () => {
+  await shell.openExternal('https://brew.sh')
   return true
 })
 
