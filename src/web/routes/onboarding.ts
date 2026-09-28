@@ -58,10 +58,13 @@ function saveAiProviderSelection(providerId: string, modelId: string, apiKey: st
   if (!provider) throw new Error('Ismeretlen AI szolgáltató.')
   const model = findAiModel(provider, modelId)
   if (!model) throw new Error('A kiválasztott modell nem tartozik ehhez a szolgáltatóhoz.')
-  if (!apiKey.trim()) throw new Error('API kulcs szükséges.')
+  const cleanKey = apiKey.trim()
+  if (!cleanKey && getSecret(provider.vaultKeyId) === null) {
+    throw new Error('API kulcs szükséges ehhez a szolgáltatóhoz.')
+  }
 
   mkdirSync(STORE_DIR, { recursive: true })
-  setSecret(provider.vaultKeyId, provider.apiKeyLabel, apiKey.trim())
+  if (cleanKey) setSecret(provider.vaultKeyId, provider.apiKeyLabel, cleanKey)
   atomicWriteFileSync(
     AI_PROVIDER_CONFIG_FILE,
     JSON.stringify({ provider: provider.id, model: model.id }, null, 2) + '\n',
@@ -318,8 +321,8 @@ export async function tryHandleOnboarding(ctx: RouteContext): Promise<boolean> {
     const providerId = (body.provider ?? '').trim()
     const modelId = (body.model ?? '').trim()
     const apiKey = (body.apiKey ?? '').trim()
-    if (!providerId || !modelId || !apiKey) {
-      json(res, { error: 'Szolgáltató, modell és API kulcs szükséges.', reason: 'missing' }, 400)
+    if (!providerId || !modelId) {
+      json(res, { error: 'Szolgáltató és modell szükséges.', reason: 'missing' }, 400)
       return true
     }
     try {
@@ -553,7 +556,10 @@ export async function tryHandleOnboarding(ctx: RouteContext): Promise<boolean> {
   // Launch the fleet (main-agent channels session). Idempotent: no double-spawn.
   if (path === '/api/onboarding/launch' && method === 'POST') {
     if (agentsRunning()) { json(res, { ok: true, alreadyRunning: true }); return true }
-    if (!claudeAuthPresent()) { json(res, { error: 'Eloszor allitsd be a Claude-autentikaciot.', reason: 'no-auth' }, 409); return true }
+    if (!aiProviderConfigured() && !claudeAuthPresent()) {
+      json(res, { error: 'Először állíts be egy AI szolgáltatót és API kulcsot.', reason: 'no-ai-provider' }, 409)
+      return true
+    }
     // ONBTMUX1: on a fresh install the channels session does NOT exist yet, and
     // `tmux respawn-pane` (what hardRestartMarveenChannels does on Linux) cannot
     // bring back a session that was never there -- it fails with "respawn-pane
