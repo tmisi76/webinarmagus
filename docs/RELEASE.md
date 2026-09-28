@@ -2,24 +2,19 @@
 
 A jelenlegi publikus kiadás **CLI-only**. A macOS DMG és Windows EXE terjesztés ideiglenesen ki van kapcsolva; ezekhez később kapcsoljuk vissza a signing/notarization folyamatot.
 
-## Egyetlen kötelező release secret
+## Release hitelesítés
 
-A repositoryban: **Settings → Secrets and variables → Actions**.
+A CLI runtime publikálása **nem igényel kézzel beállított release secretet**.
 
-- `WEBINAR_MAGUS_RELEASE_TOKEN`
+A `runtime-bundle` GitHub Actions workflow rövid életű GitHub OIDC tokent kér, az AutoWebinar release backend pedig csak akkor fogadja el a feltöltést, ha a token:
 
-Ez egy hosszú véletlen bearer token. Példa generálás:
+- a GitHub hivatalos OIDC issuerétől származik,
+- audience: `autowebinar-webinar-magus-release`,
+- repository: `tmisi76/webinar-magus`,
+- `vX.Y.Z` tagről fut,
+- a `.github/workflows/runtime-bundle.yml` workflow-ból érkezik.
 
-```bash
-openssl rand -hex 32
-```
-
-Ugyanazt az értéket kell beállítani:
-
-1. a `tmisi76/webinar-magus` GitHub repository `WEBINAR_MAGUS_RELEASE_TOKEN` Actions secretjeként;
-2. az AutoWebinar backend `WEBINAR_MAGUS_RELEASE_TOKEN` környezeti secretjeként.
-
-A token **nem kerülhet commitba, README-be, logba vagy kliensoldali env-be**.
+Nincs hosszú életű feltöltési token, amit a felhasználónak vagy a repositorynak kézzel kellene kezelnie.
 
 ## Release indítása
 
