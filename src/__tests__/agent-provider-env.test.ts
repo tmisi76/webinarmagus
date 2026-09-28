@@ -44,6 +44,22 @@ describe('resolveProviderEnv', () => {
     expect(r.exportsStr).not.toContain('CLAUDE_CODE_MAX_CONTEXT_TOKENS')
   })
 
+
+  it('routes OpenAI GPT models to the local Webinár Mágus provider bridge', () => {
+    const r = resolveProviderEnv('gpt-6-sol', () => null)
+    expect(r.provider).toBe('openai')
+    expect(r.exportsStr).toContain('ANTHROPIC_BASE_URL=http://127.0.0.1:4010')
+    expect(r.exportsStr).toContain('ANTHROPIC_AUTH_TOKEN=sk-webinar-magus-local-bridge')
+    expect(r.exportsStr).toContain(`ANTHROPIC_MODEL='gpt-6-sol'`)
+  })
+
+  it('routes Gemini models to the local Webinár Mágus provider bridge', () => {
+    const r = resolveProviderEnv('gemini-3.8-flash', () => null)
+    expect(r.provider).toBe('google')
+    expect(r.exportsStr).toContain('ANTHROPIC_BASE_URL=http://127.0.0.1:4010')
+    expect(r.exportsStr).toContain(`ANTHROPIC_MODEL='gemini-3.8-flash'`)
+  })
+
   it('routes provider/model ids (containing "/") to OpenRouter, not minimax or ollama', () => {
     const seen: string[] = []
     const r = resolveProviderEnv('minimax/minimax-m3', (id) => {
