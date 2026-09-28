@@ -29,7 +29,7 @@ import { projectsDirFor } from './active-model.js'
 // Mirrors KEEPALIVE_RESPAWN_GRACE_MS from channel-monitor.ts (15 min).
 // Not imported directly to avoid a circular module dependency: channel-monitor.ts
 // lazy-imports inbound-probe.ts; inbound-probe.ts uses dynamic import() of
-// channel-monitor.ts to call hardRestartMarveenChannels at respawn time.
+// channel-monitor.ts to call hardRestartWebinarMagusChannels at respawn time.
 const RESPAWN_GRACE_MS = 15 * 60 * 1000
 
 const SESSION_FILE = join(PROJECT_ROOT, 'store', '.watchdog-userbot.session')
@@ -403,7 +403,7 @@ function checkInboundProbeDeafness(probeTimeoutMs: number): void {
   // Lazy import to avoid circular dependency at module load time.
   // B2: also import lastMainRespawnAt to enforce cross-path grace (an inbound-probe
   // respawn must suppress the keepalive path and vice-versa).
-  import('./channel-monitor.js').then(({ hardRestartMarveenChannels, lastMainRespawnAt }) => {
+  import('./channel-monitor.js').then(({ hardRestartWebinarMagusChannels, lastMainRespawnAt }) => {
     const nowAfterImport = Date.now()
 
     // B2 fix: cross-path grace — skip if EITHER path has respawned recently.
@@ -422,9 +422,9 @@ function checkInboundProbeDeafness(probeTimeoutMs: number): void {
 
     logger.warn({ markerTs, lastIngestionTs, nowMs }, 'Inbound deafness detected -- triggering respawn')
 
-    // hardRestartMarveenChannels sets marveenLastHardRestart on success, which
+    // hardRestartWebinarMagusChannels sets marveenLastHardRestart on success, which
     // automatically suppresses the keepalive path for KEEPALIVE_RESPAWN_GRACE_MS.
-    const result = hardRestartMarveenChannels()
+    const result = hardRestartWebinarMagusChannels()
     if (result.ok) {
       lastInboundRespawn = nowAfterImport
       logger.warn('Inbound deafness respawn triggered successfully')
