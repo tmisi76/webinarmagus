@@ -33,10 +33,10 @@ const argOf = (name, dflt) => {
   return i >= 0 && args[i + 1] ? args[i + 1] : dflt;
 };
 const DB_PATH = argOf('--db', path.join(here, '..', 'store', 'claudeclaw.db'));
-const OWNER = argOf('--owner', 'Szotasz');
+const OWNER = argOf('--owner', 'tmisi76');
 // 1000, not 400: the ordering is by CREATION, so in a big repo an old-numbered
 // PR merged recently sits deep in the page (the measured #767 case needed
-// >400 in marveen already). The window filter happens on our side, by date.
+// >400 in webinar-magus already). The window filter happens on our side, by date.
 const PR_PAGE_LIMIT = 1000;
 
 function gh(ghArgs) {
