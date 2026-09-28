@@ -13,7 +13,7 @@ const src = readFileSync(MONITOR_PATH, 'utf-8')
 // showed `runs = 0` -- the job had never been spawned since registration, so
 // `unload` had nothing to stop. launchctl's exit code says the COMMAND ran, not
 // that the session restarted.
-describe('hardRestartMarveenChannels: launchd reload is verified by effect, not exit code', () => {
+describe('hardRestartWebinarMagusChannels: launchd reload is verified by effect, not exit code', () => {
   describe('launchdRestartTookEffect', () => {
     it('is true only for an observed, different pid', () => {
       expect(launchdRestartTookEffect(6476, 70123)).toBe(true)
@@ -30,8 +30,8 @@ describe('hardRestartMarveenChannels: launchd reload is verified by effect, not 
     })
   })
 
-  const fnStart = src.indexOf('export function hardRestartMarveenChannels')
-  expect(fnStart, 'hardRestartMarveenChannels not found').toBeGreaterThan(0)
+  const fnStart = src.indexOf('export function hardRestartWebinarMagusChannels')
+  expect(fnStart, 'hardRestartWebinarMagusChannels not found').toBeGreaterThan(0)
   const fnEnd = src.indexOf('\n// Escalate a main channel input', fnStart)
   const fnBody = src.slice(fnStart, fnEnd > fnStart ? fnEnd : undefined)
 
