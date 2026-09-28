@@ -540,7 +540,11 @@ else
       curl -fsSL https://claude.ai/install.sh | bash -s "${CLAUDE_PIN}" || warn "pinnelt install.sh sikertelen."
     fi
   else
+    if [ "${WEBINAR_MAGUS_CLI_BOOTSTRAP:-0}" = "1" ]; then
+    echo -e "  Webinár Mágus AI runtime telepítése..."
+  else
     echo -e "  Claude Code telepitese (hivatalos installer, ~/.local/bin)..."
+  fi
     curl -fsSL https://claude.ai/install.sh | bash
   fi
   hash -r
@@ -634,7 +638,10 @@ fi
 # Gating on `claude auth status` here is what silently skipped token capture
 # for operators who had followed step 2 below and run `claude setup-token`
 # first -- the correct user behaviour triggered the bug.
-if service_auth_present; then
+if [ "${WEBINAR_MAGUS_CLI_BOOTSTRAP:-0}" = "1" ]; then
+  CLAUDE_AUTH_DEFERRED=1
+  echo -e "  ${GREEN}✓${NC} AI szolgáltató beállítása a Webinár Mágus felületén történik"
+elif service_auth_present; then
   ok "A telepites mar hordoz auth kulcsot (.env / store/.claude-oauth-token)"
 else
   if claude auth status &>/dev/null; then
