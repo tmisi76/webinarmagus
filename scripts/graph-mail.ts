@@ -12,7 +12,7 @@
 // file there is the deliberate act that authorises sending it.
 //
 // Credentials come from the gitignored marveen-mail-ugyfelkod file (override
-// with MARVEEN_MAIL_CREDS). Send is intentionally CLI-explicit; the sub-agent
+// with WEBINAR_MAGUS_MAIL_CREDS). Send is intentionally CLI-explicit; the sub-agent
 // email-send-gate hook still applies to any programmatic use elsewhere.
 
 import { listMessages, sendMail, verifyAccess } from '../src/graph-mail.js'
