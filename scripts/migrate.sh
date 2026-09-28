@@ -14,7 +14,7 @@ INSTALL_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 [ -f "$INSTALL_DIR/.env" ] && WEB_PORT="$(grep -E '^WEB_PORT=' "$INSTALL_DIR/.env" 2>/dev/null | head -1 | cut -d= -f2- | tr -d '"')"
 API="http://localhost:${WEB_PORT:-3420}/api"
 
-MARVEEN_LANG="$(cat "${INSTALL_DIR}/.lang" 2>/dev/null || echo hu)"
+WEBINAR_MAGUS_LANG="$(cat "${INSTALL_DIR}/.lang" 2>/dev/null || echo hu)"
 # shellcheck source=../install-lang.sh
 source "${INSTALL_DIR}/install-lang.sh"
 
