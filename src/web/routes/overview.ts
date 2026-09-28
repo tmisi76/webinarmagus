@@ -131,7 +131,7 @@ export async function tryHandleOverview(ctx: RouteContext): Promise<boolean> {
       role: 'main',
       running: true,
       hasAvatar: mainHasAvatar,
-      avatarUrl: `/api/marveen/avatar`,
+      avatarUrl: `/api/webinar-magus/avatar`,
     })
     for (const a of subAgents) {
       const team = readAgentTeam(a)
