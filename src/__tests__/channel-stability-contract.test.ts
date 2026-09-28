@@ -113,11 +113,11 @@ describe('P2#4 — independent systemd-timer watchdog', () => {
 
 describe('P2#5 — dashboard restart routes the main agent through respawn-pane (no /remote-control, no systemctl)', () => {
   const agents = read('src/web/routes/agents.ts')
-  it('the restart route delegates the main agent to hardRestartMarveenChannels', () => {
+  it('the restart route delegates the main agent to hardRestartWebinarMagusChannels', () => {
     expect(agents).toMatch(/isMainChannelsAgent\(name\)/)
-    expect(agents).toMatch(/hardRestartMarveenChannels\(\)/)
+    expect(agents).toMatch(/hardRestartWebinarMagusChannels\(\)/)
   })
-  it('hardRestartMarveenChannels never systemctl-restarts (respawn-pane only on Linux)', () => {
+  it('hardRestartWebinarMagusChannels never systemctl-restarts (respawn-pane only on Linux)', () => {
     const cm = stripTsComments(read('src/web/channel-monitor.ts'))
     // The function must not shell out to `systemctl --user restart` for the unit.
     expect(cm).not.toMatch(/systemctl[^\n]*restart/)
