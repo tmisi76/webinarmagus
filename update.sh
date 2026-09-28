@@ -18,6 +18,13 @@ export MARVEEN_LANG
 # shellcheck source=install-lang.sh
 source "$(dirname "$0")/install-lang.sh"
 
+# Packaged DMG/EXE/CLI installs intentionally contain no .git directory.
+# Route those installs to the signed/checksummed AutoWebinar runtime updater.
+# Developer/git checkouts keep the mature git-based updater below.
+if [ ! -d "$INSTALL_DIR/.git" ]; then
+  exec bash "$INSTALL_DIR/scripts/update-runtime-bundle.sh" "$@"
+fi
+
 # --- Outcome reporting (kills the false-success UI) ---------------------------
 RESULT_STATUS="failed"
 RESULT_PHASE="init"
