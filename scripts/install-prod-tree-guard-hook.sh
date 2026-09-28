@@ -9,7 +9,7 @@
 # Two git hooks, both scoped to the MAIN worktree only (linked worktrees have
 # a different toplevel and pass untouched):
 #   pre-commit.d/05-prod-tree-guard -- BLOCKS a commit on the main checkout.
-#                    Override: MARVEEN_PROD_COMMIT_OK=1 git commit ...
+#                    Override: WEBINAR_MAGUS_PROD_COMMIT_OK=1 git commit ...
 #                    Installed as a CHAIN ENTRY, not as the pre-commit file:
 #                    the secret gate (install-secret-gate-hook.sh) shares the
 #                    same pre-commit.d dispatcher, and a monolithic pre-commit
@@ -19,7 +19,7 @@
 #   post-checkout -- git has no pre-checkout, so a branch switch cannot be
 #                    blocked; this ALERTS the main agent and, when the tracked
 #                    tree is clean, auto-reverts to the default branch.
-#                    Override: MARVEEN_PROD_CHECKOUT_OK=1 git checkout ...
+#                    Override: WEBINAR_MAGUS_PROD_CHECKOUT_OK=1 git checkout ...
 #
 # No operator-specific paths are baked in: the guarded root is derived from
 # the repository itself (the main worktree of the .git the hook lives in), so
@@ -47,7 +47,7 @@ mkdir -p "$HOOK_DIR/pre-commit.d"
 # Content matters, not just the marker: the 2026-08-22 hand-installed host
 # files PREDATE the marker convention this PR introduced (review, msg 14200).
 # But the recognition is deliberately NARROW: never match the override/alert
-# TOKENS (MARVEEN_PROD_COMMIT_OK etc.) -- those are published in our own
+# TOKENS (WEBINAR_MAGUS_PROD_COMMIT_OK etc.) -- those are published in our own
 # error messages, so a foreign hook whose comment merely mentions the bypass
 # would match and be deleted without trace (review, msg 14204; measured with
 # a foreign lint-hook). On any doubt the default is PRESERVATION: a wrongly
@@ -75,17 +75,17 @@ cat > "$GUARD" <<'EOF'
 # The dashboard serves static files from this tree and host updates pull into
 # it; repo work belongs in a worktree. Managed by
 # scripts/install-prod-tree-guard-hook.sh -- edit there, not here.
-# Deliberate override: MARVEEN_PROD_COMMIT_OK=1 git commit ...
+# Deliberate override: WEBINAR_MAGUS_PROD_COMMIT_OK=1 git commit ...
 set -euo pipefail
-PROD_ROOT="${MARVEEN_PROD_ROOT:-$(dirname "$(cd "$(git rev-parse --git-common-dir)" && pwd)")}"
+PROD_ROOT="${WEBINAR_MAGUS_PROD_ROOT:-$(dirname "$(cd "$(git rev-parse --git-common-dir)" && pwd)")}"
 TOPLEVEL="$(git rev-parse --show-toplevel 2>/dev/null || echo)"
-if [ "$TOPLEVEL" = "$PROD_ROOT" ] && [ "${MARVEEN_PROD_COMMIT_OK:-0}" != "1" ]; then
+if [ "$TOPLEVEL" = "$PROD_ROOT" ] && [ "${WEBINAR_MAGUS_PROD_COMMIT_OK:-0}" != "1" ]; then
   echo "" >&2
   echo "BLOCKED: commit on the running main checkout ($PROD_ROOT)." >&2
   echo "The dashboard serves static files from this tree and host updates pull into it." >&2
   echo "Work in a worktree instead:" >&2
   echo "  git worktree add ../$(basename "$PROD_ROOT")-wt-<topic> -b <branch> origin/develop" >&2
-  echo "Deliberate override: MARVEEN_PROD_COMMIT_OK=1 git commit ..." >&2
+  echo "Deliberate override: WEBINAR_MAGUS_PROD_COMMIT_OK=1 git commit ..." >&2
   exit 1
 fi
 exit 0
@@ -130,15 +130,15 @@ cat > "$HOOK_DIR/post-checkout" <<'EOF'
 # hook, so the switch itself cannot be blocked -- but it must not sit silent
 # either (PRODFAAG822: the 10:10 switch was found only on the next manual
 # look). Managed by scripts/install-prod-tree-guard-hook.sh -- edit there.
-# Deliberate switch: MARVEEN_PROD_CHECKOUT_OK=1 git checkout ...
+# Deliberate switch: WEBINAR_MAGUS_PROD_CHECKOUT_OK=1 git checkout ...
 # Never fails the checkout itself (no set -e; every step is best-effort).
 [ "${3:-0}" = "1" ] || exit 0   # flag=1 -> branch switch; file checkouts exit here
-PROD_ROOT="${MARVEEN_PROD_ROOT:-$(dirname "$(cd "$(git rev-parse --git-common-dir)" && pwd)")}"
+PROD_ROOT="${WEBINAR_MAGUS_PROD_ROOT:-$(dirname "$(cd "$(git rev-parse --git-common-dir)" && pwd)")}"
 TOPLEVEL="$(git rev-parse --show-toplevel 2>/dev/null || echo)"
 [ "$TOPLEVEL" = "$PROD_ROOT" ] || exit 0
 BRANCH="$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo ismeretlen)"
 case "$BRANCH" in develop|main|master) exit 0 ;; esac
-[ "${MARVEEN_PROD_CHECKOUT_OK:-0}" = "1" ] && exit 0
+[ "${WEBINAR_MAGUS_PROD_CHECKOUT_OK:-0}" = "1" ] && exit 0
 # A rebase's (merge/cherry-pick/bisect's) FIRST step is a checkout to detached
 # HEAD -- abbrev-ref reports the literal string "HEAD", which matches nothing
 # in the case above, so an in-progress operation hit this guard mid-flight and
@@ -193,8 +193,8 @@ TOKEN_FILE="$PROD_ROOT/store/.dashboard-token"
 # The alert MUST name the tree it fired in: without it a test alert raised
 # from a scratch root is word-for-word identical to a real one, and the
 # reader starts an investigation (cost one wasted round on 2026-08-22).
-ORIGIN="${MARVEEN_DASHBOARD_ORIGIN:-http://localhost:3420}"
-ALERT_TO="${MARVEEN_GUARD_ALERT_TO:-marveen}"
+ORIGIN="${WEBINAR_MAGUS_DASHBOARD_ORIGIN:-http://localhost:3420}"
+ALERT_TO="${WEBINAR_MAGUS_GUARD_ALERT_TO:-marveen}"
 # Honest delivery (NOTIFYVAKSWEEP826): the alert POST used to be fire-and-
 # forget -- a failed send left the branch-switch alert lost with no trace.
 # The hook stays exit-0 (a guard must not break git), but a delivery failure
@@ -211,7 +211,7 @@ ALERT_TO="${MARVEEN_GUARD_ALERT_TO:-marveen}"
 # key, which a parser takes over the first, delivering attacker-written text
 # to an attacker-named agent. Same rule as scripts/agent-msg.sh: the values
 # travel in the ENVIRONMENT and json.dumps does the quoting.
-ALERT_TEXT="[PROD-FA ORSEG, post-checkout hook] Fa: $TOPLEVEL -- agat valtott a(z) $BRANCH agra. (Ha ez az utvonal nem a telepites fo faja, ez PROBA, nem eles riasztas.) AUTO-VISSZAALLITAS: $REVERTED. Commitot a pre-commit hook blokkol; szandekos valtashoz MARVEEN_PROD_CHECKOUT_OK=1."
+ALERT_TEXT="[PROD-FA ORSEG, post-checkout hook] Fa: $TOPLEVEL -- agat valtott a(z) $BRANCH agra. (Ha ez az utvonal nem a telepites fo faja, ez PROBA, nem eles riasztas.) AUTO-VISSZAALLITAS: $REVERTED. Commitot a pre-commit hook blokkol; szandekos valtashoz WEBINAR_MAGUS_PROD_CHECKOUT_OK=1."
 GUARD_BODY=""
 if command -v python3 >/dev/null 2>&1; then
   GUARD_BODY="$(GUARD_TO="$ALERT_TO" GUARD_TEXT="$ALERT_TEXT" python3 -c 'import json,os,sys
