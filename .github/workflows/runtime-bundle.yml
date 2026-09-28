@@ -1,0 +1,33 @@
+name: runtime-bundle
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: read
+
+jobs:
+  bundle:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build runtime bundle
+        run: bash scripts/build-runtime-bundle.sh
+      - name: Validate installer payload
+        run: |
+          test -s release-cli/webinar-magus-runtime.tar.gz
+          test -s release-cli/webinar-magus-runtime.tar.gz.sha256
+          mkdir -p /tmp/wm-check
+          tar -xzf release-cli/webinar-magus-runtime.tar.gz -C /tmp/wm-check
+          test -f /tmp/wm-check/install.sh
+          test -f /tmp/wm-check/install-macos.sh
+          test -f /tmp/wm-check/install-linux.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: webinar-magus-runtime
+          path: |
+            release-cli/webinar-magus-runtime.tar.gz
+            release-cli/webinar-magus-runtime.tar.gz.sha256
