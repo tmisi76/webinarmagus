@@ -6,7 +6,7 @@ import { join } from 'node:path'
 // pairing" while the agent's Channel view listed the very same request.
 //
 // Cause, traced through the code: the wizard asks mainAgentId(), which falls
-// back to the literal 'marveen' until /api/marveen has populated
+// back to the literal 'marveen' until /api/webinar-magus has populated
 // window._marveen. On a renamed install that literal is NOT the main agent, so
 // the backend takes its sub-agent branch (agents.ts: name !== MAIN_AGENT_ID &&
 // !existsSync(agentDir(name))) and answers 404 -- which the wizard then parsed
