@@ -22,6 +22,7 @@ import type { RouteContext } from './types.js'
 import { setSecret, getSecret } from '../vault.js'
 import { AI_PROVIDER_CATALOG, findAiProvider, findAiModel } from '../../ai-provider-catalog.js'
 import { probeAiProviderCredential } from '../../ai-provider-probe.js'
+import { seedWebinarMagusTeam } from '../webinar-magus-team.js'
 
 // First-run onboarding for the "pre-install now, configure later" flow: the
 // dashboard boots without Claude auth / channels, and the operator finishes
@@ -584,9 +585,22 @@ export async function tryHandleOnboarding(ctx: RouteContext): Promise<boolean> {
 
   // Launch the fleet (main-agent channels session). Idempotent: no double-spawn.
   if (path === '/api/onboarding/launch' && method === 'POST') {
-    if (agentsRunning()) { json(res, { ok: true, alreadyRunning: true }); return true }
     if (!aiProviderConfigured() && !claudeAuthPresent()) {
       json(res, { error: 'Először állíts be egy AI szolgáltatót és API kulcsot.', reason: 'no-ai-provider' }, 409)
+      return true
+    }
+
+    const selectedModel = readAiProviderSelection()?.model
+      || readEnvValue('DEFAULT_AGENT_MODEL')
+      || 'claude-sonnet-5'
+
+    // Team creation is idempotent and never overwrites an existing specialist's
+    // persona/config. This also means an upgraded install can safely use the
+    // onboarding launch action to add only the missing canonical specialists.
+    const team = seedWebinarMagusTeam(selectedModel, true)
+
+    if (agentsRunning()) {
+      json(res, { ok: true, alreadyRunning: true, team })
       return true
     }
     // ONBTMUX1: on a fresh install the channels session does NOT exist yet, and
@@ -613,13 +627,13 @@ export async function tryHandleOnboarding(ctx: RouteContext): Promise<boolean> {
         return true
       }
       logger.info({ created }, 'onboarding: channels session absent -- creating via channels.sh')
-      json(res, { ok: true, starting: true })
+      json(res, { ok: true, starting: true, team })
       return true
     }
     const r = hardRestartMarveenChannels()
     if (!r.ok) { json(res, { error: r.error || 'Nem sikerult eletre kelteni az agenteket.', reason: 'launch-failed' }, 500); return true }
     logger.info('onboarding: fleet launched (channels session)')
-    json(res, { ok: true, started: true })
+    json(res, { ok: true, started: true, team })
     return true
   }
 
