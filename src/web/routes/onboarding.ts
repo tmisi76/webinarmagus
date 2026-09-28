@@ -403,7 +403,7 @@ export async function tryHandleOnboarding(ctx: RouteContext): Promise<boolean> {
     }
     json(res, {
       identityConfirmed: identityConfirmed(),
-      currentAgentName: readEnvValue('BRAND_NAME') || readEnvValue('BOT_NAME') || 'Marveen',
+      currentAgentName: readEnvValue('BRAND_NAME') || readEnvValue('BOT_NAME') || 'Webinár Mágus',
       currentOwnerName: readEnvValue('OWNER_NAME') || '',
       claudeAuthPresent: claude,
       aiProviderConfigured: aiConfigured,
