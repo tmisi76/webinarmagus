@@ -21,6 +21,7 @@ import { isManagedSettingsReady, getManagedSettingsSudoCommand } from './agents.
 import type { RouteContext } from './types.js'
 import { setSecret, getSecret } from '../vault.js'
 import { AI_PROVIDER_CATALOG, findAiProvider, findAiModel } from '../../ai-provider-catalog.js'
+import { probeAiProviderCredential } from '../../ai-provider-probe.js'
 
 // First-run onboarding for the "pre-install now, configure later" flow: the
 // dashboard boots without Claude auth / channels, and the operator finishes
@@ -326,9 +327,37 @@ export async function tryHandleOnboarding(ctx: RouteContext): Promise<boolean> {
       return true
     }
     try {
+      const provider = findAiProvider(providerId)
+      if (!provider) {
+        json(res, { error: 'Ismeretlen AI szolgáltató.', reason: 'invalid-provider' }, 400)
+        return true
+      }
+      if (!findAiModel(provider, modelId)) {
+        json(res, { error: 'A kiválasztott modell nem érhető el ennél a szolgáltatónál.', reason: 'invalid-model' }, 400)
+        return true
+      }
+
+      // Validate BEFORE persisting. When the provider already has a Vault key,
+      // an empty input means "keep the saved key" and that saved key is probed
+      // against the newly selected model.
+      const effectiveKey = apiKey || getSecret(provider.vaultKeyId) || ''
+      const probe = await probeAiProviderCredential(provider.id, modelId, effectiveKey)
+      if (!probe.ok) {
+        const error = probe.kind === 'auth-rejected'
+          ? 'Az API kulcsot a szolgáltató elutasította.'
+          : probe.kind === 'model-unavailable'
+            ? 'A kiválasztott modell nem érhető el ezzel az API fiókkal.'
+            : probe.kind === 'network-error'
+              ? 'Most nem sikerült elérni az AI szolgáltatót. Ellenőrizd az internetkapcsolatot és próbáld újra.'
+              : 'Az AI szolgáltató nem fogadta el a próbahívást.'
+        logger.warn({ provider: providerId, model: modelId, probeKind: probe.kind, status: probe.status ?? null }, 'onboarding: AI provider probe failed')
+        json(res, { error, reason: probe.kind, status: probe.status ?? null }, probe.kind === 'network-error' ? 503 : 400)
+        return true
+      }
+
       saveAiProviderSelection(providerId, modelId, apiKey)
-      logger.info({ provider: providerId, model: modelId }, 'onboarding: AI provider configured')
-      json(res, { ok: true, provider: providerId, model: modelId })
+      logger.info({ provider: providerId, model: modelId }, 'onboarding: AI provider configured and verified')
+      json(res, { ok: true, verified: true, provider: providerId, model: modelId })
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Nem sikerült menteni az AI szolgáltatót.'
       json(res, { error: message, reason: 'invalid-provider' }, 400)
