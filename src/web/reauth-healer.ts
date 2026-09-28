@@ -331,14 +331,14 @@ function checkSession(label: string, session: string, isMain: boolean, quiet: bo
           // import (matches inbound-probe.ts:318) to avoid a circular module
           // dependency with channel-monitor.ts.
           if (decision.restartMain) {
-            import('./channel-monitor.js').then(({ hardRestartMarveenChannels, lastMainRespawnAt }) => {
+            import('./channel-monitor.js').then(({ hardRestartWebinarMagusChannels, lastMainRespawnAt }) => {
               const RESPAWN_GRACE_MS = 15 * 60 * 1000 // mirror channel-monitor.ts's KEEPALIVE_RESPAWN_GRACE_MS
               const now = Date.now()
               if (lastMainRespawnAt() > 0 && now - lastMainRespawnAt() < RESPAWN_GRACE_MS) {
                 logger.info('reauth-healer: main dead-token restart skipped -- within cross-path respawn grace')
                 return
               }
-              const r2 = hardRestartMarveenChannels()
+              const r2 = hardRestartWebinarMagusChannels()
               logger.warn({ ok: r2.ok }, 'reauth-healer: main dead-token restart triggered')
             }).catch((err) => logger.debug({ err }, 'reauth-healer: main dead-token restart import failed'))
           }
