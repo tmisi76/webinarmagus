@@ -7999,3 +7999,7 @@ body {
   .onb-ai-provider-card { min-height: 0; }
   .onb-ai-panel-head { flex-direction: column; }
 }
+
+
+/* Keep the HTML hidden attribute authoritative for the AutoWebinar integration icon. */
+.aw-integration-icon[hidden] { display: none; }
