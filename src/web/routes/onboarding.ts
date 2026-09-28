@@ -597,7 +597,7 @@ export async function tryHandleOnboarding(ctx: RouteContext): Promise<boolean> {
     // Team creation is idempotent and never overwrites an existing specialist's
     // persona/config. This also means an upgraded install can safely use the
     // onboarding launch action to add only the missing canonical specialists.
-    const team = seedWebinarMagusTeam(selectedModel, true)
+    const team = await seedWebinarMagusTeam(selectedModel, true)
 
     if (agentsRunning()) {
       json(res, { ok: true, alreadyRunning: true, team })
