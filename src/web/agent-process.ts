@@ -1168,9 +1168,13 @@ export function resolveProviderEnv(
 
   if (isDeepseek) {
     const key = secretLookup('DEEPSEEK_API_KEY') ?? ''
+    // DeepSeek's Claude Code guide uses the [1m] suffix for Flash so Claude
+    // Code exposes the full 1M context. The public API model id remains
+    // deepseek-flash, which is what the onboarding live probe validates.
+    const runtimeModel = model === 'deepseek-flash' ? 'deepseek-flash[1m]' : model
     return {
       provider: 'deepseek',
-      exportsStr: `unset ANTHROPIC_API_KEY && export ANTHROPIC_AUTH_TOKEN="${key}" && export ANTHROPIC_BASE_URL=https://api.deepseek.com/anthropic && export ANTHROPIC_MODEL=${shSingleQuote(model)} && `,
+      exportsStr: `unset ANTHROPIC_API_KEY && export ANTHROPIC_AUTH_TOKEN="${key}" && export ANTHROPIC_BASE_URL=https://api.deepseek.com/anthropic && export ANTHROPIC_MODEL=${shSingleQuote(runtimeModel)} && export ANTHROPIC_DEFAULT_OPUS_MODEL=${shSingleQuote(runtimeModel)} && export ANTHROPIC_DEFAULT_SONNET_MODEL=${shSingleQuote(runtimeModel)} && export ANTHROPIC_DEFAULT_HAIKU_MODEL=deepseek-flash && export CLAUDE_CODE_SUBAGENT_MODEL=deepseek-flash && export CLAUDE_CODE_EFFORT_LEVEL=max && export CLAUDE_CODE_AUTO_COMPACT_WINDOW=786432 && `,
     }
   }
   if (isMinimax) {
