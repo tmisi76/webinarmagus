@@ -57,7 +57,7 @@ export function readAgentTeamsConfig(name: string): { hasTeams: boolean } {
 // Marveen's channel state is resolved by channelStateDir (#915): env
 // override, then the legacy shared ~/.claude path while unmigrated, then the
 // install-scoped dir. Read it the same way the plugin does.
-export function readMarveenTelegramConfig(): { hasTelegram: boolean; botUsername?: string } {
+export function readWebinarMagusTelegramConfig(): { hasTelegram: boolean; botUsername?: string } {
   const envPath = join(channelStateDir('telegram'), '.env')
   if (!existsSync(envPath)) return { hasTelegram: false }
   const content = readFileOr(envPath, '')
@@ -71,28 +71,28 @@ export function readMarveenTelegramConfig(): { hasTelegram: boolean; botUsername
 // the Telegram reader. Lets the dashboard answer "is Marveen connected?"
 // per provider without per-agent state lookup. botUsername omitted -- the Discord/Slack flows don't
 // surface a @username the same way Telegram does.
-export function readMarveenDiscordConfig(): { hasDiscord: boolean } {
+export function readWebinarMagusDiscordConfig(): { hasDiscord: boolean } {
   const envPath = join(channelStateDir('discord'), '.env')
   if (!existsSync(envPath)) return { hasDiscord: false }
   const tokenMatch = readFileOr(envPath, '').match(/DISCORD_BOT_TOKEN=(.+)/)
   return { hasDiscord: !!tokenMatch?.[1]?.trim() }
 }
 
-export function readMarveenGooglechatConfig(): { hasGooglechat: boolean } {
+export function readWebinarMagusGooglechatConfig(): { hasGooglechat: boolean } {
   const envPath = join(channelStateDir('googlechat'), '.env')
   if (!existsSync(envPath)) return { hasGooglechat: false }
   const m = readFileOr(envPath, '').match(/GOOGLECHAT_PROJECT_ID=(.+)/)
   return { hasGooglechat: !!m?.[1]?.trim() }
 }
 
-export function readMarveenTeamsConfig(): { hasTeams: boolean } {
+export function readWebinarMagusTeamsConfig(): { hasTeams: boolean } {
   const envPath = join(channelStateDir('teams'), '.env')
   if (!existsSync(envPath)) return { hasTeams: false }
   const m = readFileOr(envPath, '').match(/TEAMS_BOT_APP_ID=(.+)/)
   return { hasTeams: !!m?.[1]?.trim() }
 }
 
-export function readMarveenSlackConfig(): { hasSlack: boolean } {
+export function readWebinarMagusSlackConfig(): { hasSlack: boolean } {
   const envPath = join(channelStateDir('slack'), '.env')
   if (!existsSync(envPath)) return { hasSlack: false }
   const tokenMatch = readFileOr(envPath, '').match(/SLACK_BOT_TOKEN=(.+)/)
@@ -216,7 +216,7 @@ export async function sendWelcomeMessage(agentName: string, token: string): Prom
   }
 }
 
-export async function sendMarveenAvatarChange(avatarPath: string): Promise<void> {
+export async function sendWebinarMagusAvatarChange(avatarPath: string): Promise<void> {
   // Marveen's token is in the global .env
   const envPath = join(PROJECT_ROOT, '.env')
   const envContent = readFileOr(envPath, '')
