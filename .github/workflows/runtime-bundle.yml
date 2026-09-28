@@ -56,6 +56,27 @@ jobs:
           ! test -e /tmp/wm-check/node_modules
           ! test -e /tmp/wm-check/store
 
+      - name: Publish runtime bundle
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+        env:
+          RELEASE_TOKEN: ${{ secrets.WEBINAR_MAGUS_RELEASE_TOKEN }}
+        run: |
+          test -n "$RELEASE_TOKEN" || (echo "Missing WEBINAR_MAGUS_RELEASE_TOKEN" && exit 1)
+          VERSION="${GITHUB_REF_NAME}"
+          BASE="https://tukdmrhhyutiiwpvzsjp.supabase.co/functions/v1/webinar-magus-release"
+          for NAME in webinar-magus-runtime.tar.gz webinar-magus-runtime.tar.gz.sha256; do
+            curl --fail-with-body --retry 3 \
+              -X PUT \
+              -H "Authorization: Bearer $RELEASE_TOKEN" \
+              --upload-file "release-cli/$NAME" \
+              "$BASE/$VERSION/$NAME"
+            curl --fail-with-body --retry 3 \
+              -X PUT \
+              -H "Authorization: Bearer $RELEASE_TOKEN" \
+              --upload-file "release-cli/$NAME" \
+              "$BASE/latest/$NAME"
+          done
+
       - uses: actions/upload-artifact@v4
         with:
           name: webinar-magus-runtime
