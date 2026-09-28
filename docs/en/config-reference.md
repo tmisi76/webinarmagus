@@ -232,7 +232,7 @@ Success response: `{ "ok": true, "key": "KANBAN_WIP_WARN_PCT", "value": 75, "req
 
 Error response: `{ "error": "..." }` (400 validation error, 403 secret key, 404 unknown key)
 
-**Hot-reload:** after a successful POST, the `/api/marveen` `kanbanWip` block immediately reflects the new value with no restart needed (for keys where `requiresRestart: false`).
+**Hot-reload:** after a successful POST, the `/api/webinar-magus` `kanbanWip` block immediately reflects the new value with no restart needed (for keys where `requiresRestart: false`).
 
 **Change log:** every successful POST appends an audit row to the `config_change_log` SQLite table (key, old value, new value, actor, timestamp). For secret keys the value is stored as `null`. There is no UI for this table; query it directly:
 
