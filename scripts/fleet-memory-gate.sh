@@ -23,7 +23,7 @@
 #   usedPct >= HARD           -> hard pause: block ALL new spawns; alert once
 #   running non-core >= CAP   -> block non-core regardless of band
 #
-# Kill-switch: MARVEEN_MEM_GATE_DISABLE=1 -> immediate exit 0 (pure pass-through).
+# Kill-switch: WEBINAR_MAGUS_MEM_GATE_DISABLE=1 -> immediate exit 0 (pure pass-through).
 #
 # Read-only except its own state files (safe-mode flag + alert-dedupe stamp);
 # Telegram send is best-effort; --dry-run makes it fully side-effect free.
@@ -43,8 +43,8 @@ done
 [[ -z "$MODE" ]] && MODE="verdict"
 
 # Kill-switch: pure pass-through, no reads, no side effects.
-if [[ "${MARVEEN_MEM_GATE_DISABLE:-0}" == "1" ]]; then
-  echo "gate-disabled: allow (MARVEEN_MEM_GATE_DISABLE=1)"
+if [[ "${WEBINAR_MAGUS_MEM_GATE_DISABLE:-0}" == "1" ]]; then
+  echo "gate-disabled: allow (WEBINAR_MAGUS_MEM_GATE_DISABLE=1)"
   exit 0
 fi
 
@@ -56,13 +56,13 @@ INSTALL_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 _env_val() { [[ -f "$INSTALL_DIR/.env" ]] && grep -E "^$1=" "$INSTALL_DIR/.env" | head -1 | cut -d= -f2- | tr -d '"'"'"'\r'; }
 MAIN_AGENT_ID="$(_env_val MAIN_AGENT_ID)"; MAIN_AGENT_ID="${MAIN_AGENT_ID:-marveen}"
 
-WARN_PCT="${MARVEEN_MEM_WARN_PCT:-80}"
-HARD_PCT="${MARVEEN_MEM_HARD_PCT:-90}"
-AGENT_CAP="${MARVEEN_AGENT_CAP:-12}"
+WARN_PCT="${WEBINAR_MAGUS_MEM_WARN_PCT:-80}"
+HARD_PCT="${WEBINAR_MAGUS_MEM_HARD_PCT:-90}"
+AGENT_CAP="${WEBINAR_MAGUS_AGENT_CAP:-12}"
 # Core = never-throttled agents. Defaults to THIS install's main agent so the
-# primary bot always survives the safe-mode band; override with MARVEEN_CORE_AGENTS.
-CORE_AGENTS="${MARVEEN_CORE_AGENTS:-$MAIN_AGENT_ID}"
-STAGGER_SEC="${MARVEEN_STAGGER_SEC:-20}"   # consumed by fleet-safe-start.sh
+# primary bot always survives the safe-mode band; override with WEBINAR_MAGUS_CORE_AGENTS.
+CORE_AGENTS="${WEBINAR_MAGUS_CORE_AGENTS:-$MAIN_AGENT_ID}"
+STAGGER_SEC="${WEBINAR_MAGUS_STAGGER_SEC:-20}"   # consumed by fleet-safe-start.sh
 STATE_DIR="${WEBINAR_MAGUS_STORE:-$INSTALL_DIR/store}"
 SAFE_FLAG="$STATE_DIR/.fleet-safe-mode"
 ALERT_STAMP="$STATE_DIR/.fleet-memgate-alert"   # "band:epoch" of last alert
@@ -71,9 +71,9 @@ OBSERVE_FLAG="$STATE_DIR/.fleet-memgate-observe"  # if present -> observe-only
 # OBSERVE-ONLY mode (Istvan standing directive 2026-07-09, re-confirmed 2026-07-15):
 # monitor + alert stay ON, but the gate NEVER blocks a start and NEVER writes the
 # safe-mode marker -- Istvan makes the throttle/rollback call himself. Toggle via the
-# file flag (touch/rm store/.fleet-memgate-observe) or MARVEEN_MEM_GATE_OBSERVE=1.
+# file flag (touch/rm store/.fleet-memgate-observe) or WEBINAR_MAGUS_MEM_GATE_OBSERVE=1.
 OBSERVE=0
-if [[ "${MARVEEN_MEM_GATE_OBSERVE:-0}" == "1" || -f "$OBSERVE_FLAG" ]]; then OBSERVE=1; fi
+if [[ "${WEBINAR_MAGUS_MEM_GATE_OBSERVE:-0}" == "1" || -f "$OBSERVE_FLAG" ]]; then OBSERVE=1; fi
 # #915: main channel state is install-scoped once migrated; the legacy shared
 # path only serves unmigrated installs.
 TG_CHAN_DIR="${TELEGRAM_STATE_DIR:-}"
@@ -84,10 +84,10 @@ fi
 ENV_FILE="${TELEGRAM_ENV:-$TG_CHAN_DIR/.env}"
 # Alert target: the owner's chat id. Resolve from the channel access.json (the
 # first allow-listed sender) so no chat-id is ever hardcoded; override with
-# MARVEEN_ALERT_CHAT_ID. Empty -> the Telegram alert is skipped (log only), never
+# WEBINAR_MAGUS_ALERT_CHAT_ID. Empty -> the Telegram alert is skipped (log only), never
 # sent to a stranger.
 ACCESS_JSON="${TELEGRAM_ACCESS:-$TG_CHAN_DIR/access.json}"
-CHAT_ID="${MARVEEN_ALERT_CHAT_ID:-}"
+CHAT_ID="${WEBINAR_MAGUS_ALERT_CHAT_ID:-}"
 if [[ -z "$CHAT_ID" && -f "$ACCESS_JSON" ]] && command -v python3 >/dev/null 2>&1; then
   CHAT_ID="$(python3 -c 'import json,sys
 try:
