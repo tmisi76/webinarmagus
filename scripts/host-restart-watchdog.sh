@@ -34,7 +34,7 @@ ENV_FILE="${TELEGRAM_ENV:-$TG_CHAN_DIR/.env}"
 # Alert target chat-id -- MUST come from the install's own config; there is
 # deliberately NO hardcoded fallback (a hardcoded id would make every downstream
 # install send its host-stability alerts to that one private chat).
-CHAT_ID="${MARVEEN_ALERT_CHAT_ID:-}"
+CHAT_ID="${WEBINAR_MAGUS_ALERT_CHAT_ID:-}"
 
 log() { echo "[host-restart-watchdog] $*"; }
 
@@ -121,7 +121,7 @@ if [[ -n "$token" && -n "$CHAT_ID" ]]; then
     log "Telegram send FAILED -- baseline NOT stamped, will retry next run: ${send_err}"
   fi
 else
-  log "skipping Telegram (${HOST_KIND} restart still logged): missing${token:+}$( [[ -z "$token" ]] && echo ' TELEGRAM_BOT_TOKEN(via TELEGRAM_ENV)')$( [[ -z "$CHAT_ID" ]] && echo ' MARVEEN_ALERT_CHAT_ID')"
+  log "skipping Telegram (${HOST_KIND} restart still logged): missing${token:+}$( [[ -z "$token" ]] && echo ' TELEGRAM_BOT_TOKEN(via TELEGRAM_ENV)')$( [[ -z "$CHAT_ID" ]] && echo ' WEBINAR_MAGUS_ALERT_CHAT_ID')"
 fi
 
 exit 0
