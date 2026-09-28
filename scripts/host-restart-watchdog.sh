@@ -11,7 +11,7 @@
 # silence is never mistaken for a CostOps/app crash.
 #
 # App/service crashes do NOT change btime and never trigger this script -- they
-# are reported separately by the OnFailure= drop-ins (marveen-notify@.service).
+# are reported separately by the OnFailure= drop-ins (webinar-magus-notify@.service).
 # That split is the whole point: btime-change => host restart; OnFailure => app.
 #
 # Safe by construction: read-only except for the state file; Telegram send is
@@ -20,7 +20,7 @@
 
 set -uo pipefail
 
-STATE_DIR="${MARVEEN_STORE:-$HOME/marveen/store}"
+STATE_DIR="${WEBINAR_MAGUS_STORE:-$HOME/marveen/store}"
 STATE_FILE="$STATE_DIR/.last-btime"
 INSTALL_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 # #915: main channel state is install-scoped once migrated; the legacy shared
