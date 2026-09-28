@@ -1,5 +1,20 @@
 [
   {
+    "id": "autowebinar",
+    "name": "AutoWebinar",
+    "description": "Elsődleges Webinár Mágus kapcsolat: webináriumok, leadek, CRM, funnel, riportok és biztonságos jóváhagyásos műveletek",
+    "type": "remote",
+    "category": "webinar-magus",
+    "icon": "🪄",
+    "url": "https://autowebinar.hu/mcp",
+    "env": {},
+    "authType": "oauth",
+    "authNote": "A Webinár Mágus automatikusan hozzáadja. Első használatkor az AutoWebinar OAuth bejelentkezés és engedélyezés szükséges.",
+    "infoUrl": "https://autowebinar.hu",
+    "featured": true,
+    "firstParty": true
+  },
+  {
     "id": "google-drive",
     "name": "Google Drive",
     "description": "Google Drive fájlkezelés: dokumentumok, táblázatok, prezentációk olvasása, írása, megosztása",
