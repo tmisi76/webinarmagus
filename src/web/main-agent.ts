@@ -38,7 +38,7 @@ export const MAIN_CHANNELS_SESSION = channelsSessionName(MAIN_AGENT_ID)
 export const MAIN_CHANNELS_PLIST = channelsPlistPath(SERVICE_ID)
 
 // Whether an agent's process lifecycle (start/restart) must go through the
-// channels-session helper (systemd/launchd via hardRestartMarveenChannels)
+// channels-session helper (systemd/launchd via hardRestartWebinarMagusChannels)
 // rather than the `agent-<name>` tmux template that sub-agents use. True only
 // for the main agent: it has no `agents/<name>` dir and no `agent-<name>`
 // session, so the agent-process path would spawn a rogue duplicate session and
