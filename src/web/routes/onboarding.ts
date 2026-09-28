@@ -19,6 +19,8 @@ import { liveProbeAuth, stampTokenVerified } from '../claude-credentials-guard.j
 import { json, readBody } from '../http-helpers.js'
 import { isManagedSettingsReady, getManagedSettingsSudoCommand } from './agents.js'
 import type { RouteContext } from './types.js'
+import { setSecret, getSecret } from '../vault.js'
+import { AI_PROVIDER_CATALOG, findAiProvider, findAiModel } from '../../ai-provider-catalog.js'
 
 // First-run onboarding for the "pre-install now, configure later" flow: the
 // dashboard boots without Claude auth / channels, and the operator finishes
@@ -28,6 +30,44 @@ import type { RouteContext } from './types.js'
 const ENV_FILE = join(PROJECT_ROOT, '.env')
 const HOME_CREDENTIALS = join(homedir(), '.claude', '.credentials.json')
 const FLEET_TOKEN_FILE = join(STORE_DIR, '.claude-oauth-token')
+const AI_PROVIDER_CONFIG_FILE = join(STORE_DIR, 'ai-provider.json')
+
+type AiProviderSelection = { provider: string; model: string }
+
+function readAiProviderSelection(): AiProviderSelection | null {
+  try {
+    const raw = JSON.parse(readFileSync(AI_PROVIDER_CONFIG_FILE, 'utf-8')) as Partial<AiProviderSelection>
+    if (typeof raw.provider !== 'string' || typeof raw.model !== 'string') return null
+    const provider = findAiProvider(raw.provider)
+    if (!provider || !findAiModel(provider, raw.model)) return null
+    return { provider: raw.provider, model: raw.model }
+  } catch {
+    return null
+  }
+}
+
+function aiProviderConfigured(): boolean {
+  const selection = readAiProviderSelection()
+  if (!selection) return false
+  const provider = findAiProvider(selection.provider)
+  return provider ? getSecret(provider.vaultKeyId) !== null : false
+}
+
+function saveAiProviderSelection(providerId: string, modelId: string, apiKey: string): void {
+  const provider = findAiProvider(providerId)
+  if (!provider) throw new Error('Ismeretlen AI szolgáltató.')
+  const model = findAiModel(provider, modelId)
+  if (!model) throw new Error('A kiválasztott modell nem tartozik ehhez a szolgáltatóhoz.')
+  if (!apiKey.trim()) throw new Error('API kulcs szükséges.')
+
+  mkdirSync(STORE_DIR, { recursive: true })
+  setSecret(provider.vaultKeyId, provider.apiKeyLabel, apiKey.trim())
+  atomicWriteFileSync(
+    AI_PROVIDER_CONFIG_FILE,
+    JSON.stringify({ provider: provider.id, model: model.id }, null, 2) + '\n',
+    { mode: 0o600 },
+  )
+}
 
 function readEnvValue(key: string): string | null {
   try {
@@ -235,6 +275,56 @@ export function identitySavePlan(
 
 export async function tryHandleOnboarding(ctx: RouteContext): Promise<boolean> {
   const { req, res, path, method } = ctx
+
+  // Webinár Mágus AI provider catalog. Public metadata only: never returns API keys.
+  if (path === '/api/onboarding/ai-providers' && method === 'GET') {
+    const selected = readAiProviderSelection()
+    json(res, {
+      providers: AI_PROVIDER_CATALOG.map((provider) => ({
+        id: provider.id,
+        name: provider.name,
+        company: provider.company,
+        recommendedModel: provider.recommendedModel,
+        priceLevel: provider.priceLevel,
+        priceLabel: provider.priceLabel,
+        precisionLabel: provider.precisionLabel,
+        hungarianLabel: provider.hungarianLabel,
+        recommendation: provider.recommendation,
+        recommendedFor: provider.recommendedFor,
+        caveat: provider.caveat ?? null,
+        configured: getSecret(provider.vaultKeyId) !== null,
+        models: provider.models,
+      })),
+      selected,
+      configured: aiProviderConfigured(),
+      qualityNote: 'A magyar nyelvi címkék Webinár Mágus termék-ajánlások, nem hivatalos magyar benchmark pontszámok.',
+      pricingCheckedAt: '2026-09-28',
+    })
+    return true
+  }
+
+  // Persist provider/model choice plus the provider API key. The key goes ONLY
+  // into the encrypted Vault; ai-provider.json contains provider/model IDs only.
+  if (path === '/api/onboarding/ai-provider' && method === 'POST') {
+    let body: { provider?: string; model?: string; apiKey?: string } = {}
+    try { body = JSON.parse((await readBody(req)).toString()) as typeof body } catch { /* bad body handled below */ }
+    const providerId = (body.provider ?? '').trim()
+    const modelId = (body.model ?? '').trim()
+    const apiKey = (body.apiKey ?? '').trim()
+    if (!providerId || !modelId || !apiKey) {
+      json(res, { error: 'Szolgáltató, modell és API kulcs szükséges.', reason: 'missing' }, 400)
+      return true
+    }
+    try {
+      saveAiProviderSelection(providerId, modelId, apiKey)
+      logger.info({ provider: providerId, model: modelId }, 'onboarding: AI provider configured')
+      json(res, { ok: true, provider: providerId, model: modelId })
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Nem sikerült menteni az AI szolgáltatót.'
+      json(res, { error: message, reason: 'invalid-provider' }, 400)
+    }
+    return true
+  }
 
   // Onboarding state so the frontend knows which step to show.
   if (path === '/api/onboarding/status' && method === 'GET') {
