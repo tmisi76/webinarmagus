@@ -919,6 +919,10 @@ if [ -f "$INSTALL_DIR/store/ai-provider.json" ] && [ -f "$INSTALL_DIR/scripts/ai
 fi
 
 $TMUX start-server 2>/dev/null || true
+# Refresh auth/provider globals on EVERY launch. A provider switch must never
+# inherit a stale Claude OAuth token from an older tmux server, otherwise the
+# selected API key can be silently ignored.
+$TMUX set-environment -gu CLAUDE_CODE_OAUTH_TOKEN 2>/dev/null || true
 if [ -n "${CLAUDE_CODE_OAUTH_TOKEN:-}" ]; then
   $TMUX set-environment -g CLAUDE_CODE_OAUTH_TOKEN "$CLAUDE_CODE_OAUTH_TOKEN" 2>/dev/null || true
 fi
