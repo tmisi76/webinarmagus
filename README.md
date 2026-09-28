@@ -1,6 +1,6 @@
 # Webinár Mágus
 
-![Webinár Mágus](banner.png)
+<p align="center"><img src="web/icons/webinar-magus.svg" alt="Webinár Mágus" width="180"></p>
 
 **Önálló AI marketing- és ügyfélszerző csapat webináriumhoz, saleshez, automatizáláshoz és kampányokhoz.**
 
