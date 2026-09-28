@@ -34,21 +34,21 @@ describe('buildManifest brands the PWA manifest, default unchanged', () => {
   const raw = readFileSync(join(REPO_ROOT, 'web', 'manifest.json'), 'utf-8')
 
   it('keeps the stock name/short_name with the default brand', () => {
-    const m = JSON.parse(buildManifest(raw, 'Marveen'))
-    expect(m.name).toBe('Marveen Dashboard')
-    expect(m.short_name).toBe('Marveen')
+    const m = JSON.parse(buildManifest(raw, 'Webinár Mágus'))
+    expect(m.name).toBe('Webinár Mágus')
+    expect(m.short_name).toBe('Webinár Mágus')
   })
 
   it('serves byte-for-byte the shipped file when brand is the default', () => {
     // The stock default brand must not alter a single byte of the served
     // manifest (guards the trailing-newline / whitespace-reflow regression that
     // a JSON.parse+stringify round-trip would introduce).
-    expect(buildManifest(raw, 'Marveen')).toBe(raw)
+    expect(buildManifest(raw, 'Webinár Mágus')).toBe(raw)
   })
 
   it('preserves every non-brand field', () => {
     const m = JSON.parse(buildManifest(raw, 'Marveen'))
-    expect(m.description).toBe('AI fleet management dashboard')
+    expect(m.description).toBe('AI marketingcsapat webináriumhoz, ügyfélszerzéshez és értékesítéshez')
     expect(m.start_url).toBe('/')
     expect(m.icons).toHaveLength(2)
   })
@@ -57,7 +57,7 @@ describe('buildManifest brands the PWA manifest, default unchanged', () => {
     const m = JSON.parse(buildManifest(raw, 'Acme'))
     expect(m.name).toBe('Acme Dashboard')
     expect(m.short_name).toBe('Acme')
-    expect(m.description).toBe('AI fleet management dashboard')
+    expect(m.description).toBe('AI marketingcsapat webináriumhoz, ügyfélszerzéshez és értékesítéshez')
   })
 
   it('leaves input without name/short_name keys untouched', () => {
