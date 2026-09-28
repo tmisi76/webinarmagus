@@ -623,52 +623,55 @@ ensure_in_rc '.bun/bin' 'export PATH="$BUN_INSTALL/bin:$PATH"'
 
 INSTALL_STEP="claude-auth"
 # ─────────────────────────────────────────────
-# [3/7] Claude bejelentkezes
+# [3/7] AI szolgáltató / legacy Claude auth
 # ─────────────────────────────────────────────
 echo ""
-echo -e "${BOLD}$(_t section_3_linux)${NC}"
 
 IS_HEADLESS=false
 if [ -z "${DISPLAY:-}" ] && [ -z "${WAYLAND_DISPLAY:-}" ]; then
   IS_HEADLESS=true
 fi
 
-# Skip the prompt only when THIS INSTALL already carries a credential the
-# services can read (a re-run, or the dashboard wizard got there first).
-# Gating on `claude auth status` here is what silently skipped token capture
-# for operators who had followed step 2 below and run `claude setup-token`
-# first -- the correct user behaviour triggered the bug.
-if [ "${WEBINAR_MAGUS_CLI_BOOTSTRAP:-0}" = "1" ]; then
-  CLAUDE_AUTH_DEFERRED=1
-  echo -e "  ${GREEN}✓${NC} AI szolgáltató beállítása a Webinár Mágus felületén történik"
-elif service_auth_present; then
+# The public CLI distribution is provider-first: the harness is installed here,
+# but the customer chooses DeepSeek / Claude / OpenAI / Gemini and enters the API
+# key in the branded dashboard onboarding. Direct/legacy installs keep the old
+# Claude-auth flow. The deliberate skip still goes through the ONE canonical
+# skip branch below so CLAUDE_AUTH_DEFERRED has exactly one source of truth.
+if service_auth_present; then
   ok "A telepites mar hordoz auth kulcsot (.env / store/.claude-oauth-token)"
 else
-  if claude auth status &>/dev/null; then
-    echo -e "  ${ORANGE}A terminalod be van jelentkezve, de a SZOLGALTATASOK ehhez nem ferenek hozza.${NC}"
-    echo -e "  ${DIM}A systemd unitok csak a .env-et es a store/.claude-oauth-token-t olvassak.${NC}"
+  if [ "${WEBINAR_MAGUS_CLI_BOOTSTRAP:-0}" = "1" ]; then
+    echo -e "${BOLD}[3/7] AI szolgáltató${NC}"
+    echo -e "  ${GREEN}✓${NC} DeepSeek / Claude / OpenAI / Gemini választása a Webinár Mágus felületén történik"
+    AUTH_MODE=3
   else
-    echo -e "  ${ORANGE}Nincs aktiv Claude bejelentkezes.${NC}"
-  fi
-  if [ "$IS_HEADLESS" = "true" ]; then
+    echo -e "${BOLD}$(_t section_3_linux)${NC}"
+    if claude auth status &>/dev/null; then
+      echo -e "  ${ORANGE}A terminalod be van jelentkezve, de a SZOLGALTATASOK ehhez nem ferenek hozza.${NC}"
+      echo -e "  ${DIM}A systemd unitok csak a .env-et es a store/.claude-oauth-token-t olvassak.${NC}"
+    else
+      echo -e "  ${ORANGE}Nincs aktiv Claude bejelentkezes.${NC}"
+    fi
+    if [ "$IS_HEADLESS" = "true" ]; then
+      echo ""
+      echo -e "  ${BLUE}Headless szerver detektalva (nincs DISPLAY).${NC}"
+      echo -e "  ${BLUE}Bongeszo-alapu bejelentkezes nem lehetseges.${NC}"
+      echo -e "  ${BOLD}Ajanlott: OAuth token (2) vagy API key (1).${NC}"
+      echo ""
+    fi
     echo ""
-    echo -e "  ${BLUE}Headless szerver detektalva (nincs DISPLAY).${NC}"
-    echo -e "  ${BLUE}Bongeszo-alapu bejelentkezes nem lehetseges.${NC}"
-    echo -e "  ${BOLD}Ajanlott: OAuth token (2) vagy API key (1).${NC}"
+    echo -e "  Valassz bejelentkezesi modot:"
+    echo -e "  ${BOLD}1.${NC} API key ${DIM}(Anthropic Console -> fizeteses/pay-as-you-go)${NC}"
+    echo -e "  ${BOLD}2.${NC} OAuth token ${DIM}(Pro/Max elofizetes - tokennel egy masik geprol)${NC}"
+    echo -e "  ${BOLD}3.${NC} Kihagyas ${DIM}(kesobb allitod be)${NC}"
     echo ""
-  fi
-  echo ""
-  echo -e "  Valassz bejelentkezesi modot:"
-  echo -e "  ${BOLD}1.${NC} API key ${DIM}(Anthropic Console -> fizeteses/pay-as-you-go)${NC}"
-  echo -e "  ${BOLD}2.${NC} OAuth token ${DIM}(Pro/Max elofizetes - tokennel egy masik geprol)${NC}"
-  echo -e "  ${BOLD}3.${NC} Kihagyas ${DIM}(kesobb allitod be)${NC}"
-  echo ""
-  if [ "$IS_HEADLESS" = "true" ]; then
-    read -rp "$(_t prompt_auth_mode)" AUTH_MODE
-    AUTH_MODE=${AUTH_MODE:-2}
-  else
-    read -rp "$(_t prompt_auth_mode)" AUTH_MODE
-    AUTH_MODE=${AUTH_MODE:-3}
+    if [ "$IS_HEADLESS" = "true" ]; then
+      read -rp "$(_t prompt_auth_mode)" AUTH_MODE
+      AUTH_MODE=${AUTH_MODE:-2}
+    else
+      read -rp "$(_t prompt_auth_mode)" AUTH_MODE
+      AUTH_MODE=${AUTH_MODE:-3}
+    fi
   fi
 
   if [ "$AUTH_MODE" = "1" ]; then
@@ -716,9 +719,13 @@ else
     # flag to decide whether an install is finished or unfinished. It is not a
     # renunciation: completing the sign-in later stays available on request.
     CLAUDE_AUTH_DEFERRED=1
-    echo -e "  ${DIM}Kihagyva. Kesobb allitsd be:${NC}"
-    echo -e "  ${DIM}  export ANTHROPIC_API_KEY=sk-ant-...${NC}"
-    echo -e "  ${DIM}  vagy: claude setup-token (boengeszos gepen), majd export CLAUDE_CODE_OAUTH_TOKEN=...${NC}"
+    if [ "${WEBINAR_MAGUS_CLI_BOOTSTRAP:-0}" = "1" ]; then
+      echo -e "  ${DIM}Kihagyva. Kesobb allitsd be: a Webinár Mágus onboarding felületén.${NC}"
+    else
+      echo -e "  ${DIM}Kihagyva. Kesobb allitsd be:${NC}"
+      echo -e "  ${DIM}  export ANTHROPIC_API_KEY=sk-ant-...${NC}"
+      echo -e "  ${DIM}  vagy: claude setup-token (boengeszos gepen), majd export CLAUDE_CODE_OAUTH_TOKEN=...${NC}"
+    fi
   fi
 fi
 
@@ -728,6 +735,7 @@ fi
 # stale or the network blocks api.anthropic.com, agent create later bombs out
 # with "Failed to generate CLAUDE.md". Catch it here while the user is still in
 # front of the install script.
+if [ "${WEBINAR_MAGUS_CLI_BOOTSTRAP:-0}" != "1" ]; then
 echo ""
 echo -e "  ${DIM}Headless Claude Code teszt...${NC}"
 # The exit status here used to be `head`'s, not claude's: `VAR=$(cmd | head)`
@@ -748,6 +756,8 @@ else
   echo -e "    ${DIM}Kimenet: ${CLAUDE_PROBE_OUT:-<ures>}${NC}"
   echo -e "    ${DIM}Tipikus okok: nincs ervenyes auth, halozati problema, regi claude CLI.${NC}"
   echo -e "    ${DIM}Javitas: \`claude --version\` -> \`claude /login\` (vagy ANTHROPIC_API_KEY/CLAUDE_CODE_OAUTH_TOKEN beallitas) -> \`claude --print \"ping\"\` ujra.${NC}"
+fi
+
 fi
 
 # Ensure ~/.claude directory tree has correct ownership and permissions.
