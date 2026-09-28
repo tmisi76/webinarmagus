@@ -797,6 +797,12 @@ if ! node "$INSTALL_DIR/scripts/seed-autowebinar-mcp.mjs"; then
   warn "AutoWebinar MCP automatikus beállítása kimaradt; később a Beállításokból pótolható."
 fi
 
+# OpenAI/Gemini provider bridge. Claude és DeepSeek enélkül is működik,
+# ezért a bridge telepítési hibája nem blokkolja a teljes Webinár Mágus installt.
+if [ -f "$INSTALL_DIR/scripts/install-ai-provider-bridge.sh" ]; then
+  bash "$INSTALL_DIR/scripts/install-ai-provider-bridge.sh" || warn "AI Provider Bridge telepítése kimaradt; OpenAI/Gemini később pótolható."
+fi
+
 # Stamp the build-marker after a successful fresh-install build, mirroring the
 # update.sh self-heal (dist/.built-commit records the commit dist was built
 # from). On a build abort, fail()/the ERR-trap exit 1 BEFORE this line, so the
