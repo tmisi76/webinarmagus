@@ -536,7 +536,7 @@
         <div class="page-header-row">
           <div>
             <h1>Skillek</h1>
-            <p class="subtitle" data-i18n="skills.page_subtitle">A Claude Code által látott skillek (user mappa + plugin cache)</p>
+            <p class="subtitle" data-i18n="skills.page_subtitle">A Webinár Mágus által elérhető skillek (globális + ügynök-saját)</p>
           </div>
           <div style="display:flex;gap:8px;align-items:center">
             <button class="btn-secondary btn-compact" id="skillsExportBtn" data-i18n="skills.btn.export">
@@ -555,7 +555,7 @@
         </div>
         <div class="info-box" id="skillsInfoBox">
           Minden itt listázott skill automatikusan elérhető minden sub-agent számára, mert ugyanabban a HOME-ban futnak, mint a fő session.
-          A Claude CLI beépített slash-parancsai (init, review, security-review, loop, schedule, stb.) mindig elérhetők,
+          Az AI runtime beépített slash-parancsai (init, review, security-review, loop, schedule, stb.) mindig elérhetők,
           de itt nem szerepelnek, mert a `claude` binárisban élnek és nem fájlrendszeri források.
           Új skillt a jobb felső "Új skill" gombbal tudsz létrehozni vagy importálni.
         </div>
@@ -1105,7 +1105,7 @@
         <div class="page-header-row">
           <div>
             <h1 data-i18n="status.page_title">Státusz</h1>
-            <p class="subtitle" data-i18n="status.page_subtitle">Claude szolgáltatások állapota</p>
+            <p class="subtitle" data-i18n="status.page_subtitle">AI szolgáltatások állapota</p>
           </div>
           <button class="btn-secondary btn-compact" id="refreshStatusBtn" data-i18n="common.btn.refresh">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -2721,7 +2721,7 @@
             <button class="btn-secondary btn-compact agent-save-section" id="saveProfileBtn" data-i18n="common.btn.save">Mentés</button>
           </div>
           <div class="form-group" id="claudePlanGroup">
-            <label for="editAgentPlan" data-i18n="agents.settings.plan_label">Claude előfizetés</label>
+            <label for="editAgentPlan" data-i18n="agents.settings.plan_label">AI szolgáltatói profil</label>
             <select id="editAgentPlan"></select>
             <small id="editAgentPlanDesc" style="display:block;margin-top:6px;color:var(--text-muted);font-size:12px;line-height:1.4"></small>
             <button class="btn-secondary btn-compact agent-save-section" id="savePlanBtn" data-i18n="common.btn.save">Mentés</button>
