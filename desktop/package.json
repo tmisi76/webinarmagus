@@ -30,7 +30,8 @@
       "main.mjs",
       "preload.mjs",
       "renderer/**/*",
-      "build/**/*"
+      "build/**/*",
+      "bootstrap/**/*"
     ],
     "mac": {
       "category": "public.app-category.business",
