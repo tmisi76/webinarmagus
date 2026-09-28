@@ -14,6 +14,12 @@ import type { RouteContext } from './types.js'
 // so it is provable independent of the request pipeline; a manifest missing the
 // keys is returned untouched rather than throwing.
 export function buildManifest(raw: string, brandName: string): string {
+  // If the requested brand already matches the manifest's shipped short_name,
+  // return the original bytes unchanged. This keeps the distribution default
+  // (Webinár Mágus) byte-stable while still allowing custom install brands.
+  const shippedShortName = raw.match(/^\s*"short_name"\s*:\s*"([^"]*)"/m)?.[1]
+  if (shippedShortName === brandName) return raw
+
   return raw
     .replace(/^(\s*"name"\s*:\s*)"[^"]*"/m, (_m, p: string) => `${p}${JSON.stringify(`${brandName} Dashboard`)}`)
     .replace(/^(\s*"short_name"\s*:\s*)"[^"]*"/m, (_m, p: string) => `${p}${JSON.stringify(brandName)}`)
