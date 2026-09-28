@@ -1897,7 +1897,7 @@ AccuracySec=20s
 WantedBy=timers.target
 EOF
 
-# marveen-host-watchdog.service -- host/WSL-VM restart detector (btime-based).
+# webinar-magus-host-watchdog.service -- host/WSL-VM restart detector (btime-based).
 # Distinguishes a whole-VM restart (all units down at once, NOT an app crash)
 # from a service crash, and Telegrams it. See scripts/host-restart-watchdog.sh.
 cat >"$SYSTEMD_DIR/${SERVICE_ID}-host-watchdog.service" <<EOF
@@ -1909,7 +1909,7 @@ Wants=network-online.target
 [Service]
 Type=oneshot
 ExecStart=$INSTALL_DIR/scripts/host-restart-watchdog.sh
-Environment=MARVEEN_STORE=$INSTALL_DIR/store
+Environment=WEBINAR_MAGUS_STORE=$INSTALL_DIR/store
 Environment=TELEGRAM_ENV=$HOME/.claude/channels/telegram/.env
 Environment=PATH=$HOME/.local/bin:/usr/local/bin:/usr/bin:/bin
 Environment=HOME=$HOME
@@ -1921,7 +1921,7 @@ StandardError=journal
 WantedBy=default.target
 EOF
 
-# marveen-notify@.service -- templated app-crash notifier, fired by OnFailure=
+# webinar-magus-notify@.service -- templated app-crash notifier, fired by OnFailure=
 # drop-ins on the dashboard/channels units. OnFailure => app crash (vs the
 # host-watchdog's btime-change => host restart).
 cat >"$SYSTEMD_DIR/${SERVICE_ID}-notify@.service" <<EOF
