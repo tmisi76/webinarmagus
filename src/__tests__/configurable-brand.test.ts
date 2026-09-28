@@ -9,7 +9,7 @@ import {
   channelsLaunchdLabel,
   channelsPlistPath,
 } from '../web/main-agent.js'
-import { buildMarveenIdentityCore } from '../web/routes/marveen.js'
+import { buildWebinarMagusIdentityCore } from '../web/routes/marveen.js'
 
 // This suite proves the configurable-brand feature works under a NON-"marveen"
 // identity: it sets BRAND_NAME / BOT_NAME / MAIN_AGENT_ID / OWNER_NAME to
@@ -113,7 +113,7 @@ describe('launchd / channels label derivation for a non-marveen identity', () =>
 describe('identity payload core resolves from config, not the literal', () => {
   it('maps display name / brand / canonical id for a non-marveen identity', () => {
     const brandName = resolveBrandName(BRAND, AGENT_DISPLAY)
-    const core = buildMarveenIdentityCore(AGENT_DISPLAY, brandName, AGENT_ID)
+    const core = buildWebinarMagusIdentityCore(AGENT_DISPLAY, brandName, AGENT_ID)
     expect(core).toEqual({
       name: AGENT_DISPLAY,
       brandName: BRAND,
@@ -126,7 +126,7 @@ describe('identity payload core resolves from config, not the literal', () => {
 
   it('falls brandName back to the display name when no separate brand is set', () => {
     const brandName = resolveBrandName(undefined, AGENT_DISPLAY)
-    const core = buildMarveenIdentityCore(AGENT_DISPLAY, brandName, AGENT_ID)
+    const core = buildWebinarMagusIdentityCore(AGENT_DISPLAY, brandName, AGENT_ID)
     expect(core.brandName).toBe(AGENT_DISPLAY)
   })
 })
