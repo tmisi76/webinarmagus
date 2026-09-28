@@ -209,6 +209,7 @@ async function runtimeEnv() {
       provider,
       model,
       shell: [
+        'unset CLAUDE_CODE_OAUTH_TOKEN',
         'export ANTHROPIC_API_KEY=' + q(value),
         'unset ANTHROPIC_AUTH_TOKEN',
         'unset ANTHROPIC_BASE_URL',
@@ -223,6 +224,7 @@ async function runtimeEnv() {
       provider,
       model,
       shell: [
+        'unset CLAUDE_CODE_OAUTH_TOKEN',
         'unset ANTHROPIC_API_KEY',
         'export ANTHROPIC_AUTH_TOKEN=' + q(value),
         'export ANTHROPIC_BASE_URL=' + q('https://api.deepseek.com/anthropic'),
@@ -244,6 +246,7 @@ async function runtimeEnv() {
       provider,
       model,
       shell: [
+        'unset CLAUDE_CODE_OAUTH_TOKEN',
         'unset ANTHROPIC_API_KEY',
         'export ANTHROPIC_AUTH_TOKEN=' + q(bridgeToken),
         'export ANTHROPIC_BASE_URL=' + q('http://' + BRIDGE_HOST + ':' + BRIDGE_PORT),
