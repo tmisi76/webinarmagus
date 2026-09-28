@@ -9,19 +9,19 @@ function bumpAvatarEpoch() { _avatarEpoch = Date.now() }
 function avatarBust() { return _avatarEpoch ? `?t=${_avatarEpoch}` : '' }
 
 // === i18n runtime ===
-// Priority: localStorage['marveen.lang'] > DASHBOARD_LANG (server default, read
+// Priority: localStorage['webinar-magus.lang'] > DASHBOARD_LANG (server default, read
 // from /api/settings on init) > 'hu' (hardcoded fallback).
 // Rick's spec (kanban card 209696a9): t(key,params), window._i18n={hu,en},
 // window._lang; {name} interpolation; EN-fallback then key; dev-mode warning.
 ;(() => {
-  const LS_KEY = 'marveen.lang'
+  const LS_KEY = 'webinar-magus.lang'
   const VALID = new Set(['hu', 'en'])
 
   // Brand tokens ({brand} = product/brand name, {bot} = main agent display
-  // name, {agentId} = canonical slug) are filled from /api/marveen once it
+  // name, {agentId} = canonical slug) are filled from /api/webinar-magus once it
   // resolves (see initSidebarBrand). Until then these defaults keep a stock
   // install byte-identical. Explicit params passed to t() still win over them.
-  window._brandTokens = window._brandTokens || { brand: 'Webinár Mágus', bot: 'Webinár Mágus', agentId: 'marveen' }
+  window._brandTokens = window._brandTokens || { brand: 'Webinár Mágus', bot: 'Webinár Mágus', agentId: 'webinar-magus' }
 
   window.t = function t(key, params = {}) {
     const lang = window._lang || 'hu'
@@ -93,11 +93,11 @@ function avatarBust() { return _avatarEpoch ? `?t=${_avatarEpoch}` : '' }
 // strip it from the visible URL, and then inject it into every /api/* fetch
 // as a Bearer header so the server lets us through.
 
-// The main (channels) agent's real id. The backend /api/marveen route returns
+// The main (channels) agent's real id. The backend /api/webinar-magus route returns
 // the configured MAIN_AGENT_ID (NOT the literal "marveen") in window._marveen;
 // use this everywhere an agent id is sent to /api/agents/... or compared to a
 // fleet name, so the dashboard works on non-"marveen" installs. Falls back to
-// "marveen" only before /api/marveen has resolved (or on a legacy backend).
+// "marveen" only before /api/webinar-magus has resolved (or on a legacy backend).
 function mainAgentId() {
   return window._marveen?.agentId || 'marveen'
 }
@@ -243,7 +243,7 @@ function mainAgentId() {
   function showStandaloneTokenPrompt(tokenKey) {
     if (document.getElementById('mv-token-overlay')) return
     // Lang files are not yet loaded here; use a local inline lookup so EN mode works.
-    const _lang = localStorage.getItem('marveen.lang') || 'hu'
+    const _lang = localStorage.getItem('webinar-magus.lang') || 'hu'
     const _pwa = {
       hu: {
         title: 'Hozzáférés szükséges',
@@ -810,12 +810,12 @@ async function loadKanban() {
   try {
     // Always refresh the marveen config so values changed on the Settings page
     // (e.g. WIP limits) show up on the board on the next Kanban open, without a
-    // hard reload. The full /api/marveen payload includes kanbanAging, kanbanWip,
+    // hard reload. The full /api/webinar-magus payload includes kanbanAging, kanbanWip,
     // kanbanSwimlanes and kanbanLabels, so the labels (from the labels feature)
     // stay populated too. Also covers opening the Kanban page first, before the
     // Agents page populated window._marveen.
     try {
-      const mr = await fetch('/api/marveen')
+      const mr = await fetch('/api/webinar-magus')
       if (mr.ok) window._marveen = { ...(window._marveen || {}), ...(await mr.json()) }
     } catch { /* ignore -- aging/WIP/swimlanes/labels just won't render until _marveen loads */ }
     if (!kanbanGroupByInitialized) {
@@ -1522,7 +1522,7 @@ function createCardEl(card, embeddedChildren = []) {
 // each /move call names the owner as `actor`. That is what lets the backend tell
 // an assignment ("the owner dragged this onto you") apart from a self-pickup ("the
 // agent moved its own card"), and only wake the agent in the first case. Falls
-// back to undefined until /api/marveen has loaded -- an unnamed mover means the
+// back to undefined until /api/webinar-magus has loaded -- an unnamed mover means the
 // backend dispatches as it always did, never the opposite.
 function kanbanMoveActor() { return window._marveen?.ownerName || undefined }
 
@@ -2984,7 +2984,7 @@ async function loadAgents() {
     // older backend where the route 404s.
     const [agentsRes, marveenRes, fedStatus, ctxGuard] = await Promise.all([
       fetch('/api/agents'),
-      fetch('/api/marveen'),
+      fetch('/api/webinar-magus'),
       fetch('/api/federation/status').then((r) => (r.ok ? r.json() : null)).catch(() => null),
       // Same failure-proofing as federation status above: an older backend or a
       // transient error here must not take down the whole Agents page over a
@@ -3306,7 +3306,7 @@ async function openMainAgentDetail() {
   document.getElementById('agentDetailTitle').textContent = displayName
   const avatar = document.getElementById('agentDetailAvatar')
   avatar.className = 'detail-avatar gradient-1'
-  avatar.innerHTML = `<img src="/api/marveen/avatar${avatarBust()}" alt="${escapeHtml(displayName)}">`
+  avatar.innerHTML = `<img src="/api/webinar-magus/avatar${avatarBust()}" alt="${escapeHtml(displayName)}">`
   document.getElementById('agentDetailName').textContent = displayName
   document.getElementById('agentDetailDesc').textContent = m.description || ''
   document.getElementById('agentDetailModel').textContent = m.model || '-'
@@ -3358,7 +3358,7 @@ async function openMainAgentDetail() {
   // Webinár Mágus on Telegram instead.
   let mFull = m
   try {
-    const claudeRes = await fetch('/api/marveen')
+    const claudeRes = await fetch('/api/webinar-magus')
     if (claudeRes.ok) {
       mFull = await claudeRes.json()
       document.getElementById('editClaudeMd').value = mFull.claudeMd || ''
@@ -3499,17 +3499,17 @@ function renderAgents() {
   if (window._marveen) {
     const m = window._marveen
     const displayName = m.name || 'Webinár Mágus'
-    // The model is no longer hardcoded: /api/marveen reports the configured
+    // The model is no longer hardcoded: /api/webinar-magus reports the configured
     // model (readActiveModelFromProjectDir). Mirror the sub-agent card, which
     // uses the model value as both the badge label and class. Fall back to
-    // 'opus' only before /api/marveen has resolved (or on a legacy backend).
+    // 'opus' only before /api/webinar-magus has resolved (or on a legacy backend).
     const mainModelLabel = m.model || 'opus'
     const mainModelClass = m.model || 'opus'
     const mCard = document.createElement('div')
     mCard.className = 'agent-card marveen-card'
     mCard.innerHTML = `
       <div class="agent-card-top">
-        <div class="agent-avatar gradient-1"><img src="/api/marveen/avatar${avatarBust()}" alt="${escapeHtml(displayName)}"></div>
+        <div class="agent-avatar gradient-1"><img src="/api/webinar-magus/avatar${avatarBust()}" alt="${escapeHtml(displayName)}"></div>
         <div class="agent-card-info">
           <div class="agent-name">${escapeHtml(displayName)} <span class="marveen-badge">${t('agents.main_badge')}</span></div>
           <div class="agent-desc">${escapeHtml(m.description || '')}</div>
@@ -3949,7 +3949,7 @@ document.getElementById('avatarChangeBtn').addEventListener('click', () => {
   gallery.hidden = !gallery.hidden
   if (!gallery.hidden) {
     const isMainAgent = currentAgent && currentAgent.role === 'main'
-    const avatarEndpoint = isMainAgent ? '/api/marveen/avatar' : `/api/agents/${encodeURIComponent(currentAgent.name)}/avatar`
+    const avatarEndpoint = isMainAgent ? '/api/webinar-magus/avatar' : `/api/agents/${encodeURIComponent(currentAgent.name)}/avatar`
 
     const grid = document.getElementById('detailAvatarGrid')
     grid.innerHTML = ''
@@ -3967,7 +3967,7 @@ document.getElementById('avatarChangeBtn').addEventListener('click', () => {
           if (!res.ok) throw new Error()
           showToast(t('agents.toast.avatar_updated'))
           bumpAvatarEpoch()
-          const imgUrl = isMainAgent ? `/api/marveen/avatar${avatarBust()}` : `/api/agents/${encodeURIComponent(currentAgent.name)}/avatar${avatarBust()}`
+          const imgUrl = isMainAgent ? `/api/webinar-magus/avatar${avatarBust()}` : `/api/agents/${encodeURIComponent(currentAgent.name)}/avatar${avatarBust()}`
           document.getElementById('agentDetailAvatar').innerHTML = `<img src="${imgUrl}" alt="">`
           gallery.hidden = true
           loadAgents()
@@ -4034,7 +4034,7 @@ document.getElementById('avatarChangeBtn').addEventListener('click', () => {
   async function uploadAvatarFile(file) {
     if (!currentAgent) return
     const isMainAgent = currentAgent.role === 'main'
-    const endpoint = isMainAgent ? '/api/marveen/avatar' : `/api/agents/${encodeURIComponent(currentAgent.name)}/avatar`
+    const endpoint = isMainAgent ? '/api/webinar-magus/avatar' : `/api/agents/${encodeURIComponent(currentAgent.name)}/avatar`
     const form = new FormData()
     form.append('avatar', file, file.name)
     try {
@@ -4042,7 +4042,7 @@ document.getElementById('avatarChangeBtn').addEventListener('click', () => {
       if (!res.ok) throw new Error()
       showToast(t('agents.toast.avatar_uploaded'))
       bumpAvatarEpoch()
-      const imgUrl = isMainAgent ? `/api/marveen/avatar${avatarBust()}` : `/api/agents/${encodeURIComponent(currentAgent.name)}/avatar${avatarBust()}`
+      const imgUrl = isMainAgent ? `/api/webinar-magus/avatar${avatarBust()}` : `/api/agents/${encodeURIComponent(currentAgent.name)}/avatar${avatarBust()}`
       document.getElementById('agentDetailAvatar').innerHTML = `<img src="${imgUrl}" alt="">`
       document.getElementById('detailAvatarGallery').hidden = true
       resetAvatarUpload()
@@ -4143,7 +4143,7 @@ document.getElementById('marveenRestartBtn').addEventListener('click', async () 
   const btn = document.getElementById('marveenRestartBtn')
   btn.disabled = true
   try {
-    const res = await fetch('/api/marveen/restart', { method: 'POST' })
+    const res = await fetch('/api/webinar-magus/restart', { method: 'POST' })
     if (!res.ok) {
       const err = await res.json().catch(() => ({}))
       throw new Error(err.error || t('agents.toast.restart_failed'))
@@ -4221,7 +4221,7 @@ let currentChannelProvider = 'telegram'
 // a UI nem hardcode-olt 'telegram'-mal indul barmelyik oldalra is navigal a user.
 ;(async function initChannelProviderDefault() {
   try {
-    const res = await fetch('/api/marveen')
+    const res = await fetch('/api/webinar-magus')
     if (!res.ok) return
     const data = await res.json()
     if (!data.channelProvider || data.channelProvider === currentChannelProvider) return
@@ -4384,7 +4384,7 @@ async function loadAvailableModels() {
     }
     // Browse popup = the curation UI (tick/untick which manual models exist).
     // MAIN AGENT ONLY -- sub-agents just pick from the curated dropdown above.
-    // Keep the name checks for compatibility with legacy /api/marveen payloads
+    // Keep the name checks for compatibility with legacy /api/webinar-magus payloads
     // that predate the explicit role field.
     const mid = (typeof mainAgentId === 'function') ? mainAgentId() : ''
     const isMainAgent = !!currentAgent && (
@@ -5204,7 +5204,7 @@ document.getElementById('saveMcpJsonBtn').addEventListener('click', async () => 
 // === Channel tab ===
 // Provider-aware "connected" check: a sub-agent record carries hasTelegram /
 // hasDiscord / hasSlack flags from the backend, Webinár Mágus carries the same
-// shape from /api/marveen. Falls back to hasTelegram for legacy callers.
+// shape from /api/webinar-magus. Falls back to hasTelegram for legacy callers.
 function agentIsConnected(agent) {
   if (!agent) return false
   if (currentChannelProvider === 'discord') return !!agent.hasDiscord
@@ -6380,7 +6380,7 @@ const CADENCE_ICON = { 0: '⚡', 1: '☀️', 2: '📅', 3: '🗓️', 5: '•' 
 function makeScheduleRow(task) {
     const row = document.createElement('div')
     row.className = 'schedule-row'
-    const agent = scheduleAgents.find(a => a.name === task.agent) || { name: task.agent || mainAgentId(), avatar: '/api/marveen/avatar', label: task.agent || mainAgentId() }
+    const agent = scheduleAgents.find(a => a.name === task.agent) || { name: task.agent || mainAgentId(), avatar: '/api/webinar-magus/avatar', label: task.agent || mainAgentId() }
 
     row.innerHTML = `
       <div class="schedule-agent-avatar">
@@ -6563,7 +6563,7 @@ function renderTimeline(tasks) {
   }
 
   for (const [agentName, agTasks] of Object.entries(agentTasks)) {
-    const agent = scheduleAgents.find(a => a.name === agentName) || { name: agentName, avatar: '/api/marveen/avatar', label: agentName }
+    const agent = scheduleAgents.find(a => a.name === agentName) || { name: agentName, avatar: '/api/webinar-magus/avatar', label: agentName }
 
     const row = document.createElement('div')
     row.className = 'timeline-row'
@@ -6708,7 +6708,7 @@ function renderWeekView(data) {
       const count = tasks.length
 
       tasks.forEach((task, idx) => {
-        const agent = scheduleAgents.find(a => a.name === task.agent) || { name: task.agent || mainAgentId(), avatar: '/api/marveen/avatar' }
+        const agent = scheduleAgents.find(a => a.name === task.agent) || { name: task.agent || mainAgentId(), avatar: '/api/webinar-magus/avatar' }
 
         const card = document.createElement('div')
         card.className = 'week-task-card'
@@ -11309,7 +11309,7 @@ function renderTeamGraph(container, data, opts = {}) {
     div.dataset.agentId = node.id
     if (activeIds.has(node.id)) div.classList.add('team-node-active')
     const avatarUrl = node.id === mainAgentId
-      ? `/api/marveen/avatar${avatarBust()}`
+      ? `/api/webinar-magus/avatar${avatarBust()}`
       : `/api/agents/${encodeURIComponent(node.id)}/avatar${avatarBust()}`
     div.innerHTML = `
       <div class="team-node-avatar"><img src="${avatarUrl}" alt="${escapeHtml(node.label || node.id)}" onerror="this.style.display='none'"></div>
@@ -11524,13 +11524,13 @@ function chatAvatarHtml(agentName, size = 32) {
   const hasAvatar = chatAgentHasAvatar.get(lower)
   if (!hasAvatar) return chatMonogramEl(agentName, size)
   const src = lower === mainAgentId().toLowerCase()
-    ? `/api/marveen/avatar${avatarBust()}`
+    ? `/api/webinar-magus/avatar${avatarBust()}`
     : `/api/agents/${encodeURIComponent(lower)}/avatar${avatarBust()}`
   return `<img class="chat-avatar" src="${src}" width="${size}" height="${size}" alt="${escapeHtml(agentName)}" data-agent-name="${escapeHtml(agentName)}" onerror="chatImgError(this)">`
 }
 
 // Guard against the boot race: the Messages page can be opened before the
-// initial /api/marveen fetch resolves window._marveen. Until it does,
+// initial /api/webinar-magus fetch resolves window._marveen. Until it does,
 // mainAgentId() returns the literal 'marveen' FALLBACK, which IS a real agent
 // id on a default install but is NOT one wherever the main agent was renamed
 // -- composing to it creates a phantom "marveen" thread that sits pending
@@ -11539,7 +11539,7 @@ function chatAvatarHtml(agentName, size = 32) {
 async function ensureMainAgentLoaded() {
   if (window._marveen?.agentId) return
   try {
-    const r = await fetch('/api/marveen')
+    const r = await fetch('/api/webinar-magus')
     if (r.ok) window._marveen = { ...(window._marveen || {}), ...(await r.json()) }
   } catch { /* sidebar falls back to the literal id -- best effort */ }
 }
@@ -11551,14 +11551,14 @@ async function loadMessagesPage() {
 
 const CHAT_SYSTEM_AGENTS = new Set(['heartbeat','telegram-coordinator','channel-coordinator'])
 // The owner's own message thread is pinned to the top and labelled "<name> (te)".
-// The owner display name comes from the backend (OWNER_NAME via /api/marveen ->
+// The owner display name comes from the backend (OWNER_NAME via /api/webinar-magus ->
 // window._marveen.ownerName), not a hardcoded literal, so a renamed install
 // recognizes its real owner. Empty until _marveen resolves (no false match).
 function chatOwnerName() { return window._marveen?.ownerName || '' }
 
 // The main agent's display name (BOT_NAME). mainAgentId() is the routing id
 // (e.g. "marveen") used for matching, avatar lookups and API calls; this is
-// what the user should SEE. Sourced from the backend (/api/marveen -> name,
+// what the user should SEE. Sourced from the backend (/api/webinar-magus -> name,
 // mirrored into _brandTokens.bot by initSidebarBrand), so a renamed install
 // shows its real bot name. Falls back to the id before _marveen resolves.
 // Regression #519/#520: keep the four Messages-view display points routing the
@@ -12135,7 +12135,7 @@ async function loadOverview() {
 }
 
 // Brand mark + product-brand chrome: pull the configured brand from
-// /api/marveen and apply it to the dashboard chrome (tab title, mobile topbar,
+// /api/webinar-magus and apply it to the dashboard chrome (tab title, mobile topbar,
 // sidebar name, updates subtitle). brandName is the product/system name and is
 // distinct from the main agent's display name; the backend defaults brandName to
 // BOT_NAME, so a brand-unaware install keeps showing the agent name. If the
@@ -12143,12 +12143,12 @@ async function loadOverview() {
 async function initSidebarBrand() {
   try {
     const img = document.createElement('img')
-    img.src = '/api/marveen/avatar' + avatarBust()
+    img.src = '/api/webinar-magus/avatar' + avatarBust()
     img.onload = () => {
       const mark = document.getElementById('sidebarBrandMark')
       if (mark) { mark.textContent = ''; mark.appendChild(img) }
     }
-    const res = await fetch('/api/marveen')
+    const res = await fetch('/api/webinar-magus')
     if (res.ok) {
       const m = await res.json()
       const brand = m.brandName || m.name
@@ -12711,7 +12711,7 @@ function wireOnboarding(step) {
         const d = await res.json().catch(() => ({}))
         if (!res.ok) { idBtn.disabled = false; onbMsg(d.error || t('onboarding.error'), true); return }
         // The name is live in the .env now -- repaint the chrome from
-        // /api/marveen so the sidebar/title reflect it immediately, and
+        // /api/webinar-magus so the sidebar/title reflect it immediately, and
         // surface the automatic channels restart (same pattern as the
         // claude-auth step) instead of silently advancing.
         if (typeof initSidebarBrand === 'function') initSidebarBrand()
@@ -12823,7 +12823,7 @@ function wireOnboarding(step) {
     const loadPending = async () => {
       try {
         // Same boot race the Messages page already guards against (see
-        // ensureMainAgentLoaded): until /api/marveen resolves window._marveen,
+        // ensureMainAgentLoaded): until /api/webinar-magus resolves window._marveen,
         // mainAgentId() returns the literal 'marveen' fallback. On a renamed
         // install that is not the main agent, so the backend takes the
         // sub-agent branch, finds no such agent dir and answers 404 -- and the
