@@ -43,7 +43,14 @@ TODAY="$(date +%F)"
 #   $2: stub exit code
 run_case() {
   local mode="$1" stub_rc="$2"
-  local dir="$TMP/inst.$RANDOM"
+  # Every run_case is evaluated inside its own command-substitution subshell.
+  # $RANDOM is not a safe uniqueness primitive across those sibling subshells:
+  # they can inherit the same PRNG state and pick the same first value. If that
+  # happens, the successful case leaves today's stamp behind and the following
+  # refusal case falsely looks delivered. mktemp gives each case an actually
+  # unique directory under the shared throwaway root.
+  local dir
+  dir="$(mktemp -d "$TMP/inst.XXXXXX")"
   mkdir -p "$dir/scripts" "$dir/store" "$dir/bin"
   cp "$REPO/scripts/morning-briefing.sh" "$dir/scripts/"
   printf 'ALLOWED_CHAT_ID=1234\n' > "$dir/.env"
