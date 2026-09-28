@@ -302,6 +302,7 @@ export async function tryHandleOnboarding(ctx: RouteContext): Promise<boolean> {
         precisionLabel: provider.precisionLabel,
         hungarianLabel: provider.hungarianLabel,
         recommendation: provider.recommendation,
+        decisionLabel: provider.decisionLabel,
         recommendedFor: provider.recommendedFor,
         caveat: provider.caveat ?? null,
         configured: getSecret(provider.vaultKeyId) !== null,
