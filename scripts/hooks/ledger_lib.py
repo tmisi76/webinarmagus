@@ -116,14 +116,14 @@ def agent_id_from_payload(payload):
     (CLAUDE_CONFIG_DIR), which never changes within a session -- that is the
     identity anchor. Resolution order:
       1. transcript_path  (immutable per session)
-      2. MARVEEN_AGENT_ID (explicit launcher override)
+      2. WEBINAR_MAGUS_AGENT_ID (explicit launcher override)
       3. cwd              (last resort, for callers that have nothing else)
     """
     payload = payload or {}
     agent = _agent_id_from_config_path(payload.get("transcript_path"))
     if agent:
         return agent
-    env_id = os.environ.get("MARVEEN_AGENT_ID", "").strip()
+    env_id = os.environ.get("WEBINAR_MAGUS_AGENT_ID", "").strip()
     if env_id:
         return env_id
     return agent_id_from_cwd(payload.get("cwd"))
@@ -226,9 +226,9 @@ def agent_id_from_cwd(cwd):
         # already answered, because it finds no outbound under the real id.
         return main_agent_id()
     # Outside the install tree: never invent an agent id from the directory name.
-    # The launcher can name the session explicitly via MARVEEN_AGENT_ID; failing
+    # The launcher can name the session explicitly via WEBINAR_MAGUS_AGENT_ID; failing
     # that, attribute to the main agent rather than a bogus basename.
-    env_id = os.environ.get("MARVEEN_AGENT_ID", "").strip()
+    env_id = os.environ.get("WEBINAR_MAGUS_AGENT_ID", "").strip()
     if env_id:
         return env_id
     return main_agent_id()
