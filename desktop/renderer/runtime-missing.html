@@ -27,6 +27,13 @@ btn.addEventListener('click', async ()=>{
     hb.textContent='Homebrew megnyitása'
     hb.onclick=()=>window.WebinarMagusDesktop.openHomebrew()
     document.querySelector('.actions').appendChild(hb)
+  } else if(result?.reason==='wsl-required'){
+    status.textContent='A Windows háttérmotorhoz WSL szükséges. A telepítés után a Windows újraindítást kérhet.'
+    const wsl=document.createElement('button')
+    wsl.className='secondary'
+    wsl.textContent='WSL telepítése'
+    wsl.onclick=()=>window.WebinarMagusDesktop.installWsl()
+    document.querySelector('.actions').appendChild(wsl)
   } else {
     status.textContent='A telepítés nem fejeződött be. Próbáld újra.'
   }
