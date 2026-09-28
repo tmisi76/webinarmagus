@@ -34,6 +34,7 @@ export interface AiProviderOption {
   precisionLabel: string
   hungarianLabel: string
   recommendation: string
+  decisionLabel: string
   recommendedFor: string[]
   caveat?: string
   models: AiModelOption[]
@@ -53,6 +54,7 @@ export const AI_PROVIDER_CATALOG: readonly AiProviderOption[] = [
     precisionLabel: 'Erős agent és elemző munka',
     hungarianLabel: 'Jó magyar',
     recommendation: 'AJÁNLOTT: nagy volumenű háttérmunkára',
+    decisionLabel: 'LEGJOBB OLCSÓ HÁTTÉR-AGENT',
     recommendedFor: ['automatizmusok', 'adat- és funnel elemzés', 'háttér-agentek', 'kód és eszközhasználat'],
     caveat: 'Peak/off-peak árazás: csúcsidőn kívül kb. félár.',
     models: [
@@ -89,6 +91,7 @@ export const AI_PROVIDER_CATALOG: readonly AiProviderOption[] = [
     precisionLabel: 'Nagyon precíz agentmunka',
     hungarianLabel: 'Nagyon jó magyar',
     recommendation: 'AJÁNLOTT: összetett, precíz agent feladatokra',
+    decisionLabel: 'LEGJOBB PRECÍZ AGENTMUNKA',
     recommendedFor: ['stratégia', 'hosszú több-lépéses feladat', 'precíz ellenőrzés', 'kód és tool use'],
     models: [
       {
@@ -171,6 +174,7 @@ export const AI_PROVIDER_CATALOG: readonly AiProviderOption[] = [
     precisionLabel: 'Erős multimodális és agent munka',
     hungarianLabel: 'Kiváló magyar',
     recommendation: 'AJÁNLOTT: magyar tartalomhoz és multimodális munkához',
+    decisionLabel: 'LEGJOBB MULTIMODÁLIS ÁR-ÉRTÉK',
     recommendedFor: ['magyar szöveg', 'prezentáció és kreatív elemzés', 'képes/PDF input', 'agent workflow'],
     caveat: 'A $0.75 / $3.75 ár 2026. december 31-ig érvényes promóciós standard ár.',
     models: [
