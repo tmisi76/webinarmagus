@@ -27,7 +27,7 @@ vi.mock('../logger.js', () => ({
 }))
 vi.mock('../db.js', () => ({ createAgentMessage: vi.fn() }))
 vi.mock('../web/channel-monitor.js', () => ({
-  hardRestartMarveenChannels: vi.fn(() => ({ ok: true })),
+  hardRestartWebinarMagusChannels: vi.fn(() => ({ ok: true })),
   lastMainRespawnAt: () => null,
   MARVEEN_POST_RESPAWN_GRACE_MS: 0,
 }))
