@@ -1374,10 +1374,10 @@ echo -e "  Szolgaltatasok ujrainditasa..."
 RESULT_PHASE="restart"
 # The finalizer owns the result file from here; do not let our EXIT trap write.
 FINALIZE_LAUNCHED=1
-# MARVEEN_UPDATE_NOTIFY=1 (set by the unattended auto-update task) makes the
+# WEBINAR_MAGUS_UPDATE_NOTIFY=1 (set by the unattended auto-update task) makes the
 # finalizer send a channel report after the restart+health outcome. A manual
 # dashboard-triggered run leaves it unset -> silent (the UI polls the status).
-FINALIZE_ARGS=("$INSTALL_DIR" "$OLD_VERSION_FULL" "$OLD_VERSION" "${WEB_PORT:-3420}" "$RESULT_FILE" "$BUILT_COMMIT_FILE" "$NEW_VERSION" "${NODE_PIN_DIR:-}" "${MARVEEN_UPDATE_NOTIFY:-0}")
+FINALIZE_ARGS=("$INSTALL_DIR" "$OLD_VERSION_FULL" "$OLD_VERSION" "${WEB_PORT:-3420}" "$RESULT_FILE" "$BUILT_COMMIT_FILE" "$NEW_VERSION" "${NODE_PIN_DIR:-}" "${WEBINAR_MAGUS_UPDATE_NOTIFY:-0}")
 XDG_RUN="${XDG_RUNTIME_DIR:-/run/user/$(id -u 2>/dev/null)}"
 if command -v systemd-run >/dev/null 2>&1 && [ -d "$XDG_RUN" ]; then
   # Linux/systemd: the finalizer runs inside a transient scope whose OWN cgroup
