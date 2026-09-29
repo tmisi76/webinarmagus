@@ -3,6 +3,7 @@ $BaseUrl = if ($env:WEBINAR_MAGUS_DOWNLOAD_BASE) { $env:WEBINAR_MAGUS_DOWNLOAD_B
 $Channel = if ($env:WEBINAR_MAGUS_CHANNEL) { $env:WEBINAR_MAGUS_CHANNEL } else { "latest" }
 $ArchiveUrl = "$BaseUrl/$Channel/webinar-magus-runtime.tar.gz"
 $ChecksumUrl = "$ArchiveUrl.sha256"
+$Repair = if ($env:WEBINAR_MAGUS_REPAIR -eq "1") { "1" } else { "0" }
 
 Write-Host ""
 Write-Host "  🪄 Webinár Mágus" -ForegroundColor Cyan
@@ -25,7 +26,19 @@ set -euo pipefail
 INSTALL_DIR=\"\${WEBINAR_MAGUS_INSTALL_DIR:-\$HOME/webinar-magus}\"
 TMP_DIR=\"\$(mktemp -d /tmp/webinar-magus-cli.XXXXXX)\"
 trap 'rm -rf \"\$TMP_DIR\"' EXIT
-if [ -e \"\$INSTALL_DIR\" ]; then echo 'Már létezik Webinár Mágus telepítés.'; exit 3; fi
+if [ -e \"\$INSTALL_DIR\" ]; then
+  if [ '$Repair' = '1' ]; then
+    BACKUP_DIR=\"\${INSTALL_DIR}.backup-\$(date +%Y%m%d-%H%M%S)\"
+    echo \"Meglévő telepítés biztonsági mentése: \$BACKUP_DIR\"
+    mv \"\$INSTALL_DIR\" \"\$BACKUP_DIR\"
+  else
+    echo \"Már létezik Webinár Mágus telepítés itt: \$INSTALL_DIR\"
+    echo \"Indítás: cd \$INSTALL_DIR && bash scripts/start.sh\"
+    echo \"Frissítés: cd \$INSTALL_DIR && bash update.sh\"
+    echo \"Tiszta javító telepítés PowerShellből: set WEBINAR_MAGUS_REPAIR=1, majd futtasd újra a telepítőt.\"
+    exit 3
+  fi
+fi
 curl -fL --retry 3 '$ArchiveUrl' -o \"\$TMP_DIR/runtime.tar.gz\"
 curl -fL --retry 3 '$ChecksumUrl' -o \"\$TMP_DIR/runtime.tar.gz.sha256\"
 EXPECTED=\"\$(awk '{print \$1}' \"\$TMP_DIR/runtime.tar.gz.sha256\")\"
