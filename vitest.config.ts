@@ -11,7 +11,7 @@ export default defineConfig({
     // vendor/**: vendored third-party trees carry their OWN test files with
     // their own dependencies (the gmail fork's tests import nodemailer etc.,
     // which the root npm ci never installs) -- collecting them makes CI red
-    // with zero failing tests, just three unloadable files (Marveen, #1224).
+    // with zero failing tests, just three unloadable files (WebinarMagus, #1224).
     // Running a vendor's suite is a separate workflow with the vendor's own
     // install, never this one.
     // dist/**: `npm run build` compiles every src/__tests__/*.test.ts into
@@ -41,7 +41,7 @@ export default defineConfig({
     //  - assert-supported-node: refuse to run on a Node whose ABI the installed
     //    native modules were not built for, which otherwise reds out 40 files
     //    with errors that look like bugs in those files (2026-08-17).
-    //  - default-ssh-dir-seam: point MARVEEN_SSH_DIR at a scratch directory so no
+    //  - default-ssh-dir-seam: point WEBINAR_MAGUS_SSH_DIR at a scratch directory so no
     //    test can write the operator's REAL ~/.ssh/authorized_keys. Not covered by
     //    the live-install gate above: that one inspects the CHECKOUT, and ~/.ssh is
     //    HOME-scoped -- a clean worktree run leaked 62 real keys (ENROLL813,
