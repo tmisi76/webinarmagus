@@ -86,11 +86,11 @@ describe('decideLive', () => {
 
 describe('collector mapping', () => {
   it('mapPr: merged wins over closed for state and date; missing dates drop the row', () => {
-    const merged = mapPr('marveen', { number: 1, mergedAt: '2026-09-01T10:00:00Z', closedAt: '2026-09-01T10:00:00Z', baseRefName: 'develop', author: { login: 'x' }, additions: 1, deletions: 2, changedFiles: 3, title: 't' })
+    const merged = mapPr('webinar_magus', { number: 1, mergedAt: '2026-09-01T10:00:00Z', closedAt: '2026-09-01T10:00:00Z', baseRefName: 'develop', author: { login: 'x' }, additions: 1, deletions: 2, changedFiles: 3, title: 't' })
     expect(merged).toMatchObject({ state: 'merged', closed_date: '2026-09-01', base_branch: 'develop', author: 'x' })
-    const rejected = mapPr('marveen', { number: 2, mergedAt: null, closedAt: '2026-09-02T10:00:00Z', baseRefName: 'main', title: 't' })
+    const rejected = mapPr('webinar_magus', { number: 2, mergedAt: null, closedAt: '2026-09-02T10:00:00Z', baseRefName: 'main', title: 't' })
     expect(rejected).toMatchObject({ state: 'closed', closed_date: '2026-09-02' })
-    expect(mapPr('marveen', { number: 3, mergedAt: null, closedAt: null })).toBeNull()
+    expect(mapPr('webinar_magus', { number: 3, mergedAt: null, closedAt: null })).toBeNull()
   })
 
   it('prNumbersFromMessages: "(#N)" refs, deduped; noise ignored', () => {
@@ -115,11 +115,11 @@ describe('GET /api/pr-ledger', () => {
       INSERT INTO pr_ledger (repo, number, closed_date, base_branch, author, additions, deletions, files, state, title, is_live, live_since, measured_at)
       VALUES (?, ?, ?, ?, 'a', 1, 1, 1, ?, 't', ?, NULL, 0)
     `)
-    ins.run('marveen', 1, '2026-08-10', 'develop', 'merged', 1)
-    ins.run('marveen', 2, '2026-08-20', 'develop', 'merged', 0)
-    ins.run('marveen', 3, '2026-09-07', 'develop', 'closed', 0)
-    ins.run('marveen-io', 9, '2026-08-15', 'main', 'merged', 1)
-    ins.run('marveen', 4, '2026-07-01', 'develop', 'merged', 1) // window elott
+    ins.run('webinar_magus', 1, '2026-08-10', 'develop', 'merged', 1)
+    ins.run('webinar_magus', 2, '2026-08-20', 'develop', 'merged', 0)
+    ins.run('webinar_magus', 3, '2026-09-07', 'develop', 'closed', 0)
+    ins.run('webinar_magus-io', 9, '2026-08-15', 'main', 'merged', 1)
+    ins.run('webinar_magus', 4, '2026-07-01', 'develop', 'merged', 1) // window elott
   })
 
   it('window is inclusive on both ends and the summary matches the rows', async () => {
@@ -132,10 +132,10 @@ describe('GET /api/pr-ledger', () => {
   })
 
   it('repo filter narrows both rows and summary', async () => {
-    const { ctx, out } = fakeGet('/api/pr-ledger?from=2026-08-01&to=2026-09-07&repo=marveen-io')
+    const { ctx, out } = fakeGet('/api/pr-ledger?from=2026-08-01&to=2026-09-07&repo=webinar_magus-io')
     await tryHandlePrLedger(ctx)
     expect(out.body.summary).toEqual({ closed: 1, merged: 1, rejected: 0, live: 1 })
-    expect(out.body.rows[0].repo).toBe('marveen-io')
+    expect(out.body.rows[0].repo).toBe('webinar_magus-io')
   })
 
   it('missing or malformed dates are refused with 400, naming the format', async () => {
@@ -153,13 +153,13 @@ describe('GET /api/pr-ledger', () => {
 })
 
 // ---------------------------------------------------------------------------
-// Degraded-mode upsert (Marveen review blocker on #1234): a FAILED unreleased
+// Degraded-mode upsert (WebinarMagus review blocker on #1234): a FAILED unreleased
 // measurement must never flip stored develop rows live. The preserve statement
 // updates the facts but leaves is_live/live_since untouched; the full one
 // overwrites both (that is what makes releases retroactive).
 // ---------------------------------------------------------------------------
 describe('degraded-mode upsert semantics', () => {
-  const base = { repo: 'marveen', closed_date: '2026-09-01', base_branch: 'develop', author: 'a', additions: 1, deletions: 1, files: 1, state: 'merged', title: 'eredeti' }
+  const base = { repo: 'webinar_magus', closed_date: '2026-09-01', base_branch: 'develop', author: 'a', additions: 1, deletions: 1, files: 1, state: 'merged', title: 'eredeti' }
 
   beforeEach(() => { initDatabase(':memory:') })
 
