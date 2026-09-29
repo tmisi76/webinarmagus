@@ -26,10 +26,10 @@ console.log(`\n${BOLD}Webinár Mágus állapot${RESET}\n`)
 // Node.js
 const nodeVersion = process.version
 const major = parseInt(nodeVersion.slice(1), 10)
-if (major >= 20) {
+if (major >= 22) {
   ok('Node.js', nodeVersion)
 } else {
-  fail('Node.js', `${nodeVersion} — minimum v20 szukseges`)
+  fail('Node.js', `${nodeVersion} — minimum v22 szükséges`)
 }
 
 // Claude CLI
