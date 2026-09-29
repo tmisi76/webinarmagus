@@ -18,6 +18,7 @@ on:
 permissions:
   contents: read
   id-token: write
+  actions: write
 
 jobs:
   bundle:
@@ -93,6 +94,19 @@ jobs:
               --upload-file "release-cli/$NAME" \
               "$BASE/latest/$NAME"
           done
+
+      - name: Dispatch public CLI smoke test
+        if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && startsWith(github.ref, 'refs/tags/v')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          EXPECTED_VERSION="${GITHUB_REF_NAME#v}"
+          gh workflow run cli-release-smoke.yml \
+            --ref main \
+            -f expected_version="$EXPECTED_VERSION"
+          echo "cli-release-smoke dispatched for $EXPECTED_VERSION"
 
       - uses: actions/upload-artifact@v4
         with:
