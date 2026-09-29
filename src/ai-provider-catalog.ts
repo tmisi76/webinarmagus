@@ -53,8 +53,8 @@ export const AI_PROVIDER_CATALOG: readonly AiProviderOption[] = [
     priceLabel: 'Nagyon olcsó',
     precisionLabel: 'Erős agent és elemző munka',
     hungarianLabel: 'Jó magyar',
-    recommendation: 'AJÁNLOTT: nagy volumenű háttérmunkára',
-    decisionLabel: 'LEGJOBB OLCSÓ HÁTTÉR-AGENT',
+    recommendation: 'Jó választás nagy volumenű háttérmunkára',
+    decisionLabel: 'OLCSÓ HÁTTÉRMUNKA',
     recommendedFor: ['automatizmusok', 'adat- és funnel elemzés', 'háttér-agentek', 'kód és eszközhasználat'],
     caveat: 'Peak/off-peak árazás: csúcsidőn kívül kb. félár.',
     models: [
@@ -85,13 +85,13 @@ export const AI_PROVIDER_CATALOG: readonly AiProviderOption[] = [
     vaultKeyId: 'ANTHROPIC_API_KEY',
     apiKeyLabel: 'Anthropic API kulcs',
     apiKeyPlaceholder: 'sk-ant-api...',
-    recommendedModel: 'claude-sonnet-5',
+    recommendedModel: 'claude-sonnet-5-5',
     priceLevel: 'kozepes',
     priceLabel: 'Közepes / prémium',
     precisionLabel: 'Nagyon precíz agentmunka',
     hungarianLabel: 'Nagyon jó magyar',
-    recommendation: 'AJÁNLOTT: összetett, precíz agent feladatokra',
-    decisionLabel: 'LEGJOBB PRECÍZ AGENTMUNKA',
+    recommendation: 'Jó választás összetett, precíz agent feladatokra',
+    decisionLabel: 'PRECÍZ ÖSSZETETT MUNKA',
     recommendedFor: ['stratégia', 'hosszú több-lépéses feladat', 'precíz ellenőrzés', 'kód és tool use'],
     models: [
       {
@@ -103,8 +103,8 @@ export const AI_PROVIDER_CATALOG: readonly AiProviderOption[] = [
         bestFor: ['gyors rutinmunka', 'osztályozás', 'egyszerű agent lépések'],
       },
       {
-        id: 'claude-sonnet-5',
-        name: 'Claude Sonnet 5',
+        id: 'claude-sonnet-5-5',
+        name: 'Claude Sonnet 5.5',
         tier: 'recommended',
         inputUsdPerM: 2,
         outputUsdPerM: 10,
@@ -132,8 +132,8 @@ export const AI_PROVIDER_CATALOG: readonly AiProviderOption[] = [
     priceLabel: 'Olcsótól prémiumig',
     precisionLabel: 'Kiváló általános munka és döntés',
     hungarianLabel: 'Kiváló magyar',
-    recommendation: 'AJÁNLOTT: magyar marketing, stratégia és általános munkára',
-    decisionLabel: 'LEGJOBB MAGYAR MARKETING / ÁR-ÉRTÉK',
+    recommendation: 'Jó választás magyar marketinghez, stratégiához és általános munkára',
+    decisionLabel: 'MAGYAR MARKETING / ÁR-ÉRTÉK',
     recommendedFor: ['magyar szövegírás', 'marketing', 'stratégia', 'kutatás', 'automatizálás'],
     models: [
       {
@@ -174,8 +174,8 @@ export const AI_PROVIDER_CATALOG: readonly AiProviderOption[] = [
     priceLabel: 'Jó ár/érték',
     precisionLabel: 'Erős multimodális és agent munka',
     hungarianLabel: 'Kiváló magyar',
-    recommendation: 'AJÁNLOTT: magyar tartalomhoz és multimodális munkához',
-    decisionLabel: 'LEGJOBB MULTIMODÁLIS ÁR-ÉRTÉK',
+    recommendation: 'Jó választás magyar tartalomhoz és multimodális munkához',
+    decisionLabel: 'MULTIMODÁLIS ÁR-ÉRTÉK',
     recommendedFor: ['magyar szöveg', 'prezentáció és kreatív elemzés', 'képes/PDF input', 'agent workflow'],
     caveat: 'A $0.75 / $3.75 ár 2026. december 31-ig érvényes promóciós standard ár.',
     models: [
