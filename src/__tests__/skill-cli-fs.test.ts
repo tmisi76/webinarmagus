@@ -22,14 +22,14 @@ let elozoHome: string | undefined
 let tmp: string
 
 beforeEach(() => {
-  elozoHome = process.env.MARVEEN_SKILL_HOME
+  elozoHome = process.env.WEBINAR_MAGUS_SKILL_HOME
   tmp = mkdtempSync(join(tmpdir(), 'skill-cli-fs-'))
-  process.env.MARVEEN_SKILL_HOME = join(tmp, 'skill')
+  process.env.WEBINAR_MAGUS_SKILL_HOME = join(tmp, 'skill')
 })
 
 afterEach(() => {
-  if (elozoHome === undefined) delete process.env.MARVEEN_SKILL_HOME
-  else process.env.MARVEEN_SKILL_HOME = elozoHome
+  if (elozoHome === undefined) delete process.env.WEBINAR_MAGUS_SKILL_HOME
+  else process.env.WEBINAR_MAGUS_SKILL_HOME = elozoHome
   rmSync(tmp, { recursive: true, force: true })
 })
 
@@ -98,7 +98,7 @@ describe('skill-fajlok kiirasa', () => {
 
   it('alkonyvtarba is ir', () => {
     const cel = join(tmp, 'cel')
-    const kiirt = writeSkillFiles(cel, [{ relPath: 'marveen-upload/SKILL.md', content: '# x\n' }])
+    const kiirt = writeSkillFiles(cel, [{ relPath: 'webinar-magus-upload/SKILL.md', content: '# x\n' }])
     expect(existsSync(kiirt[0])).toBe(true)
     expect(readFileSync(kiirt[0], 'utf8')).toBe('# x\n')
   })

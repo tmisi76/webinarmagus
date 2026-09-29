@@ -72,7 +72,7 @@ afterEach(async () => {
 })
 
 function kornyezet() {
-  return { ...process.env, MARVEEN_SKILL_HOME: join(tmp, 'skill') }
+  return { ...process.env, WEBINAR_MAGUS_SKILL_HOME: join(tmp, 'skill') }
 }
 
 async function skill(...argv: string[]) {

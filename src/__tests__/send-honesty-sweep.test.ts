@@ -12,7 +12,7 @@ import { join } from 'node:path'
 // confirmed delivery. These tests are EMPIRICAL (staged trees, PATH-stubbed
 // curl, nothing leaves the machine) so that running them against the pre-fix
 // scripts fails: the old senders were silent and stamped state up front --
-// that is the red-before baseline Marveen required (msg 16061).
+// that is the red-before baseline WebinarMagus required (msg 16061).
 const ROOT = join(__dirname, '..', '..')
 const FAKE_TOKEN = '1234567890:TESTTOKENTESTTOKEN'
 
@@ -108,7 +108,7 @@ describe('unit-fail-notify.sh: honest journal, exit 0 by design', () => {
     const { bin } = stageTree(['unit-fail-notify.sh'])
     const tgEnv = join(stage, 'tg.env')
     writeFileSync(tgEnv, `TELEGRAM_BOT_TOKEN=${FAKE_TOKEN}\n`)
-    return { bin, env: { TELEGRAM_ENV: tgEnv, MARVEEN_ALERT_CHAT_ID: '42' } }
+    return { bin, env: { TELEGRAM_ENV: tgEnv, WEBINAR_MAGUS_ALERT_CHAT_ID: '42' } }
   }
   it('confirmed delivery is stated in the journal', () => {
     const { bin, env } = setup()
@@ -168,9 +168,9 @@ describe('host-restart-watchdog.sh: one-shot notice retries until delivered', ()
     writeFileSync(tgEnv, `TELEGRAM_BOT_TOKEN=${FAKE_TOKEN}\n`)
     const env = {
       HOSTWD_PROC_STAT: procStat,
-      MARVEEN_STORE: join(stage, 'store'),
+      WEBINAR_MAGUS_STORE: join(stage, 'store'),
       TELEGRAM_ENV: tgEnv,
-      MARVEEN_ALERT_CHAT_ID: '42',
+      WEBINAR_MAGUS_ALERT_CHAT_ID: '42',
     }
     return { bin, env, procStat, state: join(stage, 'store', '.last-btime') }
   }
