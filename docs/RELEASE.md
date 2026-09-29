@@ -21,18 +21,18 @@ Nincs hosszú életű feltöltési token, amit a felhasználónak vagy a reposit
 A release branch:
 
 ```
-release/v0.1.5
+release/v0.1.6
 ```
 
 A branch push után a `release-kickoff` workflow ellenőrzi:
 
 1. a branch verzióját;
 2. a `package.json` verzióját;
-3. hogy a `v0.1.5` tag még nem létezik.
+3. hogy a `v0.1.6` tag még nem létezik.
 
 A runtime feltöltés hitelesítését a külön `runtime-bundle` workflow GitHub OIDC tokenje végzi; kézzel kezelt release secret nem szükséges.
 
-Siker esetén létrehozza a `v0.1.5` taget.
+Siker esetén létrehozza a `v0.1.6` taget.
 
 A `release-kickoff` a tag létrehozása után explicit `workflow_dispatch` eseménnyel elindítja a `runtime-bundle` workflow-t a tagen. Ez azért szükséges, mert a GitHub nem indít új workflow-t egy `GITHUB_TOKEN`-nel létrehozott tag push eseményéből. A runtime workflow elkészíti és publikálja:
 
@@ -42,7 +42,7 @@ A `release-kickoff` a tag létrehozása után explicit `workflow_dispatch` esem�
 
 Publikáció:
 
-- verziózott: `/downloads/webinar-magus/v0.1.5/`
+- verziózott: `/downloads/webinar-magus/v0.1.6/`
 - aktuális: `/downloads/webinar-magus/latest/`
 
 ## Telepítés
