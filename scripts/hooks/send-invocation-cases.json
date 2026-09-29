@@ -13,7 +13,7 @@
     },
     {
       "name": "reading the mail script",
-      "cmd": "cat /Users/marvin/ClaudeClaw/scripts/support-mail/send.py",
+      "cmd": "cat /Users/tester/ClaudeClaw/scripts/support-mail/send.py",
       "expected": false
     },
     {
@@ -63,7 +63,7 @@
     },
     {
       "name": "mail script via python with recipient",
-      "cmd": "python3 /Users/marvin/ClaudeClaw/scripts/support-mail/send.py --to a@b.hu --subject \"X\" --body \"Y\"",
+      "cmd": "python3 /Users/tester/ClaudeClaw/scripts/support-mail/send.py --to a@b.hu --subject \"X\" --body \"Y\"",
       "expected": true
     },
     {
