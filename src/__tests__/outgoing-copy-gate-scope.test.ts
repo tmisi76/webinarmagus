@@ -45,7 +45,7 @@ describe('outgoing-copy gate: content cannot fake a send (the four measured FP c
 
   it('READING the send script passes (cat, grep --to)', () => {
     // Iris's real case: a file read classified as a send.
-    expect(isSend('cat /Users/marvin/ClaudeClaw/scripts/support-mail/send.py')).toBe(false)
+    expect(isSend('cat /Users/tester/ClaudeClaw/scripts/support-mail/send.py')).toBe(false)
     expect(isSend('grep -n -- "--to" scripts/support-mail/send.py')).toBe(false)
   })
 
@@ -65,7 +65,7 @@ describe('outgoing-copy gate: content cannot fake a send (the four measured FP c
 
 describe('outgoing-copy gate: every real send shape still fires (no false negatives from the narrowing)', () => {
   it('send.py invoked with a recipient fires (python3 and direct path)', () => {
-    expect(isSend('python3 /Users/marvin/ClaudeClaw/scripts/support-mail/send.py --to a@b.hu --subject "X" --body "Y"')).toBe(true)
+    expect(isSend('python3 /Users/tester/ClaudeClaw/scripts/support-mail/send.py --to a@b.hu --subject "X" --body "Y"')).toBe(true)
     expect(isSend('./scripts/support-mail/send.py --to=a@b.hu < /tmp/body.txt')).toBe(true)
   })
 
