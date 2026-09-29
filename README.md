@@ -4,7 +4,7 @@
 
 **Önálló AI marketing- és ügyfélszerző csapat webináriumhoz, saleshez, automatizáláshoz és kampányokhoz.**
 
-> Státusz: **v0.1 CLI release candidate**
+> Státusz: **v0.1.1 CLI release**
 
 A Webinár Mágus egy telepíthető, többügynökös AI rendszer az AutoWebinar ökoszisztémához. A cél, hogy egyetlen felületen lehessen kampányt tervezni, webináriumot elemezni, prezentációt és scriptet készíteni, hirdetést és emailt írni, funnelhibákat keresni, leadeket kezelni és feladatokat specialista AI ügynököknek delegálni.
 
