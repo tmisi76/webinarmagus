@@ -27,10 +27,10 @@
 # override envs are test seams, not configuration).
 set -u
 
-STATE="${MIO_PRECHECK_STATE:-/Users/marvin/ClaudeClaw/store/mio-kozosseg-orszem-state.json}"
+STATE="${MIO_PRECHECK_STATE:-/Users/tester/ClaudeClaw/store/mio-kozosseg-orszem-state.json}"
 NODE="${MIO_PRECHECK_NODE:-/opt/homebrew/bin/node}"
 SUPABASE="${MIO_PRECHECK_SUPABASE:-/opt/homebrew/bin/supabase}"
-VAULT_RESOLVE="${MIO_PRECHECK_VAULT:-/Users/marvin/ClaudeClaw/scripts/vault-resolve.mjs}"
+VAULT_RESOLVE="${MIO_PRECHECK_VAULT:-/Users/tester/ClaudeClaw/scripts/vault-resolve.mjs}"
 PROJECT_REF="${MIO_PRECHECK_PROJECT_REF:-fpxycpxdxgifimbmwgzj}"
 
 fail_open() { echo "mio-orszem-precheck: $1" >&2; exit 3; }

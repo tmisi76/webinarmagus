@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { isSafeMethod, originMatchesServedHost, isBlockedCrossOriginWrite } from '../web/csrf-origin.js'
 
 const allow = new Set(['http://localhost:3420', 'http://127.0.0.1:3420'])
-const TS = 'marvins-mac-mini.tail1501e6.ts.net'
+const TS = 'testers-mac-mini.tail1501e6.ts.net'
 const TS_ORIGIN = `https://${TS}`
 
 describe('isSafeMethod', () => {

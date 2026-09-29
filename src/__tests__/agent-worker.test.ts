@@ -66,12 +66,12 @@ describe('configDirKeychainService', () => {
   // deletes this exact entry so the freshly-seeded file becomes authoritative.
   // Verified live 2026-06-10 against the webinarmagus-worker config dir.
   it('derives the sha256[0:8] service suffix (verified live vector)', () => {
-    expect(configDirKeychainService('/Users/marvin/.webinarmagus-worker/.claude-config'))
-      .toBe('Claude Code-credentials-26d50192')
+    expect(configDirKeychainService('/Users/tester/.webinarmagus-worker/.claude-config'))
+      .toBe('Claude Code-credentials-eef6600c')
   })
 
   it('is path-specific: a different config dir hashes to a different service', () => {
-    const a = configDirKeychainService('/Users/marvin/.webinarmagus-worker/.claude-config')
+    const a = configDirKeychainService('/Users/tester/.webinarmagus-worker/.claude-config')
     const b = configDirKeychainService('/tmp/some-other-config')
     expect(a).not.toBe(b)
     expect(b.startsWith('Claude Code-credentials-')).toBe(true)

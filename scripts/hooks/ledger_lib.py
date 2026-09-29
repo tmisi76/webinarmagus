@@ -154,7 +154,7 @@ def _agent_id_from_config_path(path):
     #    by the session's STARTING cwd, flattened: /a/b -> "-a-b". Every fleet
     #    agent's tmux session runs this way (measured 2026-08-28: the live
     #    samu session's transcript sits under
-    #    ~/.claude/projects/-Users-marvin-ClaudeClaw-agents-samu/), so the
+    #    ~/.claude/projects/-Users-tester-ClaudeClaw-agents-samu/), so the
     #    agent id is IN the path -- mapping the whole family to the main agent
     #    would be the original bug mirrored. Parse the segment instead.
     seg_agent = _agent_id_from_project_segment(path, install)

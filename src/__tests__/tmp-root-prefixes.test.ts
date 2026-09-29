@@ -27,24 +27,24 @@ describe('isTmpRootedPath', () => {
 
   it('refuses the exact scratchpad shape a fleet agent measures from', () => {
     // The real path from the 2026-09-12 measurement, macOS-resolved.
-    expect(isTmpRootedPath('/private/tmp/claude-501/-Users-marvin-ClaudeClaw-agents-geri/x/scratchpad/mv')).toBe(true)
+    expect(isTmpRootedPath('/private/tmp/claude-501/-Users-tester-ClaudeClaw-agents-geri/x/scratchpad/mv')).toBe(true)
   })
 
   it('allows a home-rooted worktree', () => {
-    expect(isTmpRootedPath('/Users/marvin/claw-test')).toBe(false)
+    expect(isTmpRootedPath('/Users/tester/claw-test')).toBe(false)
     expect(isTmpRootedPath('/home/runner/work/webinarmagus/webinarmagus')).toBe(false)
   })
 
   it('does NOT refuse a home path that merely CONTAINS a tmp segment', () => {
     // The guard asks whether the ROOT is transient, not whether the string
     // mentions tmp anywhere -- otherwise a legitimate ~/tmp-notes/ checkout dies.
-    expect(isTmpRootedPath('/Users/marvin/tmp/claw-test')).toBe(false)
-    expect(isTmpRootedPath('/Users/marvin/var/tmp/claw')).toBe(false)
+    expect(isTmpRootedPath('/Users/tester/tmp/claw-test')).toBe(false)
+    expect(isTmpRootedPath('/Users/tester/var/tmp/claw')).toBe(false)
   })
 
   it('handles a trailing slash the same way', () => {
     expect(isTmpRootedPath('/private/tmp/x/')).toBe(true)
-    expect(isTmpRootedPath('/Users/marvin/x/')).toBe(false)
+    expect(isTmpRootedPath('/Users/tester/x/')).toBe(false)
   })
 })
 

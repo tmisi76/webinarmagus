@@ -161,13 +161,4 @@ jobs:
           grep -q '#2563EB' /tmp/runtime-check/web/style.css
           grep -q '#0EA5E9' /tmp/runtime-check/web/style.css
 
-          LEGACY_MATCHES="$(
-            grep -RIlE \
-              'Marveen|MARVEEN_|/api/marveen|marveen-marketplace|tmisi76/webinar-magus' \
-              /tmp/runtime-check 2>/dev/null || true
-          )"
-          if [ -n "$LEGACY_MATCHES" ]; then
-            echo "::error::Legacy Marveen/repository references found in published runtime:"
-            echo "$LEGACY_MATCHES"
-            exit 1
-          fi
+          node /tmp/runtime-check/scripts/check-legacy-brand-names.mjs /tmp/runtime-check

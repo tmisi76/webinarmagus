@@ -23,9 +23,9 @@ Determinism/cost unchanged: GitNexus's default build is embedding-free
 ## Install (per repo)
 ```bash
 # from inside the target repo (must already be `gitnexus analyze`-d once):
-/Users/marvin/ClaudeClaw/scripts/gitnexus/install-autorebuild.sh
+/Users/tester/ClaudeClaw/scripts/gitnexus/install-autorebuild.sh
 # or for another repo:
-/Users/marvin/ClaudeClaw/scripts/gitnexus/install-autorebuild.sh /path/to/repo
+/Users/tester/ClaudeClaw/scripts/gitnexus/install-autorebuild.sh /path/to/repo
 ```
 Idempotent: re-running updates the managed block in place and preserves any
 pre-existing `post-commit` hook content.
@@ -34,7 +34,7 @@ pre-existing `post-commit` hook content.
 ```bash
 cd /path/to/new/repo
 gitnexus analyze                       # initial index + AGENTS.md/CLAUDE.md + skills
-/Users/marvin/ClaudeClaw/scripts/gitnexus/install-autorebuild.sh
+/Users/tester/ClaudeClaw/scripts/gitnexus/install-autorebuild.sh
 # from now on every commit refreshes the graph in the background
 ```
 

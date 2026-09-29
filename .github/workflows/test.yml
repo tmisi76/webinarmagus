@@ -43,6 +43,8 @@ jobs:
           EOF
       - run: npm run typecheck
       - run: npm run syntax-check
+      - name: Legacy brand-name guard
+        run: node scripts/check-legacy-brand-names.mjs .
       - run: npm test
       # Shell-test wiring (SEEDREFRESH826 fold-in, from the #1066 verify): a
       # regression guard that only runs manually rots exactly like a one-shot

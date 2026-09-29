@@ -2144,7 +2144,7 @@ const WELCOME_STUCK = [
   '',
   '',
   SEP,
-  '❯ kepet: /Users/marvin/workspace/aahe486-screenshot.png',
+  '❯ kepet: /Users/tester/workspace/aahe486-screenshot.png',
   '  Olvasd be a Read tool-lal a kepfajlt, majd mondd meg: (1) mi ez az',
   '  alkalmazas, (2) a tablazat konkret ertekei. Roviden a vegeredmenyt.',
   '  </trusted-peer>',

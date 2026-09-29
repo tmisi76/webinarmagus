@@ -62,7 +62,7 @@ _args = [a for a in sys.argv[1:] if a != "--json"]
 JSON_KI = "--json" in sys.argv[1:]
 ROOTS = _args if _args else _alap_gyokerek(
     os.path.expanduser("~"),
-    os.environ.get("CLAUDECLAW_ROOT", "/Users/marvin/ClaudeClaw"),
+    os.environ.get("CLAUDECLAW_ROOT", "/Users/tester/ClaudeClaw"),
 )
 
 SKIP_DIR = {"node_modules", ".git", "dist", "build", ".next", "worktrees"}
@@ -235,7 +235,7 @@ if JSON_KI:
 # leltar, ami nem mondja meg, MIT nezett meg, tobbet allit, mint amit mert.
 print("=== A MERES HATOKORE (a szam ENNYIRE ervenyes, es semmivel sem tobbre) ===")
 for r in ROOTS:
-    print(f"  gyoker: {r.replace('/Users/marvin','~')}")
+    print(f"  gyoker: {r.replace('/Users/tester','~')}")
 print(f"  kihagyott konyvtarnevek: {', '.join(sorted(SKIP_DIR))}")
 print(f"  csak ezek a fajlnev-alakok: {NEV_OK.pattern}")
 print("  AMI EZEN KIVUL VAN, AZ NINCS MEGMERVE -- nem az, hogy tiszta.")

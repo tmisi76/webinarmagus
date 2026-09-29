@@ -461,8 +461,8 @@ interface AgentDetail extends AgentSummary {
 // pointed at a different working directory than the one being written.
 //
 // Measured on the live install, 2026-09-09, same moment, same process:
-//   agents/<main>  -> projects/-Users-marvin-ClaudeClaw-agents-webinarmagus  (exists) -> null
-//   PROJECT_ROOT   -> projects/-Users-marvin-ClaudeClaw                 (exists) -> claude-opus-5
+//   agents/<main>  -> projects/-Users-tester-ClaudeClaw-agents-webinarmagus  (exists) -> null
+//   PROJECT_ROOT   -> projects/-Users-tester-ClaudeClaw                 (exists) -> claude-opus-5
 // The old directory is not missing, which is why this never surfaced as an
 // error: it is a real directory holding another session's history, and it
 // simply has no current model to report.

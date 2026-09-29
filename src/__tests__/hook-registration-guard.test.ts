@@ -89,7 +89,7 @@ describe('isTemporaryRoot', () => {
     expect(isTemporaryRoot('/var/folders/a/b/T/x')).toBe(true)
   })
   it('false for a normal install root', () => {
-    expect(isTemporaryRoot('/Users/marvin/ClaudeClaw')).toBe(false)
+    expect(isTemporaryRoot('/Users/tester/ClaudeClaw')).toBe(false)
     expect(isTemporaryRoot('/opt/app')).toBe(false)
   })
   it('honours an injected OS tmpdir prefix (with or without trailing slash)', () => {

@@ -10,7 +10,7 @@ dashboard terminal, the webinarmaguschat web UI, or (2026-06-26) a stray
 auto-submitted suggestion. Its origin cannot be verified.
 
 That is not hypothetical. On 2026-06-26 a bare "mehet a restart" line reached
-viktormarvinja's pane interleaved with real Telegram traffic and triggered a
+testagent's pane interleaved with real Telegram traffic and triggered a
 session hard-restart. Viktor never saw that line in his own chat. The rule
 "only wrapped input is verified" existed, but it lived in a memory note, so it
 held only as long as the model happened to remember it.

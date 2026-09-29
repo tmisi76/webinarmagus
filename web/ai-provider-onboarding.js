@@ -26,12 +26,12 @@
 
   function html(status) {
     const legacy = status?.claudeAuthPresent && !status?.aiProviderConfigured
-      ? '<div class="onb-ai-legacy">Ezen a gépen már van működő Claude-hitelesítés. Ezt továbbra is használhatod, vagy beállíthatsz saját API szolgáltatót.</div>'
+      ? '<div class="onb-ai-legacy">Ezen a gépen már van meglévő Anthropic/Claude hitelesítés. Használhatod, de nem kötelező: bármelyik támogatott API szolgáltatót választhatod.</div>'
       : ''
     return `
       <div class="onb-ai-intro">
         <h3>Válaszd ki, melyik AI dolgozzon a Webinár Mágusban</h3>
-        <p>Az olcsó modellek jók a napi háttérmunkára, a prémium modellek a nehéz stratégiai és szövegírási feladatokra. Később ügynökönként is választhatsz más modellt.</p>
+        <p>Te döntöd el, melyik szolgáltatóval dolgozol. Nincs kötelező Claude-előfizetés: DeepSeek, Anthropic, OpenAI vagy Gemini API közül szabadon választhatsz, és később bármikor válthatsz. Ügynökönként külön modell is beállítható.</p>
       </div>
       ${legacy}
       <div id="onbAiProviderPicker" class="onb-ai-provider-grid">

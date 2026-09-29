@@ -25,8 +25,13 @@ describe('AI_PROVIDER_CATALOG', () => {
 
   it('uses the documented price/value defaults', () => {
     expect(findAiProvider('deepseek')?.recommendedModel).toBe('deepseek-flash')
-    expect(findAiProvider('anthropic')?.recommendedModel).toBe('claude-sonnet-5')
+    expect(findAiProvider('anthropic')?.recommendedModel).toBe('claude-sonnet-5-5')
     expect(findAiProvider('openai')?.recommendedModel).toBe('gpt-6-sol')
     expect(findAiProvider('google')?.recommendedModel).toBe('gemini-3.8-flash')
   })
+})
+
+it('lets the user choose every provider without a forced default', () => {
+  expect(AI_PROVIDER_CATALOG.map((p) => p.id)).toEqual(['deepseek', 'anthropic', 'openai', 'google'])
+  expect(new Set(AI_PROVIDER_CATALOG.map((p) => p.recommendedModel)).size).toBe(4)
 })
