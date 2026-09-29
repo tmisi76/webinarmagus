@@ -214,7 +214,7 @@ type GhCompare = {
   commits?: { sha: string; commit: { message: string; author: { name: string; date: string } } }[]
 }
 
-const GH_HEADERS = { 'Accept': 'application/vnd.github+json', 'User-Agent': 'marveen-update-check' }
+const GH_HEADERS = { 'Accept': 'application/vnd.github+json', 'User-Agent': 'webinar_magus-update-check' }
 
 // Fetch the GitHub compare of base...head. Returns the parsed body, the
 // sentinel { notFound: true } on a 404 (base or head not on the remote), or
@@ -366,7 +366,7 @@ export async function refreshUpdateStatus(): Promise<UpdateStatus> {
     // 1) find HEAD of the branch to compare against on THAT remote
     const branch = await branchOnRemote(remote)
     const latestRes = await fetch(`https://api.github.com/repos/${remote}/commits/${encodeURIComponent(branch)}`, {
-      headers: { 'Accept': 'application/vnd.github+json', 'User-Agent': 'marveen-update-check' },
+      headers: { 'Accept': 'application/vnd.github+json', 'User-Agent': 'webinar_magus-update-check' },
       signal: AbortSignal.timeout(TOOL_TIMEOUTS['github']),
     })
     if (!latestRes.ok) throw new Error(`GitHub /commits/${branch} -> ${latestRes.status}`)
