@@ -4,9 +4,14 @@ import path from 'node:path'
 const root = path.resolve(process.argv[2] || process.cwd())
 const forbidden = [
   ['mar', 'veen'].join(''),
-  ['marv', 'in'].join(''),
-  ['malv', 'in'].join(''),
-  ['mart', 'in'].join(''),
+  ['mar', 'ven'].join(''),
+  ['mar', 'ween'].join(''),
+  ['mar', 'vin'].join(''),
+  ['mar', 'win'].join(''),
+  ['mar', 'vyn'].join(''),
+  ['mal', 'vin'].join(''),
+  ['mar', 'tin'].join(''),
+  ['mar', 'tyn'].join(''),
 ]
 const forbiddenRepo = ['tmisi76', 'webinar-magus'].join('/')
 const skipDirs = new Set(['.git', 'node_modules', 'dist', 'coverage', 'release', 'test-results', 'playwright-report'])
