@@ -55,3 +55,163 @@ start_launchd_unit() {
   printf '%s' "$_slu_pid"
   unset _slu_label _slu_dir _slu_domain _slu_try
 }
+
+
+# ensure_core_launchd_units SERVICE_ID INSTALL_DIR
+# Create/repair the two core macOS LaunchAgents used by start.sh.
+# Safe to call on every start: files are rewritten only when missing or stale.
+ensure_core_launchd_units() {
+  _elu_id="$1"
+  _elu_install="$2"
+  _elu_dir="${PLIST_DIR:-$HOME/Library/LaunchAgents}"
+  _elu_domain="gui/$(id -u)"
+
+  mkdir -p "$_elu_dir" "$_elu_install/store"
+
+  _elu_node=""
+  if [ -n "${WEBINAR_MAGUS_NODE_PATH:-}" ] && [ -x "${WEBINAR_MAGUS_NODE_PATH:-}" ]; then
+    _elu_node="$WEBINAR_MAGUS_NODE_PATH"
+  elif command -v brew >/dev/null 2>&1; then
+    _elu_prefix="$(brew --prefix node@22 2>/dev/null || true)"
+    if [ -n "$_elu_prefix" ] && [ -x "$_elu_prefix/bin/node" ]; then
+      _elu_node="$_elu_prefix/bin/node"
+    fi
+  fi
+  if [ -z "$_elu_node" ]; then
+    _elu_node="$(command -v node 2>/dev/null || true)"
+  fi
+  if [ -z "$_elu_node" ] || [ ! -x "$_elu_node" ]; then
+    echo "ERROR: Node.js nem található a macOS háttérszolgáltatásokhoz." >&2
+    return 1
+  fi
+  _elu_node_dir="$(dirname "$_elu_node")"
+
+  _elu_dashboard="com.${_elu_id}.dashboard"
+  _elu_channels="com.${_elu_id}.channels"
+  _elu_dashboard_plist="$_elu_dir/${_elu_dashboard}.plist"
+  _elu_channels_plist="$_elu_dir/${_elu_channels}.plist"
+
+  _elu_rewrite_dashboard=0
+  if [ ! -f "$_elu_dashboard_plist" ] \
+    || ! grep -Fq "<string>${_elu_node}</string>" "$_elu_dashboard_plist" 2>/dev/null \
+    || ! grep -Fq "<string>${_elu_install}/dist/index.js</string>" "$_elu_dashboard_plist" 2>/dev/null \
+    || ! grep -Fq "<string>${_elu_install}</string>" "$_elu_dashboard_plist" 2>/dev/null; then
+    _elu_rewrite_dashboard=1
+  fi
+
+  _elu_rewrite_channels=0
+  if [ ! -f "$_elu_channels_plist" ] \
+    || ! grep -Fq "<string>${_elu_install}/scripts/channels.sh</string>" "$_elu_channels_plist" 2>/dev/null \
+    || ! grep -Fq "<string>${_elu_install}</string>" "$_elu_channels_plist" 2>/dev/null; then
+    _elu_rewrite_channels=1
+  fi
+
+  if [ "$_elu_rewrite_dashboard" = "1" ]; then
+    launchctl bootout "$_elu_domain/${_elu_dashboard}" >/dev/null 2>&1 || true
+    _elu_tmp="${_elu_dashboard_plist}.tmp.$$"
+    cat >"$_elu_tmp" <<PLISTEOF
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>${_elu_dashboard}</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>${_elu_node}</string>
+    <string>${_elu_install}/dist/index.js</string>
+  </array>
+  <key>WorkingDirectory</key>
+  <string>${_elu_install}</string>
+  <key>RunAtLoad</key>
+  <true/>
+  <key>KeepAlive</key>
+  <true/>
+  <key>StandardOutPath</key>
+  <string>${_elu_install}/store/dashboard.log</string>
+  <key>StandardErrorPath</key>
+  <string>${_elu_install}/store/dashboard.error.log</string>
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>PATH</key>
+    <string>${_elu_node_dir}:$HOME/.local/bin:/opt/homebrew/bin:$HOME/.bun/bin:/usr/local/bin:/usr/bin:/bin</string>
+    <key>HOME</key>
+    <string>$HOME</string>
+  </dict>
+  <key>SoftResourceLimits</key>
+  <dict>
+    <key>NumberOfFiles</key>
+    <integer>16384</integer>
+  </dict>
+  <key>HardResourceLimits</key>
+  <dict>
+    <key>NumberOfFiles</key>
+    <integer>32768</integer>
+  </dict>
+</dict>
+</plist>
+PLISTEOF
+    chmod 644 "$_elu_tmp"
+    mv "$_elu_tmp" "$_elu_dashboard_plist"
+  fi
+
+  if [ "$_elu_rewrite_channels" = "1" ]; then
+    launchctl bootout "$_elu_domain/${_elu_channels}" >/dev/null 2>&1 || true
+    _elu_tmp="${_elu_channels_plist}.tmp.$$"
+    cat >"$_elu_tmp" <<PLISTEOF
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>${_elu_channels}</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>${_elu_install}/scripts/channels.sh</string>
+  </array>
+  <key>WorkingDirectory</key>
+  <string>${_elu_install}</string>
+  <key>RunAtLoad</key>
+  <true/>
+  <key>KeepAlive</key>
+  <true/>
+  <key>ThrottleInterval</key>
+  <integer>30</integer>
+  <key>StandardOutPath</key>
+  <string>${_elu_install}/store/channels.log</string>
+  <key>StandardErrorPath</key>
+  <string>${_elu_install}/store/channels.error.log</string>
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>PATH</key>
+    <string>${_elu_node_dir}:$HOME/.local/bin:/opt/homebrew/bin:$HOME/.bun/bin:/usr/local/bin:/usr/bin:/bin</string>
+    <key>HOME</key>
+    <string>$HOME</string>
+    <key>USER</key>
+    <string>${USER:-$(id -un)}</string>
+    <key>TERM</key>
+    <string>xterm-256color</string>
+    <key>LANG</key>
+    <string>${LANG:-en_US.UTF-8}</string>
+  </dict>
+</dict>
+</plist>
+PLISTEOF
+    chmod 644 "$_elu_tmp"
+    mv "$_elu_tmp" "$_elu_channels_plist"
+  fi
+
+  plutil -lint "$_elu_dashboard_plist" >/dev/null 2>&1 || {
+    echo "ERROR: hibás dashboard LaunchAgent: $_elu_dashboard_plist" >&2
+    return 1
+  }
+  plutil -lint "$_elu_channels_plist" >/dev/null 2>&1 || {
+    echo "ERROR: hibás channels LaunchAgent: $_elu_channels_plist" >&2
+    return 1
+  }
+
+  unset _elu_id _elu_install _elu_dir _elu_domain _elu_node _elu_prefix _elu_node_dir
+  unset _elu_dashboard _elu_channels _elu_dashboard_plist _elu_channels_plist
+  unset _elu_rewrite_dashboard _elu_rewrite_channels _elu_tmp
+  return 0
+}
