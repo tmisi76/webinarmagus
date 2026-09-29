@@ -55,7 +55,7 @@ export function tryResolveFromPath(name: string): string | null {
 
 export function resolveFromPath(name: string): string {
   const resolved = tryResolveFromPath(name)
-  if (!resolved) throw new Error(`Required binary not found on PATH: ${name}`)
+  if (!resolved) throw new Error(`Required binary not found on PATH: ${name}. Run the Webinár Mágus installer/repair flow instead of starting the Node app directly. macOS/Linux: curl -fsSL https://autowebinar.hu/webinar-magus/install | bash -s -- --repair`)
   return resolved
 }
 
