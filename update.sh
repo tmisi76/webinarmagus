@@ -251,9 +251,9 @@ exec > >(tee -a "$UPDATE_LOG") 2>&1
 
 echo ""
 if [[ "${MARVEEN_LANG:-hu}" == "en" ]]; then
-  echo -e "${BOLD}Marveen update...${NC} [$(date -u +%Y-%m-%dT%H:%M:%SZ)]"
+  echo -e "${BOLD}Webinár Mágus update...${NC} [$(date -u +%Y-%m-%dT%H:%M:%SZ)]"
 else
-  echo -e "${BOLD}Marveen frissítés...${NC} [$(date -u +%Y-%m-%dT%H:%M:%SZ)]"
+  echo -e "${BOLD}Webinár Mágus frissítés...${NC} [$(date -u +%Y-%m-%dT%H:%M:%SZ)]"
 fi
 echo ""
 
