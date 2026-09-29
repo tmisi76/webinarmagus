@@ -11,12 +11,12 @@ import {
 } from '../web/main-agent.js'
 import { buildWebinarMagusIdentityCore } from '../web/routes/webinar-magus.js'
 
-// This suite proves the configurable-brand feature works under a NON-"webinarMagus"
+// This suite proves the configurable-brand feature works under a NON-"webinarmagus"
 // identity: it sets BRAND_NAME / BOT_NAME / MAIN_AGENT_ID / OWNER_NAME to
 // generic placeholder values and asserts that the identity payload, template
 // substitution, main-agent detection, launchd label derivation, and the
 // brand-population fallback all resolve from those values with NO literal
-// "webinarMagus"/"WebinarMagus" leaking through. The DEFAULT (WebinarMagus) is asserted
+// "webinarmagus"/"WebinarMagus" leaking through. The DEFAULT (WebinarMagus) is asserted
 // separately so the feature is also confirmed zero-change for existing installs.
 //
 // Generic, non-sensitive placeholders only.
@@ -49,8 +49,8 @@ describe('BRAND_NAME / BOT_NAME separation', () => {
 })
 
 describe('brandSlug derivation (mirrors the installer NFKD rule)', () => {
-  it('slugs the default brand back to "webinarMagus" so labels are unchanged by default', () => {
-    expect(brandSlug('WebinarMagus')).toBe('webinarMagus')
+  it('slugs the default brand back to "webinarmagus" so labels are unchanged by default', () => {
+    expect(brandSlug('WebinarMagus')).toBe('webinarmagus')
   })
 
   it('derives an ASCII slug for a non-webinarMagus brand', () => {
@@ -65,17 +65,17 @@ describe('brandSlug derivation (mirrors the installer NFKD rule)', () => {
     expect(brandSlug('Éxãmple Brand')).toBe('example-brand')
   })
 
-  it('falls back to "webinarMagus" for an empty/blank brand', () => {
-    expect(brandSlug('')).toBe('webinarMagus')
-    expect(brandSlug('   ')).toBe('webinarMagus')
-    expect(brandSlug('!!!')).toBe('webinarMagus')
+  it('falls back to "webinarmagus" for an empty/blank brand', () => {
+    expect(brandSlug('')).toBe('webinarmagus')
+    expect(brandSlug('   ')).toBe('webinarmagus')
+    expect(brandSlug('!!!')).toBe('webinarmagus')
   })
 })
 
 describe('resolveServiceId (launchd/systemd service id)', () => {
   it('equals MAIN_AGENT_ID for the default brand (default-safe labels)', () => {
     // Default brand slug == agent id -> same service id -> identical labels.
-    expect(resolveServiceId('webinarMagus', 'webinarMagus')).toBe('webinarMagus')
+    expect(resolveServiceId('webinarmagus', 'webinarmagus')).toBe('webinarmagus')
   })
 
   it('uses the brand slug for a distinct non-webinarMagus brand', () => {
@@ -104,9 +104,9 @@ describe('launchd / channels label derivation for a non-webinarMagus identity', 
     assertNoWebinarMagus(channelsPlistPath(serviceId), 'channelsPlistPath')
   })
 
-  it('keeps the default label as com.webinarMagus.channels (zero change for existing installs)', () => {
-    const serviceId = resolveServiceId(brandSlug('WebinarMagus'), 'webinarMagus')
-    expect(channelsLaunchdLabel(serviceId)).toBe('com.webinarMagus.channels')
+  it('keeps the default label as com.webinarmagus.channels (zero change for existing installs)', () => {
+    const serviceId = resolveServiceId(brandSlug('WebinarMagus'), 'webinarmagus')
+    expect(channelsLaunchdLabel(serviceId)).toBe('com.webinarmagus.channels')
   })
 })
 
