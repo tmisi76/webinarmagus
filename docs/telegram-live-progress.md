@@ -66,11 +66,11 @@ scripts/progress-mode.sh              mód-kapcsoló
 store/progress-config.json            ügynökönkénti mód + chatId
 store/progress-live-state.json        futó jelző üzenet-id-k, transcript offsetek
 store/progress-live.log               napló
-~/.config/systemd/user/marveen-progress.service
+~/.config/systemd/user/webinar_magus-progress.service
 ```
 
 ```bash
-systemctl --user status marveen-progress
+systemctl --user status webinar_magus-progress
 tail -f store/progress-live.log
 ```
 
