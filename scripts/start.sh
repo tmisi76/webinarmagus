@@ -1,11 +1,20 @@
 #!/bin/bash
 # Start main agent services
 
-# Dashboard port: env WEB_PORT, else the install .env, else the 3420 default.
-WEB_PORT="${WEB_PORT:-$(grep -E '^WEB_PORT=' "$(dirname "$0")/../.env" 2>/dev/null | head -1 | cut -d= -f2- | tr -d ' "')}"
-WEB_PORT="${WEB_PORT:-3420}"
-
 INSTALL_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+
+# One-time compatibility migration for installs created before the current
+# Webinár Mágus identity. Run BEFORE reading .env/service ids: update flows
+# deploy this start script first, then invoke it with the old persistent state.
+# Failure is non-fatal so a recoverable migration edge cannot brick startup;
+# without the marker the next start retries it.
+if [ -f "$INSTALL_DIR/scripts/migrate-legacy-brand-state.sh" ]; then
+  WEBINAR_MAGUS_INSTALL_DIR="$INSTALL_DIR" bash "$INSTALL_DIR/scripts/migrate-legacy-brand-state.sh"     || echo "WARNING: Webinár Mágus identity migration did not complete; it will retry on the next start." >&2
+fi
+
+# Dashboard port: env WEB_PORT, else the install .env, else the 3420 default.
+WEB_PORT="${WEB_PORT:-$(grep -E '^WEB_PORT=' "$INSTALL_DIR/.env" 2>/dev/null | head -1 | cut -d= -f2- | tr -d ' "')}"
+WEB_PORT="${WEB_PORT:-3420}"
 
 # Read only what this script actually needs; avoid `set -a && source .env`,
 # which would leak TELEGRAM_BOT_TOKEN into the environment and then into
