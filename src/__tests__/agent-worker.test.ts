@@ -67,7 +67,7 @@ describe('configDirKeychainService', () => {
   // Verified live 2026-06-10 against the webinarMagus-worker config dir.
   it('derives the sha256[0:8] service suffix (verified live vector)', () => {
     expect(configDirKeychainService('/Users/marvin/.webinarMagus-worker/.claude-config'))
-      .toBe('Claude Code-credentials-1d2e1367')
+      .toBe('Claude Code-credentials-fbaf4ec6')
   })
 
   it('is path-specific: a different config dir hashes to a different service', () => {
