@@ -128,7 +128,7 @@ assert_eq "second run prints nothing" "" "$OUT"
 printf '[Service]\n' > "$UNITS/webinar-magus-channels.service"
 OUT="$(run_fn "$UNITS")"
 assert_eq "second agent gets its own probe timer" "yes" \
-  "$([ -f "$UNITS/webinarMagus-channel-keepalive-probe.timer" ] && echo yes || echo no)"
+  "$([ -f "$UNITS/webinar-magus-channel-keepalive-probe.timer" ] && echo yes || echo no)"
 
 # 2e. No probe script (an install predating it) -> write nothing rather than
 #     enabling a unit whose ExecStart does not exist.
