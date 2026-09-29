@@ -21,7 +21,7 @@ const warn = (label: string, detail?: string) =>
 const fail = (label: string, detail?: string) =>
   console.log(`  ${RED}✗${RESET} ${label}${detail ? ` — ${detail}` : ''}`)
 
-console.log(`\n${BOLD}Marveen Allapot${RESET}\n`)
+console.log(`\n${BOLD}Webinár Mágus állapot${RESET}\n`)
 
 // Node.js
 const nodeVersion = process.version
@@ -35,9 +35,9 @@ if (major >= 20) {
 // Claude CLI
 try {
   const cv = execSync('claude --version 2>/dev/null', { encoding: 'utf-8' }).trim()
-  ok('Claude CLI', cv)
+  ok('AI runtime (Claude Code)', cv)
 } catch {
-  fail('Claude CLI', 'nem talalhato')
+  fail('AI runtime (Claude Code)', 'nem található')
 }
 
 // .env
