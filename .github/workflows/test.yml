@@ -43,6 +43,18 @@ jobs:
           EOF
       - run: npm run typecheck
       - run: npm run syntax-check
+      - name: Legacy brand-name guard
+        shell: bash
+        run: |
+          set -euo pipefail
+          MATCHES="$(grep -RIlE 'Mar[v]een|MARV[E]EN_|/api/mar[v]een|mar[v]een-marketplace|Marv[i]n|Malv[i]n|tmisi76/webinar-magus' . \
+            --exclude-dir=.git --exclude-dir=node_modules --exclude-dir=dist --exclude-dir=coverage \
+            2>/dev/null || true)"
+          if [ -n "$MATCHES" ]; then
+            echo "::error::Legacy brand/name references found:"
+            echo "$MATCHES"
+            exit 1
+          fi
       - run: npm test
       # Shell-test wiring (SEEDREFRESH826 fold-in, from the #1066 verify): a
       # regression guard that only runs manually rots exactly like a one-shot
