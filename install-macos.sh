@@ -196,7 +196,7 @@ if ! command -v brew &>/dev/null; then
 fi
 
 MISSING=0
-check_cmd "node" "Node.js (v20+)" || MISSING=1
+check_cmd "node" "Node.js (v22+)" || MISSING=1
 check_cmd "npm" "npm" || MISSING=1
 check_cmd "tmux" "tmux" || MISSING=1
 check_cmd "git" "git" || MISSING=1
@@ -204,8 +204,8 @@ check_cmd "git" "git" || MISSING=1
 # Check Node version
 if command -v node &>/dev/null; then
   NODE_VER=$(node -v | sed 's/v//' | cut -d. -f1)
-  if [ "$NODE_VER" -lt 20 ]; then
-    echo -e "  ${RED}✗${NC} Node.js verzio: $(node -v) (minimum: v20)"
+  if [ "$NODE_VER" -lt 22 ]; then
+    echo -e "  ${RED}✗${NC} Node.js verzio: $(node -v) (minimum: v22)"
     MISSING=1
   fi
 fi
