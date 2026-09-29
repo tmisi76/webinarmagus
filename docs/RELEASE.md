@@ -87,3 +87,7 @@ A CLI release csak akkor tekinthető késznek, ha:
 ## Desktop később
 
 A DMG/EXE build és signing kód megmarad, de a `v*` tag jelenleg nem indít desktop release buildet. Amikor rendelkezésre áll az Apple Developer és Windows code-signing credential, külön release-lépésben visszakapcsolható.
+
+## v0.1.2 release trigger
+
+A v0.1.2 a javított CLI telepítést, biztonságos --repair módot, teljes indítási dokumentációt és a tmisi76/webinarmagus repoátnevezéshez igazított release-hitelesítést adja ki.
