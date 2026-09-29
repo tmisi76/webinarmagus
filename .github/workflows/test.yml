@@ -6,7 +6,7 @@
 # Deliberately NOT a required status check yet: flipping it to required at
 # introduction would block every open PR whose head predates the workflow
 # (the required-check-never-ran class). The switch to required is a separate
-# owner/Marveen decision, gated on measuring how many open PRs run it green
+# owner/WebinarMagus decision, gated on measuring how many open PRs run it green
 # (decision msg 14205, recorded on the MARVCI822 card).
 name: test
 
