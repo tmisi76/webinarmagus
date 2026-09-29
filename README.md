@@ -114,6 +114,56 @@ http://localhost:3420
 
 macOS-en a telepítő launchd háttérszolgáltatásokat hoz létre, ezért normál esetben a Webinár Mágus a bejelentkezés után automatikusan is elindul.
 
+## Automatikus háttérben futás
+
+### macOS
+
+A Webinár Mágus LaunchAgentként fut. A háttérindítás létrehozásához vagy javításához elég egyszer lefuttatni:
+
+```bash
+cd ~/webinar-magus
+bash scripts/start.sh
+```
+
+A `start.sh` ellenőrzi a szükséges `tmux` komponenst, létrehozza vagy javítja a Webinár Mágus LaunchAgent fájlokat, és elindítja a dashboard + channels szolgáltatásokat. Ezután a rendszer a macOS-bejelentkezéskor automatikusan elindul.
+
+Ellenőrzés:
+
+```bash
+launchctl print "gui/$(id -u)/com.webinarmagus.dashboard" | grep -E 'state =|pid ='
+launchctl print "gui/$(id -u)/com.webinarmagus.channels" | grep -E 'state =|pid ='
+```
+
+### Windows
+
+A Windows telepítő automatikusan létrehoz egy `Webinar-Magus` Scheduled Taskot. Ez Windows-bejelentkezéskor felébreszti a WSL-t és elindítja a Webinár Mágust a háttérben.
+
+Ha ezt kézzel szeretnéd létrehozni vagy javítani, PowerShellben:
+
+```powershell
+$action = New-ScheduledTaskAction -Execute "$env:SystemRoot\System32\wsl.exe" -Argument 'bash -lc "cd ~/webinar-magus && bash scripts/start.sh"'
+$trigger = New-ScheduledTaskTrigger -AtLogOn
+$settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -StartWhenAvailable
+Register-ScheduledTask -TaskName "Webinar-Magus" -Action $action -Trigger $trigger -Settings $settings -Description "Webinár Mágus háttérindítás Windows bejelentkezéskor" -Force
+Start-ScheduledTask -TaskName "Webinar-Magus"
+```
+
+Ellenőrzés:
+
+```powershell
+Get-ScheduledTask -TaskName "Webinar-Magus"
+```
+
+## Első dashboard-belépés
+
+A dashboard API-védelemmel működik. Első megnyitáskor a `start.sh` a tokenes belépési URL-t írja ki:
+
+```text
+http://localhost:3420/?token=...
+```
+
+Ezt az URL-t nyisd meg első alkalommal. A böngésző ezután megjegyzi a hitelesítést, így később a sima `http://localhost:3420` cím is használható. A dashboard tokent ne oszd meg és ne tedd nyilvános helyre.
+
 ## Leállítás és újraindítás
 
 Leállítás:

@@ -54,3 +54,21 @@ exec bash ./install-linux.sh
 
 & wsl.exe bash -lc $cmd
 if ($LASTEXITCODE -ne 0) { throw "Webinár Mágus telepítés sikertelen (exit $LASTEXITCODE)." }
+
+# Wake WSL and start Webinár Mágus automatically at Windows logon. The Linux
+# systemd units cannot run while the WSL VM is asleep, so Windows itself owns
+# the wake-up trigger. start.sh is idempotent, therefore an already-running
+# runtime is safe.
+try {
+  $taskName = "Webinar-Magus"
+  $wslExe = Join-Path $env:SystemRoot "System32\wsl.exe"
+  $action = New-ScheduledTaskAction -Execute $wslExe -Argument 'bash -lc "cd ~/webinar-magus && bash scripts/start.sh"'
+  $trigger = New-ScheduledTaskTrigger -AtLogOn
+  $settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -StartWhenAvailable
+  Register-ScheduledTask -TaskName $taskName -Action $action -Trigger $trigger -Settings $settings -Description "Webinár Mágus háttérindítás Windows bejelentkezéskor" -Force | Out-Null
+  Start-ScheduledTask -TaskName $taskName
+  Write-Host "✓ Automatikus háttérindítás beállítva Windows bejelentkezéskor." -ForegroundColor Green
+} catch {
+  Write-Host "⚠ Az automatikus Windows háttérindítás nem állt be: $($_.Exception.Message)" -ForegroundColor Yellow
+  Write-Host "  A Webinár Mágus ettől még telepítve van és kézzel indítható." -ForegroundColor DarkGray
+}

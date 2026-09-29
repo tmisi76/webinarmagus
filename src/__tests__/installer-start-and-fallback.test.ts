@@ -119,7 +119,7 @@ describe('the ERR-trap abort is real (guards the premise of the tests above)', (
     // the enclosing `fi` (line 6); bash 5 (Linux CI) attributes the assignment
     // line itself (line 5). The guarded premise holds on both: the abort is
     // real, and the blamed line MAY be the enclosing fi rather than the
-    // failing capture -- the exact number is a bash-version detail (MARVCI822,
+    // failing capture -- the exact number is a bash-version detail (INSTCI822,
     // the first ubuntu run of the suite).
     expect(r.out).toMatch(/^TRAP:[56]$/)
     expect(r.out).not.toContain('REACHED')
@@ -303,6 +303,17 @@ describe('install-macos.sh -- launchd units must be verified, not assumed', () =
     const before = START.slice(0, banner)
     expect(before).toMatch(/if \[ -n "\$LAUNCHD_FAILED" \]/)
     expect(before).toMatch(/exit 1/)
+  })
+
+  it('scripts/start.sh self-heals tmux and missing/stale LaunchAgents on macOS', () => {
+    expect(START).toContain('command -v tmux')
+    expect(START).toContain('brew install tmux')
+    expect(START).toContain('ensure_core_launchd_units "$SERVICE_ID" "$INSTALL_DIR"')
+  })
+
+  it('scripts/start.sh prints the authenticated dashboard bootstrap URL when a token exists', () => {
+    expect(START).toContain('store/.dashboard-token')
+    expect(START).toContain('/?token=${DASH_TOKEN}')
   })
 })
 

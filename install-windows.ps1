@@ -318,9 +318,26 @@ console.log("  ✓ Claude Code first-run flags");
 # printed here follows a non-default WEB_PORT. Guarded: any failure keeps 3420.
 $WebPort = 3420
 try {
-  $envPort = (wsl bash -c "grep -E '^WEB_PORT=' '$installPath/.env' 2>/dev/null | head -1 | cut -d= -f2- | tr -d ' \"'").Trim()
+  $envPort = (wsl bash -c "grep -E '^WEB_PORT=' '$installPath/.env' 2>/dev/null | head -1 | cut -d= -f2- | tr -d ' '").Trim()
   if ($envPort) { $WebPort = $envPort }
 } catch { }
+
+# Windows logon autostart: wake WSL and invoke the same idempotent start.sh
+# used manually. This makes scheduled tasks/agents continue after a reboot
+# without requiring the user to open Ubuntu first.
+try {
+    $taskName = "Webinar-Magus"
+    $wslExe = Join-Path $env:SystemRoot "System32\wsl.exe"
+    $taskArgs = 'bash -lc "cd ' + $installPath + ' && bash scripts/start.sh"'
+    $action = New-ScheduledTaskAction -Execute $wslExe -Argument $taskArgs
+    $trigger = New-ScheduledTaskTrigger -AtLogOn
+    $settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -StartWhenAvailable
+    Register-ScheduledTask -TaskName $taskName -Action $action -Trigger $trigger -Settings $settings -Description "Webinár Mágus háttérindítás Windows bejelentkezéskor" -Force | Out-Null
+    Start-ScheduledTask -TaskName $taskName
+    Write-Host "  ✓ Automatikus háttérindítás beállítva" -ForegroundColor Green
+} catch {
+    Write-Host "  ! Automatikus háttérindítás nem állt be: $($_.Exception.Message)" -ForegroundColor Yellow
+}
 
 # Done!
 Write-Host ""
