@@ -1,0 +1,129 @@
+name: One-time safe full rebrand
+
+on:
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  rebrand:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Rewrite branding safely
+        shell: bash
+        run: |
+          python3 <<'PY'
+          from pathlib import Path
+          import re
+
+          root = Path(".")
+          protected = [
+              "https://github.com/Szotasz/marveen",
+              "Szotasz/marveen",
+              "maxineender/marveen",
+              "marveen-marketplace",
+              "app.marveen.io",
+              "marveen.io",
+          ]
+          text_exts = {
+              ".ts",".tsx",".js",".mjs",".cjs",".sh",".py",".md",".txt",".json",
+              ".yml",".yaml",".html",".css",".service",".timer",".example",".ps1"
+          }
+
+          filename_map = {
+              "marveen.ts": "webinar-magus.ts",
+              "marveen-lean-optimization-audit-2026-07-17-addendum.md": "webinar-magus-lean-optimization-audit-2026-07-17-addendum.md",
+              "marveen-notify@.service": "webinar-magus-notify@.service",
+              "marveen-channels.service": "webinar-magus-channels.service",
+              "marveen-host-watchdog.service": "webinar-magus-host-watchdog.service",
+          }
+
+          def protect(text):
+              vals = []
+              for i, literal in enumerate(protected):
+                  token = f"__UPSTREAM_LITERAL_{i}__"
+                  if literal in text:
+                      text = text.replace(literal, token)
+                      vals.append((token, literal))
+              return text, vals
+
+          def restore(text, vals):
+              for token, literal in vals:
+                  text = text.replace(token, literal)
+              return text
+
+          def transform(path, text):
+              text, vals = protect(text)
+              if path.suffix.lower() in {".md", ".txt"}:
+                  text = text.replace("MARVEEN", "WEBINAR_MAGUS")
+                  text = text.replace("Marveen", "Webinár Mágus")
+                  text = text.replace("marveen", "webinar-magus")
+              else:
+                  text = text.replace("MARVEEN", "WEBINAR_MAGUS")
+                  text = text.replace("Marveen", "WebinarMagus")
+                  text = text.replace("marveen", "webinarMagus")
+                  # References to the five renamed files must keep kebab-case.
+                  for old, new in filename_map.items():
+                      transformed_old = old.replace("marveen", "webinarMagus")
+                      text = text.replace(transformed_old, new)
+                      if old.endswith(".ts"):
+                          text = text.replace(transformed_old[:-3] + ".js", new[:-3] + ".js")
+              return restore(text, vals)
+
+          changed = 0
+          for path in list(root.rglob("*")):
+              if not path.is_file():
+                  continue
+              if ".git" in path.parts or "node_modules" in path.parts:
+                  continue
+              if len(path.parts) >= 2 and path.parts[0] == ".github" and path.parts[1] == "workflows":
+                  continue
+              if path.suffix.lower() not in text_exts and path.name not in {"LICENSE","README","Makefile"}:
+                  continue
+              try:
+                  text = path.read_text(encoding="utf-8")
+              except Exception:
+                  continue
+              if "marveen" not in text.lower():
+                  continue
+              new = transform(path, text)
+              if new != text:
+                  path.write_text(new, encoding="utf-8")
+                  changed += 1
+
+          # Rename only known brand-bearing files.
+          for path in sorted(list(root.rglob("*")), key=lambda p: len(p.parts), reverse=True):
+              if not path.exists():
+                  continue
+              if path.name in filename_map:
+                  path.rename(path.with_name(filename_map[path.name]))
+
+          print(f"Rebranded {changed} text files")
+          PY
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Commit rebrand
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "No changes"
+          else
+            git commit -m "refactor: complete Webinár Mágus rebrand"
+            git push origin HEAD:refs/heads/rebrand/remove-all-marveen-references
+          fi
