@@ -2,14 +2,14 @@
 // PR2c adds POST .../rotate, exercised through tryHandleClaudePlans() directly
 // (mirrors approvals-notify.test.ts's fake req/res harness). PROJECT_ROOT
 // points at a real temp dir so the CRUD round-trips through the actual
-// atomic-write path. hardRestartMarveenChannels/restartAgentProcess are
+// atomic-write path. hardRestartWebinarMagusChannels/restartAgentProcess are
 // mocked -- this test must NEVER touch a real tmux session or process.
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { mkdtempSync, rmSync, existsSync, mkdirSync } from 'node:fs'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 
-const tmpRoot = mkdtempSync(join(tmpdir(), 'marveen-claude-plans-routes-test-'))
+const tmpRoot = mkdtempSync(join(tmpdir(), 'webinar_magus-claude-plans-routes-test-'))
 
 vi.mock('../config.js', () => ({ PROJECT_ROOT: tmpRoot, MAIN_AGENT_ID: 'agent-a', DEFAULT_AGENT_MODEL: 'claude-opus-5' }))
 
@@ -23,8 +23,8 @@ vi.mock('../settings-store.js', () => ({
   },
 }))
 
-const hardRestartMarveenChannels = vi.fn((): { ok: boolean; error?: string } => ({ ok: true }))
-vi.mock('../web/channel-monitor.js', () => ({ hardRestartMarveenChannels: () => hardRestartMarveenChannels() }))
+const hardRestartWebinarMagusChannels = vi.fn((): { ok: boolean; error?: string } => ({ ok: true }))
+vi.mock('../web/channel-monitor.js', () => ({ hardRestartWebinarMagusChannels: () => hardRestartWebinarMagusChannels() }))
 
 const restartAgentProcess = vi.fn(
   async (_name: string): Promise<{ ok: boolean; pid?: number; error?: string }> => ({ ok: true, pid: 123 }),
@@ -171,7 +171,7 @@ describe('POST /api/claude-plans/rotate (PR2c)', () => {
     if (existsSync(agentsDir)) rmSync(agentsDir, { recursive: true, force: true })
     rotationEnabled = '1'
     mainIsolated = '1'
-    hardRestartMarveenChannels.mockClear().mockReturnValue({ ok: true })
+    hardRestartWebinarMagusChannels.mockClear().mockReturnValue({ ok: true })
     restartAgentProcess.mockClear().mockResolvedValue({ ok: true, pid: 123 })
   })
 
@@ -191,7 +191,7 @@ describe('POST /api/claude-plans/rotate (PR2c)', () => {
     const { ctx, out } = fakeCtx('POST', '/api/claude-plans/rotate', { targetPlanId: 'nope' })
     await tryHandleClaudePlans(ctx)
     expect(out.status).toBe(400)
-    expect(hardRestartMarveenChannels).not.toHaveBeenCalled()
+    expect(hardRestartWebinarMagusChannels).not.toHaveBeenCalled()
   })
 
   it('rejects with 400 when the target plan does not allow channels', async () => {
@@ -208,7 +208,7 @@ describe('POST /api/claude-plans/rotate (PR2c)', () => {
     const { ctx, out } = fakeCtx('POST', '/api/claude-plans/rotate', { targetPlanId: 'team' })
     await tryHandleClaudePlans(ctx)
     expect(out.status).toBe(409)
-    expect(hardRestartMarveenChannels).not.toHaveBeenCalled()
+    expect(hardRestartWebinarMagusChannels).not.toHaveBeenCalled()
   })
 
   it('rejects with 409 for the main agent when MAIN_AGENT_ISOLATED_CONFIG is off', async () => {
@@ -217,7 +217,7 @@ describe('POST /api/claude-plans/rotate (PR2c)', () => {
     const { ctx, out } = fakeCtx('POST', '/api/claude-plans/rotate', { targetPlanId: 'team' })
     await tryHandleClaudePlans(ctx)
     expect(out.status).toBe(409)
-    expect(hardRestartMarveenChannels).not.toHaveBeenCalled()
+    expect(hardRestartWebinarMagusChannels).not.toHaveBeenCalled()
   })
 
   it('rejects with 409 for the main agent with fewer than 2 registered plans', async () => {
@@ -230,12 +230,12 @@ describe('POST /api/claude-plans/rotate (PR2c)', () => {
   it('happy path (main agent, default agentId): writes state THEN restarts, in that order', async () => {
     await seedTwoPlans()
     const order: string[] = []
-    hardRestartMarveenChannels.mockImplementation(() => { order.push('restart'); return { ok: true } })
+    hardRestartWebinarMagusChannels.mockImplementation(() => { order.push('restart'); return { ok: true } })
     const { ctx, out } = fakeCtx('POST', '/api/claude-plans/rotate', { targetPlanId: 'team' })
     await tryHandleClaudePlans(ctx)
     expect(out.status).toBe(200)
     expect(out.body).toEqual({ ok: true, agentId: 'agent-a', activePlanId: 'team' })
-    expect(hardRestartMarveenChannels).toHaveBeenCalledTimes(1)
+    expect(hardRestartWebinarMagusChannels).toHaveBeenCalledTimes(1)
 
     const state = fakeCtx('GET', '/api/claude-plans/state')
     await tryHandleClaudePlans(state.ctx)
@@ -254,7 +254,7 @@ describe('POST /api/claude-plans/rotate (PR2c)', () => {
 
   it('returns 500 and does not report ok when the main-agent restart fails', async () => {
     await seedTwoPlans()
-    hardRestartMarveenChannels.mockReturnValue({ ok: false, error: 'launchctl boom' })
+    hardRestartWebinarMagusChannels.mockReturnValue({ ok: false, error: 'launchctl boom' })
     const { ctx, out } = fakeCtx('POST', '/api/claude-plans/rotate', { targetPlanId: 'team' })
     await tryHandleClaudePlans(ctx)
     expect(out.status).toBe(500)
@@ -277,7 +277,7 @@ describe('POST /api/claude-plans/rotate (PR2c)', () => {
     expect(out.status).toBe(200)
     expect(out.body).toEqual({ ok: true, agentId: 'devy', activePlanId: 'team' })
     expect(restartAgentProcess).toHaveBeenCalledWith('devy')
-    expect(hardRestartMarveenChannels).not.toHaveBeenCalled()
+    expect(hardRestartWebinarMagusChannels).not.toHaveBeenCalled()
 
     const state = fakeCtx('GET', '/api/claude-plans/state')
     await tryHandleClaudePlans(state.ctx)

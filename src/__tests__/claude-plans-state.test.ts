@@ -7,7 +7,7 @@ import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, readdirSync } from
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 
-const tmpRoot = mkdtempSync(join(tmpdir(), 'marveen-claude-plans-state-test-'))
+const tmpRoot = mkdtempSync(join(tmpdir(), 'webinar_magus-claude-plans-state-test-'))
 
 vi.mock('../config.js', () => ({ PROJECT_ROOT: tmpRoot }))
 
@@ -41,7 +41,7 @@ describe('readClaudePlansState', () => {
 
   it('reads a well-formed snapshot back verbatim', () => {
     const snapshot = {
-      activePlanByAgent: { marveen: 'pro', devy: 'team' },
+      activePlanByAgent: { webinar_magus: 'pro', devy: 'team' },
       plans: {
         pro: { observedAt: 1_700_000_000_000, source: 'authoritative', windows: { five_hour: { usedPercent: 42, resetsAt: 1_700_010_000 } } },
         team: { observedAt: 1_699_000_000_000, source: 'authoritative_cached', windows: {} },
@@ -60,14 +60,14 @@ describe('readClaudePlansState', () => {
   })
 
   it('drops activePlanByAgent when any value is not a string', () => {
-    writeFileSync(CLAUDE_PLANS_STATE_PATH, JSON.stringify({ activePlanByAgent: { marveen: 42 }, plans: {} }))
+    writeFileSync(CLAUDE_PLANS_STATE_PATH, JSON.stringify({ activePlanByAgent: { webinar_magus: 42 }, plans: {} }))
     expect(readClaudePlansState()).toEqual({ activePlanByAgent: {}, plans: {} })
   })
 })
 
 describe('writeClaudePlansState', () => {
   it('creates store/ and writes the file atomically (readable back)', () => {
-    const state = { activePlanByAgent: { marveen: 'pro' }, plans: {} }
+    const state = { activePlanByAgent: { webinar_magus: 'pro' }, plans: {} }
     writeClaudePlansState(state)
     expect(JSON.parse(readFileSync(CLAUDE_PLANS_STATE_PATH, 'utf8'))).toEqual(state)
     expect(readClaudePlansState()).toEqual(state)
@@ -84,23 +84,23 @@ describe('recordObservation', () => {
   it('sets the agent active on the plan and records its window snapshot', () => {
     const before = { activePlanByAgent: {}, plans: {} }
     const observed = { observedAt: 123, source: 'authoritative', windows: { five_hour: { usedPercent: 10, resetsAt: 456 } } }
-    const after = recordObservation(before, 'marveen', 'pro', observed)
-    expect(after).toEqual({ activePlanByAgent: { marveen: 'pro' }, plans: { pro: observed } })
+    const after = recordObservation(before, 'webinar_magus', 'pro', observed)
+    expect(after).toEqual({ activePlanByAgent: { webinar_magus: 'pro' }, plans: { pro: observed } })
   })
 
   it('does not mutate the input state (pure)', () => {
-    const before = { activePlanByAgent: { marveen: 'pro' }, plans: { pro: { observedAt: 1, source: 'x', windows: {} } } }
+    const before = { activePlanByAgent: { webinar_magus: 'pro' }, plans: { pro: { observedAt: 1, source: 'x', windows: {} } } }
     const snapshot = JSON.parse(JSON.stringify(before))
-    recordObservation(before, 'marveen', 'pro', { observedAt: 2, source: 'y', windows: {} })
+    recordObservation(before, 'webinar_magus', 'pro', { observedAt: 2, source: 'y', windows: {} })
     expect(before).toEqual(snapshot)
   })
 
   it('leaves other agents and other plans untouched', () => {
     const before = {
-      activePlanByAgent: { marveen: 'pro', devy: 'team' },
+      activePlanByAgent: { webinar_magus: 'pro', devy: 'team' },
       plans: { team: { observedAt: 1, source: 'authoritative', windows: {} } },
     }
-    const after = recordObservation(before, 'marveen', 'pro', { observedAt: 2, source: 'authoritative', windows: {} })
+    const after = recordObservation(before, 'webinar_magus', 'pro', { observedAt: 2, source: 'authoritative', windows: {} })
     expect(after.activePlanByAgent.devy).toBe('team')
     expect(after.plans.team).toEqual(before.plans.team)
   })
@@ -108,22 +108,22 @@ describe('recordObservation', () => {
 
 describe('applyRotation', () => {
   it('points the agent at the target plan, leaving plans untouched', () => {
-    const before = { activePlanByAgent: { marveen: 'pro' }, plans: { pro: { observedAt: 1, source: 'x', windows: {} } } }
-    const after = applyRotation(before, 'marveen', 'team')
-    expect(after.activePlanByAgent).toEqual({ marveen: 'team' })
+    const before = { activePlanByAgent: { webinar_magus: 'pro' }, plans: { pro: { observedAt: 1, source: 'x', windows: {} } } }
+    const after = applyRotation(before, 'webinar_magus', 'team')
+    expect(after.activePlanByAgent).toEqual({ webinar_magus: 'team' })
     expect(after.plans).toEqual(before.plans)
   })
 
   it('adds a fresh entry for an agent with no prior active plan (the bootstrap case)', () => {
     const before = { activePlanByAgent: {}, plans: {} }
-    const after = applyRotation(before, 'marveen', 'pro')
-    expect(after.activePlanByAgent).toEqual({ marveen: 'pro' })
+    const after = applyRotation(before, 'webinar_magus', 'pro')
+    expect(after.activePlanByAgent).toEqual({ webinar_magus: 'pro' })
   })
 
   it('does not mutate the input state (pure)', () => {
-    const before = { activePlanByAgent: { marveen: 'pro' }, plans: {} }
+    const before = { activePlanByAgent: { webinar_magus: 'pro' }, plans: {} }
     const snapshot = JSON.parse(JSON.stringify(before))
-    applyRotation(before, 'marveen', 'team')
+    applyRotation(before, 'webinar_magus', 'team')
     expect(before).toEqual(snapshot)
   })
 })
