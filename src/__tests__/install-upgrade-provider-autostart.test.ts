@@ -24,7 +24,7 @@ describe('first-run provider choice', () => {
   it('restarts a running main agent after a provider/model change', () => {
     expect(ONBOARDING).toContain('const wasRunning = agentsRunning()')
     expect(ONBOARDING).toContain('if (wasRunning)')
-    expect(ONBOARDING).toContain('hardRestartWebinar-MagusChannels()')
+    expect(ONBOARDING).toContain('hardRestartWebinarMagusChannels()')
   })
 })
 
