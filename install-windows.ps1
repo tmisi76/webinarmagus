@@ -326,7 +326,7 @@ try {
 # used manually. This makes scheduled tasks/agents continue after a reboot
 # without requiring the user to open Ubuntu first.
 try {
-    $taskName = "WebinarMagus"
+    $taskName = "Webinar-Magus"
     $wslExe = Join-Path $env:SystemRoot "System32\wsl.exe"
     $taskArgs = 'bash -lc "cd ' + $installPath + ' && bash scripts/start.sh"'
     $action = New-ScheduledTaskAction -Execute $wslExe -Argument $taskArgs
