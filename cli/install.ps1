@@ -35,6 +35,7 @@ mkdir -p \"\$INSTALL_DIR\"
 tar -xzf \"\$TMP_DIR/runtime.tar.gz\" -C \"\$INSTALL_DIR\"
 chmod +x \"\$INSTALL_DIR/install-linux.sh\"
 cd \"\$INSTALL_DIR\"
+export WEBINAR_MAGUS_CLI_BOOTSTRAP=1
 exec bash ./install-linux.sh
 "@
 

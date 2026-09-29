@@ -50,7 +50,7 @@ describe('buildManifest brands the PWA manifest, default unchanged', () => {
     const m = JSON.parse(buildManifest(raw, 'Marveen'))
     expect(m.description).toBe('AI marketingcsapat webináriumhoz, ügyfélszerzéshez és értékesítéshez')
     expect(m.start_url).toBe('/')
-    expect(m.icons).toHaveLength(2)
+    expect(m.icons).toHaveLength(1)
   })
 
   it('substitutes a custom brand into name + short_name only', () => {

@@ -16,8 +16,8 @@
   <script src="/lang/en.js"></script>
   <script src="/autowebinar.js" defer></script>
   <script src="/ai-provider-onboarding.js" defer></script>
-  <link rel="icon" href="/icons/icon-192.png" type="image/png">
-  <link rel="apple-touch-icon" href="/icons/icon-192.png">
+  <link rel="icon" href="/icons/webinar-magus.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="/icons/webinar-magus.svg">
   <link rel="manifest" href="/manifest.json">
   <meta name="theme-color" content="#2563EB">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -64,7 +64,7 @@
   <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
   <aside class="sidebar">
     <div class="sidebar-brand">
-      <div class="sidebar-brand-mark" id="sidebarBrandMark">🪄</div>
+      <div class="sidebar-brand-mark" id="sidebarBrandMark"><img src="/icons/webinar-magus.svg" alt=""></div>
       <div class="sidebar-brand-text">
         <div class="sidebar-brand-name" id="sidebarBrandName">Webinár Mágus</div>
         <div class="sidebar-brand-sub">online</div>
@@ -536,7 +536,7 @@
         <div class="page-header-row">
           <div>
             <h1>Skillek</h1>
-            <p class="subtitle" data-i18n="skills.page_subtitle">A Claude Code által látott skillek (user mappa + plugin cache)</p>
+            <p class="subtitle" data-i18n="skills.page_subtitle">A Webinár Mágus által elérhető skillek (globális + ügynök-saját)</p>
           </div>
           <div style="display:flex;gap:8px;align-items:center">
             <button class="btn-secondary btn-compact" id="skillsExportBtn" data-i18n="skills.btn.export">
@@ -555,7 +555,7 @@
         </div>
         <div class="info-box" id="skillsInfoBox">
           Minden itt listázott skill automatikusan elérhető minden sub-agent számára, mert ugyanabban a HOME-ban futnak, mint a fő session.
-          A Claude CLI beépített slash-parancsai (init, review, security-review, loop, schedule, stb.) mindig elérhetők,
+          Az AI runtime beépített slash-parancsai (init, review, security-review, loop, schedule, stb.) mindig elérhetők,
           de itt nem szerepelnek, mert a `claude` binárisban élnek és nem fájlrendszeri források.
           Új skillt a jobb felső "Új skill" gombbal tudsz létrehozni vagy importálni.
         </div>
@@ -740,7 +740,7 @@
             <p class="subtitle" data-i18n="connectors.page_subtitle">AutoWebinar és külső kapcsolatok kezelése</p>
           </div>
           <div style="display:flex;gap:8px">
-            <button class="btn-secondary btn-compact" id="connectorRefreshBtn" title="Claude MCP lista frissítése" data-i18n="connectors.btn.refresh">
+            <button class="btn-secondary btn-compact" id="connectorRefreshBtn" title="MCP lista frissítése" data-i18n="connectors.btn.refresh">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
               </svg>
@@ -755,10 +755,10 @@
           </div>
         </div>
         <div class="info-box" id="connectorInfoBox" data-i18n-html="connectors.builtin.dedup_html">
-          Az itt listázott MCP szerverek a te Claude Code előfizetésedben bekapcsoltak (claude.ai OAuth connectorok, marketplace pluginok, lokális konfig).
-          Minden sub-agent automatikusan látja őket, mert ugyanabban a HOME-ban fut, mint a fő session.
-          Ha egy MCP már bekapcsolva van claude.ai-n, <strong>ne vedd fel még egyszer lokálisan</strong>: duplikálódik,
-          és a Claude CLI "local wins" üzenetet ad rá. A lista a dashboard indulásakor töltődik be, explicit frissítés a "Frissítés" gombbal.
+          Az itt listázott MCP szerverek a Webinár Mágusban elérhető globális és lokális kapcsolatok.
+          Az ügynökök a hozzájuk engedélyezett connectorokat automatikusan használhatják.
+          Ha egy MCP már globálisan be van kapcsolva, <strong>ne add hozzá még egyszer lokálisan</strong>, mert duplikálódhat.
+          A lista a dashboard indulásakor töltődik be, és a "Frissítés" gombbal kérhető le újra.
         </div>
       </div>
 
@@ -1105,7 +1105,7 @@
         <div class="page-header-row">
           <div>
             <h1 data-i18n="status.page_title">Státusz</h1>
-            <p class="subtitle" data-i18n="status.page_subtitle">Claude szolgáltatások állapota</p>
+            <p class="subtitle" data-i18n="status.page_subtitle">AI szolgáltatások állapota</p>
           </div>
           <button class="btn-secondary btn-compact" id="refreshStatusBtn" data-i18n="common.btn.refresh">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -2721,7 +2721,7 @@
             <button class="btn-secondary btn-compact agent-save-section" id="saveProfileBtn" data-i18n="common.btn.save">Mentés</button>
           </div>
           <div class="form-group" id="claudePlanGroup">
-            <label for="editAgentPlan" data-i18n="agents.settings.plan_label">Claude előfizetés</label>
+            <label for="editAgentPlan" data-i18n="agents.settings.plan_label">AI szolgáltatói profil</label>
             <select id="editAgentPlan"></select>
             <small id="editAgentPlanDesc" style="display:block;margin-top:6px;color:var(--text-muted);font-size:12px;line-height:1.4"></small>
             <button class="btn-secondary btn-compact agent-save-section" id="savePlanBtn" data-i18n="common.btn.save">Mentés</button>

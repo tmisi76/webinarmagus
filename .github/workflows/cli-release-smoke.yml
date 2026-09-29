@@ -1,0 +1,78 @@
+name: cli-release-smoke
+
+on:
+  workflow_run:
+    workflows: ["runtime-bundle"]
+    types: [completed]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  public-install-surface:
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.event == 'push')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Wait for public release propagation
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE="https://autowebinar.hu"
+          for URL in             "$BASE/webinar-magus/install"             "$BASE/webinar-magus/install.ps1"             "$BASE/downloads/webinar-magus/latest/version.json"             "$BASE/downloads/webinar-magus/latest/webinar-magus-runtime.tar.gz"             "$BASE/downloads/webinar-magus/latest/webinar-magus-runtime.tar.gz.sha256"
+          do
+            echo "Checking $URL"
+            curl --fail --location --silent --show-error               --retry 12 --retry-delay 5 --retry-all-errors               "$URL" -o /dev/null
+          done
+
+      - name: Verify public bootstrap scripts
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsSL --retry 5 https://autowebinar.hu/webinar-magus/install -o /tmp/install.sh
+          curl -fsSL --retry 5 https://autowebinar.hu/webinar-magus/install.ps1 -o /tmp/install.ps1
+          bash -n /tmp/install.sh
+          grep -q 'WEBINAR_MAGUS_CLI_BOOTSTRAP=1' /tmp/install.sh
+          grep -q 'WEBINAR_MAGUS_CLI_BOOTSTRAP=1' /tmp/install.ps1
+
+      - name: Verify published runtime and checksum
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE="https://autowebinar.hu/downloads/webinar-magus/latest"
+          curl -fsSL --retry 5 "$BASE/version.json" -o /tmp/version.json
+          curl -fsSL --retry 5 "$BASE/webinar-magus-runtime.tar.gz" -o /tmp/runtime.tar.gz
+          curl -fsSL --retry 5 "$BASE/webinar-magus-runtime.tar.gz.sha256" -o /tmp/runtime.tar.gz.sha256
+
+          node -e "const v=require('/tmp/version.json').version; if (!/^0\.1\.0$/.test(v)) { console.error('Unexpected published version:', v); process.exit(1) }"
+
+          EXPECTED="$(awk '{print $1}' /tmp/runtime.tar.gz.sha256 | tr -d '[:space:]')"
+          ACTUAL="$(sha256sum /tmp/runtime.tar.gz | awk '{print $1}')"
+          test -n "$EXPECTED"
+          test "$EXPECTED" = "$ACTUAL"
+
+          mkdir /tmp/runtime-check
+          tar -xzf /tmp/runtime.tar.gz -C /tmp/runtime-check
+          test -f /tmp/runtime-check/install.sh
+          test -f /tmp/runtime-check/install-macos.sh
+          test -f /tmp/runtime-check/install-linux.sh
+          test -f /tmp/runtime-check/scripts/ai-provider-runtime.mjs
+          test -f /tmp/runtime-check/scripts/install-ai-provider-bridge.sh
+          test -f /tmp/runtime-check/web/ai-provider-onboarding.js
+          test -f /tmp/runtime-check/web/icons/webinar-magus.svg
+          ! test -e /tmp/runtime-check/.git
+          ! test -e /tmp/runtime-check/.env
+          ! test -e /tmp/runtime-check/store
+
+      - name: Verify public release branding
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -q 'Webinár Mágus' /tmp/install.sh
+          grep -q 'Webinár Mágus' /tmp/install.ps1
+          grep -q 'Webinár Mágus' /tmp/runtime-check/web/manifest.json
+          grep -q '#2563EB' /tmp/runtime-check/web/style.css
+          grep -q '#0EA5E9' /tmp/runtime-check/web/style.css

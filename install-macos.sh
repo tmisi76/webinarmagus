@@ -251,9 +251,14 @@ check_cmd "bun" "Bun runtime"
 # Check Claude Code CLI
 echo ""
 if ! command -v claude &>/dev/null; then
-  echo -e "  ${RED}✗${NC} $(_t macos.claude_missing)"
-  echo -e "${ORANGE}$(_t macos.install_claude_hint)${NC}"
-  read -rp "$(_t prompt_install_claude)" INSTALL_CLAUDE
+  if [ "${WEBINAR_MAGUS_CLI_BOOTSTRAP:-0}" = "1" ]; then
+    echo -e "  ${ORANGE}Webinár Mágus AI runtime telepítése...${NC}"
+    INSTALL_CLAUDE="i"
+  else
+    echo -e "  ${RED}✗${NC} $(_t macos.claude_missing)"
+    echo -e "${ORANGE}$(_t macos.install_claude_hint)${NC}"
+    read -rp "$(_t prompt_install_claude)" INSTALL_CLAUDE
+  fi
   if [[ "$INSTALL_CLAUDE" == "i" || "$INSTALL_CLAUDE" == "y" ]]; then
     # NPMPERM1: hivatalos nodejs.org .pkg-s (vagy Intel) gepen a globalis
     # node_modules root-tulajdonu -- EACCES-szel halna. Pre-flight + kiut.
@@ -273,7 +278,11 @@ if ! command -v claude &>/dev/null; then
     fail "Claude Code CLI szukseges a futtatashoz."
   fi
 fi
-echo -e "  ${GREEN}✓${NC} Claude Code CLI"
+if [ "${WEBINAR_MAGUS_CLI_BOOTSTRAP:-0}" = "1" ]; then
+  echo -e "  ${GREEN}✓${NC} Webinár Mágus AI runtime"
+else
+  echo -e "  ${GREEN}✓${NC} Claude Code CLI"
+fi
 
 INSTALL_STEP="claude-setup"
 # Step 2: Claude Code first-run flags (BEFORE auth login)
@@ -329,7 +338,12 @@ echo -e "${BOLD}$(_t section_2_macos)${NC}"
 echo -e "${DIM}$(_t macos.auth_hint_1)${NC}"
 echo -e "${DIM}$(_t macos.auth_hint_2)${NC}"
 echo -e "${DIM}$(_t macos.auth_hint_3)${NC}"
-read -rp "$(_t prompt_login)" DO_AUTH
+if [ "${WEBINAR_MAGUS_CLI_BOOTSTRAP:-0}" = "1" ]; then
+  DO_AUTH="n"
+  echo -e "  ${GREEN}✓${NC} AI szolgáltatót a Webinár Mágus onboardingban választasz"
+else
+  read -rp "$(_t prompt_login)" DO_AUTH
+fi
 if [[ "$DO_AUTH" == "i" || "$DO_AUTH" == "y" ]]; then
   # `&& ... || ...` rather than a `set +e` window: a `trap ... ERR` fires
   # regardless of the errexit setting, and on_error() above EXITS, so a window
@@ -349,7 +363,9 @@ echo -e "  ${GREEN}✓${NC} $(_t macos.firstrun_done)"
 # store/.claude-oauth-token, so ask for a setup-token unless this install
 # already carries one (re-run, or the dashboard wizard got there first).
 MACOS_OAUTH_TOKEN_INPUT=""
-if service_auth_present; then
+if [ "${WEBINAR_MAGUS_CLI_BOOTSTRAP:-0}" = "1" ]; then
+  echo -e "  ${GREEN}✓${NC} API kulcsot később, a Webinár Mágus biztonságos onboardingjában adsz meg"
+elif service_auth_present; then
   ok "A telepites mar hordoz auth kulcsot (.env / store/.claude-oauth-token)"
 else
   echo ""
@@ -375,6 +391,7 @@ fi
 # headless queries (browser flow interrupted, stale cached state, etc.). The
 # agent-create flow runs `claude --print` under the hood; surface the failure
 # here while the user is still at the install prompt.
+if [ "${WEBINAR_MAGUS_CLI_BOOTSTRAP:-0}" != "1" ]; then
 echo ""
 echo -e "  ${DIM}$(_t macos.headless_test)${NC}"
 # The exit status here used to be `head`'s, not claude's: `VAR=$(cmd | head)`
@@ -394,6 +411,8 @@ else
   echo -e "    ${DIM}Kimenet: ${CLAUDE_PROBE_OUT:-<ures>}${NC}"
   echo -e "    ${DIM}Tipikus okok: nincs ervenyes auth, halozati problema, regi claude CLI.${NC}"
   echo -e "    ${DIM}Javitas: \`claude --version\` -> \`claude /login\` (vagy ANTHROPIC_API_KEY/CLAUDE_CODE_OAUTH_TOKEN beallitas) -> \`claude --print \"ping\"\` ujra.${NC}"
+fi
+
 fi
 
 INSTALL_STEP="personal-info"
@@ -1696,11 +1715,15 @@ echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━
 # bot will answer, which is false when the services have no working credential.
 if [ "${INSTALL_AUTH_STATE:-UNKNOWN}" != "OK" ]; then
   echo ""
-  if [ "${INSTALL_AUTH_STATE:-}" = "UNKNOWN" ]; then
+  if [ "${WEBINAR_MAGUS_CLI_BOOTSTRAP:-0}" = "1" ]; then
+    echo -e "  ${BLUE}→ Következő lépés: nyisd meg a Webinár Mágus dashboardot, és válassz AI szolgáltatót.${NC}"
+    echo -e "  ${DIM}  A rendszer szándékosan csak az onboardingban kér API kulcsot.${NC}"
+  elif [ "${INSTALL_AUTH_STATE:-}" = "UNKNOWN" ]; then
     echo -e "  ${ORANGE}! FIGYELEM: az auth-ot nem sikerult ellenoriznunk.${NC}"
+    echo -e "  ${BOLD}  Javitas: ${BLUE}bash \"$INSTALL_DIR/scripts/auth.sh\"${NC}${BOLD} majd ${BLUE}bash \"$INSTALL_DIR/scripts/channels.sh\" restart${NC}"
   else
     echo -e "  ${RED}✗ AZ UGYNOKOK MEG NEM FOGNAK VALASZOLNI: hianyzik a mukodo auth kulcs.${NC}"
+    echo -e "  ${BOLD}  Javitas: ${BLUE}bash \"$INSTALL_DIR/scripts/auth.sh\"${NC}${BOLD} majd ${BLUE}bash \"$INSTALL_DIR/scripts/channels.sh\" restart${NC}"
   fi
-  echo -e "  ${BOLD}  Javitas: ${BLUE}bash \"$INSTALL_DIR/scripts/auth.sh\"${NC}${BOLD} majd ${BLUE}bash \"$INSTALL_DIR/scripts/channels.sh\" restart${NC}"
   echo ""
 fi
