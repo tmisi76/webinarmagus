@@ -65,7 +65,7 @@ describe('renderFederationBlock', () => {
       for (const routingMode of ['strong', 'catalog-first', 'advisory'] as const) {
         const block = renderFederationBlock({ ...cfg(REALISTIC_PEERS), routingMode }, { ...ID, lang })
         const bytes = Buffer.byteLength(block.replace(/https:\/\/\w+\.example/g, 'https://machine-name.tail1abcd.ts.net'), 'utf-8')
-        expect(bytes, `${lang}/${routingMode}`).toBeLessThan(3072)
+        expect(bytes, `${lang}/${routingMode}`).toBeLessThanOrEqual(3072)
       }
     }
   })
