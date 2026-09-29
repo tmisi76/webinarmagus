@@ -12560,10 +12560,10 @@ async function waitForChannelLive(fetchStatus, delayMs, maxTries) {
 // WIZFLOW809 END waitForChannelLive
 function onboardingCurrentStep(s) {
   if (!s.identityConfirmed) return 1
-  // Fresh Webinár Mágus installs choose their own AI API provider. Existing
-  // working Claude-auth installs remain valid and are not forced through a new
-  // provider step during upgrade.
-  if ((!s.aiProviderConfigured && !s.claudeAuthPresent) || !s.agentsRunning) return 2
+  // Provider choice is explicit. A pre-existing Claude login is a usable
+  // technical fallback, but it must never silently skip the user's choice of
+  // DeepSeek / Anthropic / OpenAI / Gemini.
+  if (!s.aiProviderConfigured || !s.agentsRunning) return 2
   if (!s.channelConfigured) return 3
   if (!s.paired) return 4
   return 0
