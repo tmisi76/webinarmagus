@@ -208,5 +208,14 @@ if [ -n "$LAUNCHD_FAILED" ]; then
   unset _svc
   exit 1
 fi
-echo "✓ Dashboard: http://localhost:${WEB_PORT:-3420}"
+DASH_TOKEN=""
+if [ -r "$INSTALL_DIR/store/.dashboard-token" ]; then
+  DASH_TOKEN="$(cat "$INSTALL_DIR/store/.dashboard-token" 2>/dev/null || true)"
+fi
+if [ -n "$DASH_TOKEN" ]; then
+  echo "✓ Dashboard: http://localhost:${WEB_PORT:-3420}/?token=${DASH_TOKEN}"
+  echo "  A token csak az elso böngészős belépéshez kell; utána a böngésző megjegyzi."
+else
+  echo "✓ Dashboard: http://localhost:${WEB_PORT:-3420}"
+fi
 echo "$(_t start.channel_started)"
