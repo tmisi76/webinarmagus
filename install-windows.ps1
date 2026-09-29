@@ -322,6 +322,22 @@ try {
   if ($envPort) { $WebPort = $envPort }
 } catch { }
 
+# Windows logon autostart: wake WSL and invoke the same idempotent start.sh
+# used manually. This makes scheduled tasks/agents continue after a reboot
+# without requiring the user to open Ubuntu first.
+try {
+    $taskName = "WebinarMagus"
+    $wslExe = Join-Path $env:SystemRoot "System32\wsl.exe"
+    $action = New-ScheduledTaskAction -Execute $wslExe -Argument "bash -lc \"cd $installPath && bash scripts/start.sh\""
+    $trigger = New-ScheduledTaskTrigger -AtLogOn
+    $settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -StartWhenAvailable
+    Register-ScheduledTask -TaskName $taskName -Action $action -Trigger $trigger -Settings $settings -Description "Webinár Mágus háttérindítás Windows bejelentkezéskor" -Force | Out-Null
+    Start-ScheduledTask -TaskName $taskName
+    Write-Host "  ✓ Automatikus háttérindítás beállítva" -ForegroundColor Green
+} catch {
+    Write-Host "  ! Automatikus háttérindítás nem állt be: $($_.Exception.Message)" -ForegroundColor Yellow
+}
+
 # Done!
 Write-Host ""
 Write-Host "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" -ForegroundColor Green
