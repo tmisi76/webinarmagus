@@ -1,46 +1,62 @@
 name: cli-release-smoke
 
 on:
-  workflow_run:
-    workflows: ["runtime-bundle"]
-    types: [completed]
   workflow_dispatch:
+    inputs:
+      expected_version:
+        description: 'Published runtime version, without the v prefix'
+        required: true
+        type: string
 
 permissions:
   contents: read
 
 jobs:
   public-install-surface:
-    if: >-
-      github.event_name == 'workflow_dispatch' ||
-      (github.event.workflow_run.conclusion == 'success' &&
-       (github.event.workflow_run.event == 'push' ||
-        github.event.workflow_run.event == 'workflow_dispatch'))
     runs-on: ubuntu-latest
     steps:
-      - name: Resolve expected public version
-        id: expected
+      - name: Validate expected version
         shell: bash
         env:
-          UPSTREAM_REF: ${{ github.event.workflow_run.head_branch }}
+          EXPECTED_VERSION: ${{ inputs.expected_version }}
         run: |
           set -euo pipefail
-          EXPECTED=""
-          if [[ "${UPSTREAM_REF:-}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            EXPECTED="${UPSTREAM_REF#v}"
+          if [[ ! "$EXPECTED_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::Invalid expected_version: $EXPECTED_VERSION"
+            exit 1
           fi
-          echo "version=$EXPECTED" >> "$GITHUB_OUTPUT"
-          echo "Expected public version: ${EXPECTED:-current semver}"
 
       - name: Wait for public release propagation
         shell: bash
+        env:
+          EXPECTED_VERSION: ${{ inputs.expected_version }}
         run: |
           set -euo pipefail
           BASE="https://autowebinar.hu"
+          VERSION_URL="$BASE/downloads/webinar-magus/latest/version.json"
+
+          ACTUAL=""
+          for i in $(seq 1 24); do
+            BODY="$(curl --fail --location --silent --show-error \
+              --retry 2 --retry-delay 2 --retry-all-errors \
+              "$VERSION_URL" || true)"
+            ACTUAL="$(printf '%s' "$BODY" | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{try{process.stdout.write(JSON.parse(s).version||'')}catch{}})")"
+            if [ "$ACTUAL" = "$EXPECTED_VERSION" ]; then
+              echo "Public latest is $ACTUAL"
+              break
+            fi
+            echo "Waiting for latest=$EXPECTED_VERSION (currently: ${ACTUAL:-unavailable}) [$i/24]"
+            sleep 5
+          done
+
+          if [ "$ACTUAL" != "$EXPECTED_VERSION" ]; then
+            echo "::error::Public latest did not reach $EXPECTED_VERSION (last: ${ACTUAL:-unavailable})"
+            exit 1
+          fi
+
           for URL in \
             "$BASE/webinar-magus/install" \
             "$BASE/webinar-magus/install.ps1" \
-            "$BASE/downloads/webinar-magus/latest/version.json" \
             "$BASE/downloads/webinar-magus/latest/webinar-magus-runtime.tar.gz" \
             "$BASE/downloads/webinar-magus/latest/webinar-magus-runtime.tar.gz.sha256"
           do
@@ -65,7 +81,7 @@ jobs:
       - name: Verify published runtime and checksum
         shell: bash
         env:
-          EXPECTED_VERSION: ${{ steps.expected.outputs.version }}
+          EXPECTED_VERSION: ${{ inputs.expected_version }}
         run: |
           set -euo pipefail
           BASE="https://autowebinar.hu/downloads/webinar-magus/latest"
@@ -76,12 +92,8 @@ jobs:
           node - <<'NODE'
           const fs = require('fs')
           const version = JSON.parse(fs.readFileSync('/tmp/version.json', 'utf8')).version
-          const expected = process.env.EXPECTED_VERSION || ''
-          if (!/^\d+\.\d+\.\d+$/.test(version)) {
-            console.error('Invalid published semver:', version)
-            process.exit(1)
-          }
-          if (expected && version !== expected) {
+          const expected = process.env.EXPECTED_VERSION
+          if (version !== expected) {
             console.error('Unexpected published version:', version, 'expected:', expected)
             process.exit(1)
           }
