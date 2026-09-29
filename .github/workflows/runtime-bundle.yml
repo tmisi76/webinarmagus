@@ -5,6 +5,11 @@ on:
   pull_request:
     paths:
       - 'cli/**'
+      - '.claude-plugin/**'
+      - 'install-macos.sh'
+      - 'install-linux.sh'
+      - 'scripts/start.sh'
+      - 'scripts/migrate-legacy-brand-state.sh'
       - 'scripts/build-runtime-bundle.sh'
       - 'scripts/update-runtime-bundle.sh'
       - 'update.sh'
@@ -29,6 +34,10 @@ jobs:
       - name: Validate shell installer syntax
         run: |
           bash -n cli/install.sh
+          bash -n install-macos.sh
+          bash -n install-linux.sh
+          bash -n scripts/start.sh
+          bash -n scripts/migrate-legacy-brand-state.sh
           bash -n scripts/update-runtime-bundle.sh
           bash -n update.sh
 
@@ -63,6 +72,17 @@ jobs:
           test -f /tmp/wm-check/install-linux.sh
           test -f /tmp/wm-check/package.json
           test -f /tmp/wm-check/scripts/update-runtime-bundle.sh
+          test -f /tmp/wm-check/scripts/migrate-legacy-brand-state.sh
+          test -f /tmp/wm-check/.claude-plugin/marketplace.json
+          node - <<'NODE'
+          const fs = require('fs')
+          const m = JSON.parse(fs.readFileSync('/tmp/wm-check/.claude-plugin/marketplace.json', 'utf8'))
+          if (m.name !== 'webinarmagus-marketplace') process.exit(1)
+          const names = new Set((m.plugins || []).map(p => p.name))
+          if (!names.has('slack-channel') || !names.has('teams')) process.exit(1)
+          NODE
+          grep -q 'PLUGIN_MARKETPLACE="tmisi76/webinarmagus"' /tmp/wm-check/install-macos.sh
+          grep -q 'PLUGIN_MARKETPLACE="tmisi76/webinarmagus"' /tmp/wm-check/install-linux.sh
           ! test -e /tmp/wm-check/.git
           ! test -e /tmp/wm-check/.env
           ! test -e /tmp/wm-check/node_modules
