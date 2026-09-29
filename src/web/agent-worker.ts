@@ -185,7 +185,7 @@ const WORKER_AUTH_FAILURE_RX =
 /**
  * The macOS Keychain service name Claude Code uses for a given CLAUDE_CONFIG_DIR.
  * sha256(configDir)[0:8] suffix -- reverse-engineered + verified 2026-06-10
- * against the live worker (sha256("/Users/marvin/.webinarmagus-worker/.claude-config")
+ * against the live worker (sha256("/Users/tester/.webinarmagus-worker/.claude-config")
  * -> "1d2e1367"). Pure + exported so the locked test vector guards the algorithm.
  */
 export function configDirKeychainService(configDir: string): string {
