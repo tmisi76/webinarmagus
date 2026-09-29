@@ -21,9 +21,11 @@ WEB_PORT="${WEB_PORT:-3420}"
 # every tmux session the dashboard launches (see channels.sh for details).
 if [ -f "$INSTALL_DIR/.env" ]; then
   SLUG="$(grep -E '^MAIN_AGENT_ID=' "$INSTALL_DIR/.env" | head -1 | cut -d= -f2-)"
+  SERVICE_ID="$(grep -E '^SERVICE_ID=' "$INSTALL_DIR/.env" | head -1 | cut -d= -f2-)"
   BOT_NAME="$(grep -E '^BOT_NAME=' "$INSTALL_DIR/.env" | head -1 | cut -d= -f2-)"
 fi
 SLUG="${SLUG:-webinarmagus}"
+SERVICE_ID="${SERVICE_ID:-$SLUG}"
 
 WEBINAR_MAGUS_LANG="$(cat "${INSTALL_DIR}/.lang" 2>/dev/null || echo hu)"
 # shellcheck source=../install-lang.sh
@@ -46,13 +48,34 @@ echo "${BOT_NAME:-Webinár Mágus} $(_t start.starting)"
 OS="$(uname -s)"
 LAUNCHD_FAILED=""
 if [ "$OS" = "Darwin" ]; then
+  # Legacy git checkouts can update the application code without ever re-running
+  # install-macos.sh. Self-heal the one hard runtime dependency that otherwise
+  # makes BOTH dashboard and channels crash immediately.
+  if ! command -v tmux >/dev/null 2>&1; then
+    if command -v brew >/dev/null 2>&1; then
+      echo "tmux hianyzik; automatikus telepites Homebrew-val..."
+      if ! brew install tmux; then
+        echo "ERROR: tmux telepitese nem sikerult. Futtasd: brew install tmux" >&2
+        exit 1
+      fi
+    else
+      echo "ERROR: tmux hianyzik, es Homebrew sem elerheto." >&2
+      echo "Javitas: curl -fsSL https://autowebinar.hu/webinar-magus/install | bash -s -- --repair" >&2
+      exit 1
+    fi
+  fi
+
   # `launchctl load` alone leaves a RunAtLoad job pended on modern macOS, so
   # this script used to print the dashboard URL and "channel started" over two
-  # units that never ran. Same helper as install-macos.sh: load, kickstart,
-  # verify.
+  # units that never ran. The helper now also recreates missing/stale plist files,
+  # which is required after updating an old checkout in place.
   . "${INSTALL_DIR}/scripts/launchd-unit.sh"
+  if ! ensure_core_launchd_units "$SERVICE_ID" "$INSTALL_DIR"; then
+    echo "ERROR: a macOS hatterszolgaltatasok javitasa nem sikerult." >&2
+    exit 1
+  fi
   for _svc in dashboard channels; do
-    if [ -z "$(start_launchd_unit "com.${SLUG}.${_svc}")" ]; then
+    if [ -z "$(start_launchd_unit "com.${SERVICE_ID}.${_svc}")" ]; then
       LAUNCHD_FAILED="${LAUNCHD_FAILED}${_svc} "
     fi
   done
@@ -179,8 +202,8 @@ if [ -n "$LAUNCHD_FAILED" ]; then
   # the bot: this reports what the verification established, nothing beyond it.
   echo "✗ A szolgaltatas indulasa nem igazolt: ${LAUNCHD_FAILED}" >&2
   for _svc in $LAUNCHD_FAILED; do
-    echo "  Ujraprobalas: launchctl kickstart -p gui/$(id -u)/com.${SLUG}.${_svc}" >&2
-    echo "  Ellenorzes:   launchctl print gui/$(id -u)/com.${SLUG}.${_svc} | grep -E 'state|pid'" >&2
+    echo "  Ujraprobalas: launchctl kickstart -p gui/$(id -u)/com.${SERVICE_ID}.${_svc}" >&2
+    echo "  Ellenorzes:   launchctl print gui/$(id -u)/com.${SERVICE_ID}.${_svc} | grep -E 'state|pid'" >&2
   done
   unset _svc
   exit 1
