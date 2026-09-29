@@ -116,13 +116,27 @@ jobs:
           test -f /tmp/runtime-check/package.json
           test -f /tmp/runtime-check/scripts/ai-provider-runtime.mjs
           test -f /tmp/runtime-check/scripts/install-ai-provider-bridge.sh
+          test -f /tmp/runtime-check/scripts/migrate-legacy-brand-state.sh
+          test -f /tmp/runtime-check/.claude-plugin/marketplace.json
           test -f /tmp/runtime-check/web/ai-provider-onboarding.js
           test -f /tmp/runtime-check/web/icons/webinar-magus.svg
 
           bash -n /tmp/runtime-check/install.sh
           bash -n /tmp/runtime-check/install-macos.sh
           bash -n /tmp/runtime-check/install-linux.sh
+          bash -n /tmp/runtime-check/scripts/start.sh
+          bash -n /tmp/runtime-check/scripts/migrate-legacy-brand-state.sh
           bash -n /tmp/runtime-check/update.sh
+
+          node - <<'NODE'
+          const fs = require('fs')
+          const m = JSON.parse(fs.readFileSync('/tmp/runtime-check/.claude-plugin/marketplace.json', 'utf8'))
+          if (m.name !== 'webinarmagus-marketplace') process.exit(1)
+          const names = new Set((m.plugins || []).map(p => p.name))
+          if (!names.has('slack-channel') || !names.has('teams')) process.exit(1)
+          NODE
+          grep -q 'PLUGIN_MARKETPLACE="tmisi76/webinarmagus"' /tmp/runtime-check/install-macos.sh
+          grep -q 'PLUGIN_MARKETPLACE="tmisi76/webinarmagus"' /tmp/runtime-check/install-linux.sh
 
           ! test -e /tmp/runtime-check/.git
           ! test -e /tmp/runtime-check/.env

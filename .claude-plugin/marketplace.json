@@ -1,0 +1,36 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "webinarmagus-marketplace",
+  "description": "Webinár Mágus channel plugin registry",
+  "owner": {
+    "name": "AutoWebinar"
+  },
+  "plugins": [
+    {
+      "name": "slack-channel",
+      "description": "Two-way Slack channel for Claude Code via Socket Mode",
+      "author": {
+        "name": "Jeremy Longshore"
+      },
+      "category": "channel",
+      "source": {
+        "source": "url",
+        "url": "https://github.com/Szotasz/claude-code-slack-channel.git",
+        "ref": "main"
+      }
+    },
+    {
+      "name": "teams",
+      "description": "Microsoft Teams channel for Claude Code via Azure Bot Service",
+      "author": {
+        "name": "Szota Szabolcs"
+      },
+      "category": "channel",
+      "source": {
+        "source": "url",
+        "url": "https://github.com/Szotasz/claude-channel-teams.git",
+        "ref": "feat/setup-ux-adaptation"
+      }
+    }
+  ]
+}

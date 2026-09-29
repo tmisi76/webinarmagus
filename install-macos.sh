@@ -1109,7 +1109,7 @@ elif [ "$CHANNEL_PROVIDER" = "discord" ]; then
   PLUGIN_ID="discord@claude-plugins-official"
   PLUGIN_SHORT="discord"
 else
-  PLUGIN_MARKETPLACE="tmisi76/webinarmagus-marketplace"
+  PLUGIN_MARKETPLACE="tmisi76/webinarmagus"
   PLUGIN_ID="slack-channel@webinarmagus-marketplace"
   PLUGIN_SHORT="slack-channel"
 fi
