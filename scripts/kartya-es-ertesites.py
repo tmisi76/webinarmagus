@@ -135,7 +135,7 @@ def _token_kapu(dry_run):
 
 
 FLEET = {'samu','zara','boni','iris','dani','geri','deeper','qwen','mira','tomi','jumanji','hidli'}
-COORDINATOR = 'webinarMagus'
+COORDINATOR = 'webinarmagus'
 GAZDA = 'szabolcs'
 # Ismert FELELOS-nevek. NEM zart halmaz: a tablan 2026-09-06-an 40 kulonbozo felelos allt, es a
 # tobbsegi nem-flotta ertek kulso GitHub-felhasznalonev (PR-kartyak szerzoi). Ezert a nem-ismert
