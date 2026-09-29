@@ -146,7 +146,7 @@ A DMG és EXE terjesztés ideiglenesen ki van kapcsolva. A desktop build kód me
 - a helyi AI bridge csak localhoston hallgat
 - a CLI runtime checksum-ellenőrzött
 - a privát GitHub repository nem szükséges a telepítéshez
-- release upload külön bearer tokennel védett
+- release upload rövid életű GitHub OIDC hitelesítéssel védett
 - meglévő `.env`, `store/`, agent- és memóriaállapot frissítéskor megmarad
 
 ## Fejlesztés

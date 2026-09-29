@@ -68,7 +68,7 @@ jobs:
           ! test -e /tmp/wm-check/store
 
       - name: Publish runtime bundle
-        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+        if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && startsWith(github.ref, 'refs/tags/v')
         shell: bash
         run: |
           set -euo pipefail
