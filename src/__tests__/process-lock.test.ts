@@ -242,7 +242,7 @@ describe('findOwnBinaryMatches', () => {
         { pid: 200, uid: 501, cmd: 'node', args: 'node dist/index.js', alive: true, cwd: null },
         { pid: 300, uid: 501, cmd: 'node', args: 'node dist/index.js', alive: true, cwd: null },
       ]
-      const { ctx } = makeCtx({ selfProjectRoot: '/Users/marvin/ClaudeClaw', procs })
+      const { ctx } = makeCtx({ selfProjectRoot: '/Users/tester/ClaudeClaw', procs })
       expect(findOwnBinaryMatches(/dist\/index\.js/, ctx).sort()).toEqual([200, 300])
     })
 
