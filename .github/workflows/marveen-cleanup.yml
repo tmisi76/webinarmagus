@@ -1,0 +1,86 @@
+name: One-time safe Marveen cleanup
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - name: Rewrite internal references
+        shell: bash
+        run: |
+          python3 <<'PY'
+          from pathlib import Path
+          import re
+
+          # Literal external identifiers that must remain because they identify
+          # upstream repositories/services. Removing them would break plugin install/update.
+          protected = [
+            "https://github.com/Szotasz/marveen",
+            "Szotasz/marveen",
+            "maxineender/marveen",
+            "marveen-marketplace",
+            "app.marveen.io",
+            "marveen.io",
+          ]
+          exts={".ts",".tsx",".js",".mjs",".cjs",".sh",".py",".md",".txt",".json",".yml",".yaml",".html",".css",".service",".timer",".example",".ps1"}
+          renames={
+            "marveen.ts":"webinar-magus.ts",
+            "marveen-lean-optimization-audit-2026-07-17-addendum.md":"webinar-magus-lean-optimization-audit-2026-07-17-addendum.md",
+            "marveen-notify@.service":"webinar-magus-notify@.service",
+            "marveen-channels.service":"webinar-magus-channels.service",
+            "marveen-host-watchdog.service":"webinar-magus-host-watchdog.service",
+          }
+
+          def protect(s):
+            vals=[]
+            for i,v in enumerate(protected):
+              t=f"__UPSTREAM_{i}__"
+              if v in s: s=s.replace(v,t); vals.append((t,v))
+            return s,vals
+          def restore(s,vals):
+            for t,v in vals:s=s.replace(t,v)
+            return s
+
+          for p in list(Path(".").rglob("*")):
+            if not p.is_file() or ".git" in p.parts or "node_modules" in p.parts: continue
+            if len(p.parts)>=2 and p.parts[0]==".github" and p.parts[1]=="workflows": continue
+            if p.suffix.lower() not in exts and p.name not in {"LICENSE","README","Makefile"}: continue
+            try:s=p.read_text("utf-8")
+            except:continue
+            if "marveen" not in s.lower():continue
+            s0=s
+            s,vals=protect(s)
+            if p.suffix.lower() in {".md",".txt"}:
+              s=s.replace("MARVEEN","WEBINAR_MAGUS").replace("Marveen","Webinár Mágus").replace("marveen","webinarmagus")
+            else:
+              s=s.replace("MARVEEN","WEBINAR_MAGUS").replace("Marveen","WebinarMagus").replace("marveen","webinarmagus")
+            # references to renamed paths
+            for old,new in renames.items():
+              s=s.replace(old.replace("marveen","webinarmagus"),new)
+              if old.endswith(".ts"): s=s.replace(old[:-3].replace("marveen","webinarmagus")+".js",new[:-3]+".js")
+            s=restore(s,vals)
+            if s!=s0:p.write_text(s,"utf-8")
+
+          for p in sorted(list(Path(".").rglob("*")),key=lambda x:len(x.parts),reverse=True):
+            if p.exists() and p.name in renames:p.rename(p.with_name(renames[p.name]))
+          PY
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      - name: Commit validated cleanup
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git diff --cached --quiet && exit 0
+          git commit -m "refactor: remove internal Marveen references"
+          git push origin HEAD:refs/heads/rebrand/final-marveen-cleanup-v014
