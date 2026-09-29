@@ -49,7 +49,7 @@ def _token():
 
 
 def _main_agent_id():
-    """Read MAIN_AGENT_ID from .env; fall back to 'marveen'."""
+    """Read MAIN_AGENT_ID from .env; fall back to 'webinar_magus'."""
     try:
         with open(os.path.join(_project_root(), ".env")) as f:
             for line in f:
@@ -57,7 +57,7 @@ def _main_agent_id():
                     return line.split("=", 1)[1].strip().strip('"\'')
     except Exception:
         pass
-    return "marveen"
+    return "webinar_magus"
 
 
 def _agent_id(cwd):

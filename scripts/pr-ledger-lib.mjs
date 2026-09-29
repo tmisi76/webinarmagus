@@ -76,7 +76,7 @@ export function prNumbersFromMessages(messages) {
  * - merge-mode repos (everything except tag-released ones): a merge to the
  *   release branch (main/master) IS the release -> live. Feature-branch
  *   merges are not.
- * - tag-mode repos (marveen): work merges to develop, RELEASES carry it out.
+ * - tag-mode repos (webinar_magus): work merges to develop, RELEASES carry it out.
  *   A develop merge is live UNLESS its number still sits in the
  *   main...develop range (`unreleasedSet`) -- that set is measured, not
  *   assumed. This rule is generic: for repos with no develop branch the
@@ -128,7 +128,7 @@ export const UPSERT_FULL_SQL = `
 
 /**
  * Degraded-mode upsert for develop-based rows when the unreleased set could
- * NOT be measured (Marveen's review blocker on #1234): an empty set would
+ * NOT be measured (WebinarMagus's review blocker on #1234): an empty set would
  * silently flip every waiting develop merge to live -- 102 stored rows on the
  * day it was measured. So on failure the stored is_live/live_since are LEFT
  * ALONE; a brand-new row enters conservatively as not-live (is_live=0) and the
