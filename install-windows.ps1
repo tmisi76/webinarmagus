@@ -328,7 +328,8 @@ try {
 try {
     $taskName = "WebinarMagus"
     $wslExe = Join-Path $env:SystemRoot "System32\wsl.exe"
-    $action = New-ScheduledTaskAction -Execute $wslExe -Argument "bash -lc \"cd $installPath && bash scripts/start.sh\""
+    $taskArgs = 'bash -lc "cd ' + $installPath + ' && bash scripts/start.sh"'
+    $action = New-ScheduledTaskAction -Execute $wslExe -Argument $taskArgs
     $trigger = New-ScheduledTaskTrigger -AtLogOn
     $settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -StartWhenAvailable
     Register-ScheduledTask -TaskName $taskName -Action $action -Trigger $trigger -Settings $settings -Description "Webinár Mágus háttérindítás Windows bejelentkezéskor" -Force | Out-Null
