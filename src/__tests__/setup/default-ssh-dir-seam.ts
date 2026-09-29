@@ -3,8 +3,8 @@
 // ENROLL813 (2026-09-15). `POST /api/security/bridge-enroll` calls bridgeEnroll()
 // with no deps, so it resolved homedir()/.ssh -- and bridge-enroll.test.ts has one
 // branch ("Positive control on the same route") that hits that route BEFORE the
-// file sets MARVEEN_SSH_DIR. Every full suite run therefore enrolled exactly one
-// REAL `marveen-remote` key, and stayed green while doing it: the branch's only
+// file sets WEBINAR_MAGUS_SSH_DIR. Every full suite run therefore enrolled exactly one
+// REAL `webinar_magus-remote` key, and stayed green while doing it: the branch's only
 // assertion (`not.toMatch(/Invalid host/)`) is satisfied by a SUCCESSFUL
 // enrollment just as well as by the refusal it meant to rule out. 62 keys piled
 // up across the fleet before anyone looked (Tecton 13, isapp06 51, pestihazak 4).
@@ -21,7 +21,7 @@
 // so: with this file ON and the fail-closed guards OFF, the original test file
 // still wrote one key to the real ~/.ssh/authorized_keys (13 tests green). The
 // reason is the original afterEach, which does an unconditional
-// `delete process.env.MARVEEN_SSH_DIR` -- that drops the suite-level default
+// `delete process.env.WEBINAR_MAGUS_SSH_DIR` -- that drops the suite-level default
 // after the first test, and the positive control then falls back to the home
 // directory. Point 4 of the PR body describes the same hole; this comment used
 // to contradict it.
@@ -32,17 +32,17 @@
 // worker, before any test module imports) rather than a per-file beforeEach
 // somebody can forget, which is what gives it the reach -- not sufficiency.
 //
-// Scoped, not blanket: an existing MARVEEN_SSH_DIR is respected, so a test that
+// Scoped, not blanket: an existing WEBINAR_MAGUS_SSH_DIR is respected, so a test that
 // wants its own directory keeps it.
 import { mkdirSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
-if (!process.env.MARVEEN_SSH_DIR) {
+if (!process.env.WEBINAR_MAGUS_SSH_DIR) {
   // Bounded and reused, NOT mkdtemp. The first version of this file made a fresh
   // random directory per worker and cleaned it from a `process.on('exit')` hook.
   // That hook does not fire in vitest's per-file isolated workers, so one full
-  // suite run left one empty /tmp/marveen-ssh-seam-* directory per test FILE --
+  // suite run left one empty /tmp/webinar_magus-ssh-seam-* directory per test FILE --
   // 436 of them for 443 files -- and 1813 had piled up unnoticed by the time
   // anyone counted (both measured 2026-09-15).
   // Shipping that would have been this PR's own thesis -- silent accumulation
@@ -53,7 +53,7 @@ if (!process.env.MARVEEN_SSH_DIR) {
   // runs; process.pid is the fallback for a runner that does not set it. The
   // segment is sanitised because it ends up in a path.
   const slot = (process.env.VITEST_POOL_ID || String(process.pid)).replace(/[^A-Za-z0-9_-]/g, '_')
-  const seamDir = join(tmpdir(), 'marveen-ssh-seam', `w${slot}`)
+  const seamDir = join(tmpdir(), 'webinar_magus-ssh-seam', `w${slot}`)
   // Cleared on ENTRY, not on exit. Two things follow from that, both wanted:
   // a slot is handed to the next test file once this one is done, and wiping it
   // here is what keeps one file's authorized_keys out of the next file's
@@ -61,5 +61,5 @@ if (!process.env.MARVEEN_SSH_DIR) {
   // workers never share a slot, so no worker can wipe another's directory.
   rmSync(seamDir, { recursive: true, force: true })
   mkdirSync(seamDir, { recursive: true })
-  process.env.MARVEEN_SSH_DIR = seamDir
+  process.env.WEBINAR_MAGUS_SSH_DIR = seamDir
 }

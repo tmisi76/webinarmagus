@@ -28,7 +28,7 @@ afterEach(() => {
 describe('rescueParkedInput', () => {
   it('writes the text and returns a path that actually holds it', () => {
     const text = 'Igen, ird meg Baloghnak a valaszt'
-    const path = rescueParkedInput('marveen-channels', text)
+    const path = rescueParkedInput('webinar_magus-channels', text)
     expect(path).not.toBeNull()
     cleanup.push(path!)
     expect(existsSync(path!)).toBe(true)
@@ -36,23 +36,23 @@ describe('rescueParkedInput', () => {
   })
 
   it('labels the saved text as a scrape of the visible box, so a tail is not read as the whole message', () => {
-    const path = rescueParkedInput('marveen-channels', 'valami')
+    const path = rescueParkedInput('webinar_magus-channels', 'valami')
     cleanup.push(path!)
     const body = readFileSync(path!, 'utf-8')
     expect(body).toContain('scrape of the VISIBLE input box')
-    expect(body).toContain('session: marveen-channels')
+    expect(body).toContain('session: webinar_magus-channels')
   })
 
   it('keeps multi-line text intact', () => {
     const text = 'elso sor\nmasodik sor\nharmadik sor'
-    const path = rescueParkedInput('marveen-channels', text)
+    const path = rescueParkedInput('webinar_magus-channels', text)
     cleanup.push(path!)
     expect(readFileSync(path!, 'utf-8')).toContain(text)
   })
 
   it('does not collide when two rescues happen for the same session', () => {
-    const a = rescueParkedInput('marveen-channels', 'egyik', 1_700_000_000_000)
-    const b = rescueParkedInput('marveen-channels', 'masik', 1_700_000_001_000)
+    const a = rescueParkedInput('webinar_magus-channels', 'egyik', 1_700_000_000_000)
+    const b = rescueParkedInput('webinar_magus-channels', 'masik', 1_700_000_001_000)
     cleanup.push(a!, b!)
     expect(a).not.toBe(b)
     expect(readFileSync(a!, 'utf-8')).toContain('egyik')
@@ -77,11 +77,11 @@ describe('rescueParkedInput', () => {
     const stamp = 1_700_000_002_000
     const blocked = join(
       PARKED_RESCUE_DIR,
-      `marveen-channels-${new Date(stamp).toISOString().replace(/[:.]/g, '-')}.txt`,
+      `webinar_magus-channels-${new Date(stamp).toISOString().replace(/[:.]/g, '-')}.txt`,
     )
     mkdirSync(blocked, { recursive: true })
     try {
-      expect(rescueParkedInput('marveen-channels', 'nem menthet', stamp)).toBeNull()
+      expect(rescueParkedInput('webinar_magus-channels', 'nem menthet', stamp)).toBeNull()
       expect(err).toHaveBeenCalled()
     } finally {
       rmSync(blocked, { recursive: true, force: true })
@@ -117,7 +117,7 @@ describe('rescueParkedInput: file permissions and retention', () => {
     // Measured on a live install: .dashboard-token, claudeclaw.db and
     // .claude-oauth-token are all 0600. A 0644 file sitting next to them later
     // reads as a deliberate exception, and nobody remembers that it was not.
-    const path = rescueParkedInput('marveen-channels', 'gazda gepelt mondata')
+    const path = rescueParkedInput('webinar_magus-channels', 'gazda gepelt mondata')
     cleanup.push(path!)
     expect(statSync(path!).mode & 0o777).toBe(0o600)
     expect(statSync(PARKED_RESCUE_DIR).mode & 0o777).toBe(0o700)

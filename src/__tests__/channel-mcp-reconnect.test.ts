@@ -20,7 +20,7 @@ vi.mock('../logger.js', () => ({
 }))
 
 vi.mock('../config.js', () => ({
-  MAIN_AGENT_ID: 'marveen',
+  MAIN_AGENT_ID: 'webinar_magus',
   CHANNEL_PROVIDER: 'telegram',
   PROJECT_ROOT: '/tmp/test-claudeclaw',
 }))
@@ -40,16 +40,16 @@ vi.mock('../web/agent-process.js', () => ({
 }))
 
 vi.mock('../web/main-agent.js', () => ({
-  MAIN_CHANNELS_SESSION: 'marveen-channels',
+  MAIN_CHANNELS_SESSION: 'webinar_magus-channels',
 }))
 
 vi.mock('../channel-provider.js', () => ({
   getProvider: (type: string) => ({
     pluginId: type === 'slack'
-      ? 'slack-channel@marveen-marketplace'
+      ? 'slack-channel@webinar_magus-marketplace'
       : 'telegram@claude-plugins-official',
     pluginPaneId: type === 'slack'
-      ? 'plugin:slack-channel:marveen-marketplace'
+      ? 'plugin:slack-channel:webinar_magus-marketplace'
       : 'plugin:telegram:telegram',
   }),
 }))
@@ -136,7 +136,7 @@ describe('paneDiagSignature', () => {
 
 describe('resolveAgentSession', () => {
   it('returns main channels session for main agent', () => {
-    expect(resolveAgentSession('marveen')).toBe('marveen-channels')
+    expect(resolveAgentSession('webinar_magus')).toBe('webinar_magus-channels')
   })
 
   it('returns agent-NAME for sub-agents', () => {
@@ -246,7 +246,7 @@ describe('attemptChannelMcpReconnect', () => {
     mockCapturePane.mockReset()
     mockCapturePane.mockReturnValueOnce('· Synthesizing… (8s · ↓ 1.2k tokens · esc to interrupt)')
 
-    const result = attemptChannelMcpReconnect('marveen')
+    const result = attemptChannelMcpReconnect('webinar_magus')
 
     expect(result.ok).toBe(false)
     expect(result.message).toContain('busy')
@@ -264,7 +264,7 @@ describe('attemptChannelMcpReconnect', () => {
       .mockReturnValueOnce(SUBMENU_CONNECTED_TOP)          // submenu capture: cursor on View tools
       .mockReturnValueOnce(SUBMENU_CONNECTED_ON_RECONNECT) // after one Down: cursor on Reconnect
 
-    const result = attemptChannelMcpReconnect('marveen')
+    const result = attemptChannelMcpReconnect('webinar_magus')
 
     expect(result.ok).toBe(true)
     expect(result.message).toContain('Reconnect')
@@ -282,7 +282,7 @@ describe('attemptChannelMcpReconnect', () => {
       .mockReturnValueOnce('plugin:telegram:telegram')
       .mockReturnValueOnce(SUBMENU_FAILED_TOP) // cursor already on Reconnect
 
-    const result = attemptChannelMcpReconnect('marveen')
+    const result = attemptChannelMcpReconnect('webinar_magus')
 
     expect(result.ok).toBe(true)
     expect(result.message).toContain('Reconnect')
@@ -300,7 +300,7 @@ describe('attemptChannelMcpReconnect', () => {
       .mockReturnValueOnce('plugin:telegram:telegram')
       .mockReturnValueOnce(SUBMENU_DISABLED_TOP)
 
-    const result = attemptChannelMcpReconnect('marveen')
+    const result = attemptChannelMcpReconnect('webinar_magus')
 
     expect(result.ok).toBe(true)
     expect(result.message).toContain('Enable')
@@ -312,7 +312,7 @@ describe('attemptChannelMcpReconnect', () => {
       .mockReturnValueOnce('plugin:telegram:telegram')
       .mockReturnValueOnce('plugin:telegram:telegram\n❯ View tools\n  Disable')
 
-    const result = attemptChannelMcpReconnect('marveen')
+    const result = attemptChannelMcpReconnect('webinar_magus')
 
     expect(result.ok).toBe(false)
     expect(result.message).toContain('No Reconnect/Enable')
@@ -331,7 +331,7 @@ describe('attemptChannelMcpReconnect', () => {
       .mockReturnValueOnce('plugin:telegram:telegram here') // matched on Up x3
       .mockReturnValueOnce(SUBMENU_FAILED_TOP)              // submenu: Reconnect selected
 
-    const result = attemptChannelMcpReconnect('marveen')
+    const result = attemptChannelMcpReconnect('webinar_magus')
 
     expect(result.ok).toBe(true)
     expect(result.message).toContain('Up x3')
@@ -340,7 +340,7 @@ describe('attemptChannelMcpReconnect', () => {
   it('returns ok:false when capture fails after /mcp', () => {
     mockCapturePane.mockReturnValueOnce(null)
 
-    const result = attemptChannelMcpReconnect('marveen')
+    const result = attemptChannelMcpReconnect('webinar_magus')
 
     expect(result.ok).toBe(false)
     expect(result.message).toContain('capture')
@@ -352,7 +352,7 @@ describe('attemptChannelMcpReconnect', () => {
       mockCapturePane.mockReturnValueOnce('no match here')
     }
 
-    const result = attemptChannelMcpReconnect('marveen')
+    const result = attemptChannelMcpReconnect('webinar_magus')
 
     expect(result.ok).toBe(false)
     expect(result.message).toContain('not found')
@@ -361,8 +361,8 @@ describe('attemptChannelMcpReconnect', () => {
   it('uses correct session for sub-agents', () => {
     mockCapturePane
       .mockReturnValueOnce('/mcp')
-      .mockReturnValueOnce('plugin:slack-channel:marveen-marketplace found')
-      .mockReturnValueOnce('plugin:slack-channel:marveen-marketplace\n❯ Reconnect\n  Disable')
+      .mockReturnValueOnce('plugin:slack-channel:webinar_magus-marketplace found')
+      .mockReturnValueOnce('plugin:slack-channel:webinar_magus-marketplace\n❯ Reconnect\n  Disable')
 
     attemptChannelMcpReconnect('slacker')
 
@@ -378,7 +378,7 @@ describe('attemptChannelMcpReconnect', () => {
     mockExecFileSync.mockImplementationOnce(() => { /* sleep */ })
     mockExecFileSync.mockImplementationOnce(() => { throw new Error('tmux dead') })
 
-    const result = attemptChannelMcpReconnect('marveen')
+    const result = attemptChannelMcpReconnect('webinar_magus')
 
     expect(result.ok).toBe(false)
     const escapeCalls = mockExecFileSync.mock.calls.filter(

@@ -113,37 +113,37 @@ describe('update checker remote selection (fork case)', () => {
     // The actual fix. Deleting the `upstream` entry from the preference list
     // turns this red -- which the previous version of this test did not.
     const root = mk({
-      origin: 'git@github.com:TheFork/marveen.git',
-      upstream: 'https://github.com/TheAuthor/marveen.git',
+      origin: 'git@github.com:TheFork/webinar_magus.git',
+      upstream: 'https://github.com/TheAuthor/webinar_magus.git',
     })
-    expect(parseGitHubRemote(root)).toBe('TheAuthor/marveen')
+    expect(parseGitHubRemote(root)).toBe('TheAuthor/webinar_magus')
     // ...and the author's repo is NOT our own origin, which is what sends the
     // branch and the compare base down the foreign path.
-    expect(remoteIsOwnOrigin('TheAuthor/marveen', root)).toBe(false)
-    expect(remoteIsOwnOrigin('TheFork/marveen', root)).toBe(true)
+    expect(remoteIsOwnOrigin('TheAuthor/webinar_magus', root)).toBe(false)
+    expect(remoteIsOwnOrigin('TheFork/webinar_magus', root)).toBe(true)
   })
 
   it('asks a foreign repo about ITS default branch, never our local one', async () => {
     const root = mk({
-      origin: 'git@github.com:TheFork/marveen.git',
-      upstream: 'https://github.com/TheAuthor/marveen.git',
+      origin: 'git@github.com:TheFork/webinar_magus.git',
+      upstream: 'https://github.com/TheAuthor/webinar_magus.git',
     })
     // The remote's answer is injected: the assertion is about which branch we
     // ask for, not about GitHub being reachable.
-    const branch = await branchOnRemote('TheAuthor/marveen', root, async () => 'their-default')
+    const branch = await branchOnRemote('TheAuthor/webinar_magus', root, async () => 'their-default')
     expect(branch).toBe('their-default')
     expect(branch).not.toBe('a-local-feature-branch')
   })
 
   it('asks our OWN fork about the branch this checkout follows', async () => {
-    const root = mk({ origin: 'git@github.com:TheFork/marveen.git' })
-    const branch = await branchOnRemote('TheFork/marveen', root, async () => 'never-used')
+    const root = mk({ origin: 'git@github.com:TheFork/webinar_magus.git' })
+    const branch = await branchOnRemote('TheFork/webinar_magus', root, async () => 'never-used')
     expect(branch).toBe('a-local-feature-branch')
   })
 })
 
 // UPDATEBRANCH904: "origin is our own repo" is a naming CONVENTION, and this
-// fork inverts it -- `origin` points at the original author (Szotasz/marveen)
+// fork inverts it -- `origin` points at the original author (Szotasz/webinar_magus)
 // and the fork pushes to a second remote. branchOnRemote then asked the
 // AUTHOR's repo for OUR local feature branch, GitHub answered 422, the throw
 // was swallowed into `behind: 0`, and the dashboard reported "up to date" for
@@ -238,7 +238,7 @@ function clonedRepoWithTrackingRefs(): { root: string; cleanup: () => void } {
   // ...and a clone of it, which is what a real install looks like: HEAD on its
   // own branch, `refs/remotes/origin/develop` present because it was fetched.
   execFileSync('/usr/bin/git', ['clone', '-q', origin, root], { timeout: 15000 })
-  git(root, 'remote', 'set-url', 'origin', 'https://github.com/TheAuthor/marveen.git')
+  git(root, 'remote', 'set-url', 'origin', 'https://github.com/TheAuthor/webinar_magus.git')
   git(root, 'checkout', '-q', '-b', 'a-local-feature-branch')
   git(root, '-c', 'user.email=t@example.invalid', '-c', 'user.name=t',
       'commit', '-q', '--allow-empty', '-m', 'local work never pushed')
@@ -313,9 +313,9 @@ describe('upstreamMergeBase resolves a base the remote actually knows', () => {
   // nothing to measure from and the honest answer is the empty string -- the
   // caller turns that into "unknown", never into a distance.
   it('returns empty rather than inventing a base when no ref matches', () => {
-    const bare = repoWithRemotes({ origin: 'https://github.com/TheAuthor/marveen.git' })
+    const bare = repoWithRemotes({ origin: 'https://github.com/TheAuthor/webinar_magus.git' })
     try {
-      expect(upstreamMergeBase('TheAuthor/marveen', 'develop', bare)).toBe('')
+      expect(upstreamMergeBase('TheAuthor/webinar_magus', 'develop', bare)).toBe('')
     } finally {
       rmSync(bare, { recursive: true, force: true })
     }
