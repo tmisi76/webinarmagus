@@ -53,7 +53,7 @@ let updateStatusCache: UpdateStatus = {
   latest: '',
   behind: 0,
   commits: [],
-  remote: 'tmisi76/webinar-magus',
+  remote: 'tmisi76/webinarmagus',
   lastChecked: 0,
 }
 
@@ -182,7 +182,7 @@ export async function branchOnRemote(
     // `origin` pointed at the original author and pushes to a second remote
     // (`fork`) inverts it, and then the local branch name is exactly the thing
     // the author's repo has never heard of. Measured here 2026-09-04: the
-    // check asked tmisi76/webinar-magus for `fix/email-gate-mcp-matcher`, GitHub
+    // check asked tmisi76/webinarmagus for `fix/email-gate-mcp-matcher`, GitHub
     // answered 422, the error was swallowed into `behind: 0`, and the install
     // reported itself up to date for nine days while 66 commits piled up.
     // Verify before trusting the convention; a branch nobody has ever pushed
@@ -206,7 +206,7 @@ export function parseGitHubRemote(root: string = PROJECT_ROOT): string {
       if (m) return m[1]
     } catch { /* try the next remote */ }
   }
-  return 'tmisi76/webinar-magus'
+  return 'tmisi76/webinarmagus'
 }
 
 type GhCompare = {

@@ -40,4 +40,4 @@ A projekt licence és a kötelező szerzői jogi notice-ok a [LICENSE](./LICENSE
 
 ---
 
-Ha hiányzó attribúciót észlelsz vagy korrekciót szeretnél, nyiss issue-t vagy PR-t a Webinár Mágus repóban: https://github.com/tmisi76/webinar-magus.
+Ha hiányzó attribúciót észlelsz vagy korrekciót szeretnél, nyiss issue-t vagy PR-t a Webinár Mágus repóban: https://github.com/tmisi76/webinarmagus.

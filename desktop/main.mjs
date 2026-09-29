@@ -202,7 +202,7 @@ ipcMain.handle('webinar-magus:install-runtime', async () => {
 })
 
 ipcMain.handle('webinar-magus:open-runtime-help', async () => {
-  await shell.openExternal('https://github.com/tmisi76/webinar-magus')
+  await shell.openExternal('https://github.com/tmisi76/webinarmagus')
   return true
 })
 

@@ -76,7 +76,7 @@ if ($distros -match "Ubuntu") {
         Write-Host "  Telepítés folytatása az Ubuntu-ban (install-linux.sh)..." -ForegroundColor Cyan
         # Triggers first-run init if still pending; if the distro needs a reboot
         # the call fails and we fall through to the manual instructions below.
-        wsl -d Ubuntu -- bash -c "curl -fsSL https://raw.githubusercontent.com/tmisi76/webinar-magus/main/install-linux.sh -o /tmp/webinar-magus-install.sh && bash /tmp/webinar-magus-install.sh"
+        wsl -d Ubuntu -- bash -c "curl -fsSL https://raw.githubusercontent.com/tmisi76/webinarmagus/main/install-linux.sh -o /tmp/webinar-magus-install.sh && bash /tmp/webinar-magus-install.sh"
         if ($LASTEXITCODE -eq 0) {
             Write-Host ""
             Write-Host "  ✓ Webinár Mágus telepítve az Ubuntu-ban (install-linux.sh)." -ForegroundColor Green
@@ -87,7 +87,7 @@ if ($distros -match "Ubuntu") {
     Write-Host ""
     Write-Host "  Fejezd be így: indítsd el az Ubuntu-t (Start menü -> Ubuntu), állítsd" -ForegroundColor Yellow
     Write-Host "  be a felhasználót, majd az Ubuntu shellben futtasd:" -ForegroundColor Yellow
-    Write-Host "    curl -fsSL https://raw.githubusercontent.com/tmisi76/webinar-magus/main/install-linux.sh -o install.sh && bash install.sh" -ForegroundColor Cyan
+    Write-Host "    curl -fsSL https://raw.githubusercontent.com/tmisi76/webinarmagus/main/install-linux.sh -o install.sh && bash install.sh" -ForegroundColor Cyan
     Write-Host "  (vagy indítsd újra ezt a PowerShell scriptet, ha kell a gép-újraindítás)" -ForegroundColor DarkGray
     exit 0
 }

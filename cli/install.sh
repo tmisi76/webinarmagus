@@ -6,6 +6,28 @@ CHANNEL="${WEBINAR_MAGUS_CHANNEL:-latest}"
 INSTALL_DIR="${WEBINAR_MAGUS_INSTALL_DIR:-$HOME/webinar-magus}"
 ARCHIVE_URL="$BASE_URL/$CHANNEL/webinar-magus-runtime.tar.gz"
 CHECKSUM_URL="$ARCHIVE_URL.sha256"
+REPAIR="${WEBINAR_MAGUS_REPAIR:-0}"
+
+for arg in "$@"; do
+  case "$arg" in
+    --repair|--reinstall) REPAIR=1 ;;
+    --help|-h)
+      cat <<'EOF'
+Webinár Mágus CLI telepítő
+
+Használat:
+  curl -fsSL https://autowebinar.hu/webinar-magus/install | bash
+
+Régi/hibás telepítés biztonságos cseréje:
+  curl -fsSL https://autowebinar.hu/webinar-magus/install | bash -s -- --repair
+
+A --repair NEM törli a régi mappát: időbélyeges .backup-* könyvtárba mozgatja.
+EOF
+      exit 0
+      ;;
+    *) echo "Ismeretlen kapcsoló: $arg (használd: --help)" >&2; exit 2 ;;
+  esac
+done
 
 echo ""
 echo "  🪄 Webinár Mágus"
@@ -21,9 +43,33 @@ command -v curl >/dev/null 2>&1 || { echo "Hiányzik a curl." >&2; exit 1; }
 command -v tar >/dev/null 2>&1 || { echo "Hiányzik a tar." >&2; exit 1; }
 
 if [ -e "$INSTALL_DIR" ]; then
-  echo "Már létezik Webinár Mágus telepítés itt: $INSTALL_DIR"
-  echo "Biztonsági okból nem írom felül. Frissítéshez használd a meglévő update parancsot."
-  exit 3
+  if [ "$REPAIR" = "1" ]; then
+    BACKUP_DIR="${INSTALL_DIR}.backup-$(date +%Y%m%d-%H%M%S)"
+    echo "Meglévő telepítés található: $INSTALL_DIR"
+    echo "Biztonsági mentés készül ide: $BACKUP_DIR"
+    mv "$INSTALL_DIR" "$BACKUP_DIR"
+    echo "✓ Régi telepítés biztonságosan félretéve."
+  else
+    CURRENT_VERSION=""
+    if [ -f "$INSTALL_DIR/package.json" ]; then
+      CURRENT_VERSION="$(node -p "try{require('$INSTALL_DIR/package.json').version}catch(e){''}" 2>/dev/null || true)"
+    fi
+    echo "Már létezik Webinár Mágus telepítés itt: $INSTALL_DIR"
+    [ -n "$CURRENT_VERSION" ] && echo "Talált verzió: $CURRENT_VERSION"
+    echo ""
+    echo "Nem írom felül automatikusan, hogy az adataid és beállításaid megmaradjanak."
+    echo ""
+    echo "Indítás:"
+    echo "  cd \"$INSTALL_DIR\" && bash scripts/start.sh"
+    echo ""
+    echo "Frissítés:"
+    echo "  cd \"$INSTALL_DIR\" && bash update.sh"
+    echo ""
+    echo "Ha ez régi/hibás telepítés és tiszta újratelepítést szeretnél:"
+    echo "  curl -fsSL https://autowebinar.hu/webinar-magus/install | bash -s -- --repair"
+    echo ""
+    exit 3
+  fi
 fi
 
 TMP_DIR="$(mktemp -d "${TMPDIR:-/tmp}/webinar-magus-cli.XXXXXX")"
