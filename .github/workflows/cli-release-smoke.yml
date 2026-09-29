@@ -14,18 +14,40 @@ jobs:
     if: >-
       github.event_name == 'workflow_dispatch' ||
       (github.event.workflow_run.conclusion == 'success' &&
-       github.event.workflow_run.event == 'push')
+       (github.event.workflow_run.event == 'push' ||
+        github.event.workflow_run.event == 'workflow_dispatch'))
     runs-on: ubuntu-latest
     steps:
+      - name: Resolve expected public version
+        id: expected
+        shell: bash
+        env:
+          UPSTREAM_REF: ${{ github.event.workflow_run.head_branch }}
+        run: |
+          set -euo pipefail
+          EXPECTED=""
+          if [[ "${UPSTREAM_REF:-}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            EXPECTED="${UPSTREAM_REF#v}"
+          fi
+          echo "version=$EXPECTED" >> "$GITHUB_OUTPUT"
+          echo "Expected public version: ${EXPECTED:-current semver}"
+
       - name: Wait for public release propagation
         shell: bash
         run: |
           set -euo pipefail
           BASE="https://autowebinar.hu"
-          for URL in             "$BASE/webinar-magus/install"             "$BASE/webinar-magus/install.ps1"             "$BASE/downloads/webinar-magus/latest/version.json"             "$BASE/downloads/webinar-magus/latest/webinar-magus-runtime.tar.gz"             "$BASE/downloads/webinar-magus/latest/webinar-magus-runtime.tar.gz.sha256"
+          for URL in \
+            "$BASE/webinar-magus/install" \
+            "$BASE/webinar-magus/install.ps1" \
+            "$BASE/downloads/webinar-magus/latest/version.json" \
+            "$BASE/downloads/webinar-magus/latest/webinar-magus-runtime.tar.gz" \
+            "$BASE/downloads/webinar-magus/latest/webinar-magus-runtime.tar.gz.sha256"
           do
             echo "Checking $URL"
-            curl --fail --location --silent --show-error               --retry 12 --retry-delay 5 --retry-all-errors               "$URL" -o /dev/null
+            curl --fail --location --silent --show-error \
+              --retry 12 --retry-delay 5 --retry-all-errors \
+              "$URL" -o /dev/null
           done
 
       - name: Verify public bootstrap scripts
@@ -37,9 +59,13 @@ jobs:
           bash -n /tmp/install.sh
           grep -q 'WEBINAR_MAGUS_CLI_BOOTSTRAP=1' /tmp/install.sh
           grep -q 'WEBINAR_MAGUS_CLI_BOOTSTRAP=1' /tmp/install.ps1
+          grep -q 'Webinár Mágus' /tmp/install.sh
+          grep -q 'Webinár Mágus' /tmp/install.ps1
 
       - name: Verify published runtime and checksum
         shell: bash
+        env:
+          EXPECTED_VERSION: ${{ steps.expected.outputs.version }}
         run: |
           set -euo pipefail
           BASE="https://autowebinar.hu/downloads/webinar-magus/latest"
@@ -47,32 +73,75 @@ jobs:
           curl -fsSL --retry 5 "$BASE/webinar-magus-runtime.tar.gz" -o /tmp/runtime.tar.gz
           curl -fsSL --retry 5 "$BASE/webinar-magus-runtime.tar.gz.sha256" -o /tmp/runtime.tar.gz.sha256
 
-          node -e "const v=require('/tmp/version.json').version; if (!/^0\.1\.0$/.test(v)) { console.error('Unexpected published version:', v); process.exit(1) }"
+          node - <<'NODE'
+          const fs = require('fs')
+          const version = JSON.parse(fs.readFileSync('/tmp/version.json', 'utf8')).version
+          const expected = process.env.EXPECTED_VERSION || ''
+          if (!/^\d+\.\d+\.\d+$/.test(version)) {
+            console.error('Invalid published semver:', version)
+            process.exit(1)
+          }
+          if (expected && version !== expected) {
+            console.error('Unexpected published version:', version, 'expected:', expected)
+            process.exit(1)
+          }
+          console.log('Published version:', version)
+          NODE
 
           EXPECTED="$(awk '{print $1}' /tmp/runtime.tar.gz.sha256 | tr -d '[:space:]')"
           ACTUAL="$(sha256sum /tmp/runtime.tar.gz | awk '{print $1}')"
           test -n "$EXPECTED"
           test "$EXPECTED" = "$ACTUAL"
 
-          mkdir /tmp/runtime-check
+          rm -rf /tmp/runtime-check
+          mkdir -p /tmp/runtime-check
           tar -xzf /tmp/runtime.tar.gz -C /tmp/runtime-check
+
           test -f /tmp/runtime-check/install.sh
           test -f /tmp/runtime-check/install-macos.sh
           test -f /tmp/runtime-check/install-linux.sh
+          test -f /tmp/runtime-check/update.sh
+          test -f /tmp/runtime-check/package.json
           test -f /tmp/runtime-check/scripts/ai-provider-runtime.mjs
           test -f /tmp/runtime-check/scripts/install-ai-provider-bridge.sh
           test -f /tmp/runtime-check/web/ai-provider-onboarding.js
           test -f /tmp/runtime-check/web/icons/webinar-magus.svg
+
+          bash -n /tmp/runtime-check/install.sh
+          bash -n /tmp/runtime-check/install-macos.sh
+          bash -n /tmp/runtime-check/install-linux.sh
+          bash -n /tmp/runtime-check/update.sh
+
           ! test -e /tmp/runtime-check/.git
           ! test -e /tmp/runtime-check/.env
+          ! test -e /tmp/runtime-check/node_modules
           ! test -e /tmp/runtime-check/store
+
+          node - <<'NODE'
+          const fs = require('fs')
+          const pub = JSON.parse(fs.readFileSync('/tmp/version.json', 'utf8')).version
+          const pkg = JSON.parse(fs.readFileSync('/tmp/runtime-check/package.json', 'utf8')).version
+          if (pub !== pkg) {
+            console.error('Runtime package version mismatch:', pkg, 'published:', pub)
+            process.exit(1)
+          }
+          NODE
 
       - name: Verify public release branding
         shell: bash
         run: |
           set -euo pipefail
-          grep -q 'Webinár Mágus' /tmp/install.sh
-          grep -q 'Webinár Mágus' /tmp/install.ps1
           grep -q 'Webinár Mágus' /tmp/runtime-check/web/manifest.json
           grep -q '#2563EB' /tmp/runtime-check/web/style.css
           grep -q '#0EA5E9' /tmp/runtime-check/web/style.css
+
+          LEGACY_MATCHES="$(
+            grep -RIlE \
+              'Marveen|MARVEEN_|/api/marveen|marveen-marketplace|tmisi76/webinar-magus' \
+              /tmp/runtime-check 2>/dev/null || true
+          )"
+          if [ -n "$LEGACY_MATCHES" ]; then
+            echo "::error::Legacy Marveen/repository references found in published runtime:"
+            echo "$LEGACY_MATCHES"
+            exit 1
+          fi
