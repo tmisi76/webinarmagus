@@ -19,7 +19,7 @@ case "$GIT_COMMON_DIR" in /*) ;; *) GIT_COMMON_DIR="$ROOT/$GIT_COMMON_DIR" ;; es
 HOOK_DIR="$(cd "$GIT_COMMON_DIR" && pwd)/hooks"
 DISPATCH="$HOOK_DIR/pre-commit"
 GUARD="$HOOK_DIR/pre-commit.d/10-secret-gate"
-MARK="marveen-pre-commit-dispatcher"
+MARK="webinar-magus-pre-commit-dispatcher"
 mkdir -p "$HOOK_DIR/pre-commit.d"
 
 # 1. The sub-hook: scan what is staged.

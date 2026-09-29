@@ -40,7 +40,7 @@ The recovered answer is scoped to the round that posted the placeholder (see
 read_transcript): the transcript keeps growing after that round, so its last
 text may be a later internal turn's monologue -- never deliverable here.
 
-Standalone: scans every agent's per-agent telegram state dir. No marveen src
+Standalone: scans every agent's per-agent telegram state dir. No webinar_magus src
 dependency; only Python stdlib + the `tmux` binary. Bot API base is overridable
 via TELEGRAM_API_BASE (tests point it at a local stub).
 """
@@ -50,19 +50,19 @@ import datetime, os, glob, json, time, subprocess, urllib.request
 #
 # TGWDOGVAK913: this daemon is launched by launchd/systemd, and launchd does NOT
 # pass the operator's shell environment to a job -- the plist EnvironmentVariables
-# holds only what the installer writes. So MARVEEN_ROOT is NOT set in the
+# holds only what the installer writes. So WEBINAR_MAGUS_ROOT is NOT set in the
 # daemon's environment unless the installer put it there, and the old
-# `~/marveen` default pointed at a directory that does not exist on the real
+# `~/webinar-magus` default pointed at a directory that does not exist on the real
 # install (root: /Users/<user>/ClaudeClaw). The watchdog then scanned two
 # non-existent globs and its log stayed 0 bytes -- a sentry that guards nothing.
 #
 # The durable fix is self-location: when the daemon runs the repo copy at
 # <root>/scripts/hooks/telegram_progress_watchdog.py (where the installer points
 # the plist), the root is two directories up, needing no environment at all.
-# MARVEEN_ROOT still wins as an explicit override; ~/marveen stays as the
+# WEBINAR_MAGUS_ROOT still wins as an explicit override; ~/webinar-magus stays as the
 # last-resort legacy fallback.
 def _derive_fleet_root():
-    env = os.environ.get("MARVEEN_ROOT")
+    env = os.environ.get("WEBINAR_MAGUS_ROOT")
     if env:
         return env
     here = os.path.dirname(os.path.abspath(__file__))
@@ -73,7 +73,7 @@ def _derive_fleet_root():
         # scripts/hooks/ tree does not silently capture the scan.
         if os.path.isdir(os.path.join(cand, ".claude")) or os.path.isdir(os.path.join(cand, "agents")):
             return cand
-    return os.path.expanduser("~/marveen")
+    return os.path.expanduser("~/webinar-magus")
 
 
 FLEET_ROOT = _derive_fleet_root()

@@ -18,8 +18,8 @@ Hasznalat:
   kartya-es-ertesites.py --id X905 --assignee boni --title "..." --desc-file /path
       --msg-file /path --author Boni [--priority normal] [--status planned] [--dry-run]
 A felado MINDKET modban KIMONDOTT (KARTYAKULDO908, 2026-09-08): a letrehozo agon --author vagy
---from kell, kulonben megtagadas. Korabban csendben 'marveen' lett belole.
-Az onmagunknak (marveen) vagy a gazdanak (szabolcs) szolo kartya ertesites nelkul is mehet:
+--from kell, kulonben megtagadas. Korabban csendben 'webinar_magus' lett belole.
+Az onmagunknak (webinar_magus) vagy a gazdanak (szabolcs) szolo kartya ertesites nelkul is mehet:
 ott a --no-msg kapcsolo kell, KIMONDVA.
 A GAZDANAK --msg-file-lal is lehet kartyat adni, de az ertesites NEM megy ki (GAZDAUZENET921,
 2026-09-21): a gazda nem agens, nincs sessionje, a sor mindig failed lett (19/19), es az eszkoz
@@ -27,11 +27,11 @@ megis zold UZENET OK-ot irt, mert a sort olvasta vissza, nem a kezbesitest. Most
 KIMONDJA a hianyt (FIGYELEM-sor, dry-runban is), es a kartya-nyom is ezt rogziti.
 
 A KULDO NEVE (KARTYAKULDO906, Boni lelete 20254): az ertesites feladoja a --from, alapertelmezese
-az --author kisbetusitve. Korabban a from HARDCODE 'marveen' volt, tehat az eszkoz MINDEN agens
+az --author kisbetusitve. Korabban a from HARDCODE 'webinar_magus' volt, tehat az eszkoz MINDEN agens
 ertesiteset a fo-agens neveben kuldte ki -- aki olvasta, a MAS mereset ENGEM idezte. Attribucios
 hiba, nem kenyelmi kerdes: ket napja pont azon dolgozunk, hogy KI mert MIT es MILYEN HATARRAL.
 ONHUROK: ha a felado ES a felelos ugyanaz, az ertesites nem onmagahoz megy, hanem a
-KOORDINATORHOZ (marveen) -- kimondva, a kimeneten es az uzenet elso soraban is.
+KOORDINATORHOZ (webinar_magus) -- kimondva, a kimeneten es az uzenet elso soraban is.
 
 KOMMENT-ONLY MOD (KARTYAIRASESZKOZ905, 2026-09-05): komment egy MEGLEVO kartyara,
 ERTESITES NELKUL, ugyanazokkal a kapukkal es kotelezo visszaolvasassal:
@@ -49,7 +49,7 @@ A LEIRASRA 2026-09-21 OTA UGYANAZ AZ EKEZET-KAPU FUT, MINT A KOMMENTRE (EKEZETKA
 agon (letrehozo ES mozgato): 300 karakter folott 4 szazalek alatti ekezet-arany MEGTAGADAS, a
 kiut a --ekezet-nelkul-szandekos. A leiras volt az utolso gazdanak szant mezo, ami ekezet nelkul
 bement. Az ERTESITES (--msg-file) NEM esik ide: az gepnek szol, nem a kanban-feluletre.
-Az --author itt KOTELEZO (KARTYADRYRUN907, 2026-09-08): korabban csendben 'Marveen'-re esett,
+Az --author itt KOTELEZO (KARTYADRYRUN907, 2026-09-08): korabban csendben 'WebinarMagus'-re esett,
 tehat a kartyan MAS neve allt, mint aki irta. A letrehozo agon az alapertelmezes valtozatlan.
 MEZOMOZGATAS (KARTYASTATUSZ906, Boni lelete 2026-09-06): komment-modban a lenti mezok MEGLEVO
 kartyat mozgatnak, elotte-pillanatkeppel es FUGGETLEN visszaolvasassal:
@@ -63,7 +63,7 @@ kartyat mozgatnak, elotte-pillanatkeppel es FUGGETLEN visszaolvasassal:
 
 Korabban a --status es a --priority komment-modban SZO NELKUL ELVESZETT: a kimenet OK-t mondott, a
 kartya nem mozdult. A mozgatas SZANDEKOSAN a komment-modhoz van kotve -- egyik mezo sem valtozhat
-nyom nelkul. A FELELOS kulon indoka (Marveen, sajat hasznalatbol): a felelos-mezo a tablankon nem
+nyom nelkul. A FELELOS kulon indoka (WebinarMagus, sajat hasznalatbol): a felelos-mezo a tablankon nem
 cimke, hanem azt mondja meg, KINEL all a dontes -- a mozgatasa allapot-valtoztatas, nem adminisztracio.
 
 Ket fuggetlen hibaosztalyt zar ugyanez az egy ut: (1) a nyers sqlite3-quoting otodik
@@ -75,7 +75,7 @@ import argparse, json, os, re, sqlite3, sys, time, unicodedata, urllib.request
 
 # GYOKER-FELOLDAS: env ELOSZOR, __file__ CSAK tartaleknak, beegetett /Users/... SEHOL.
 # (Boni ket meresebol, msg 20272.) A sorrend nem izles kerdese:
-#   - A beegetett gazda-utvonal tilos, mert a scripts/ SHIPPEL (project_marveen_distribution_
+#   - A beegetett gazda-utvonal tilos, mert a scripts/ SHIPPEL (project_webinar_magus_distribution_
 #     hardcode_rule): egy beegetett ertek miatt a kozossegi napi uzenetek hetekig nem mentek ki.
 #   - A __file__-ELSO sorrend viszont ROSSZ LENNE, mert a kanban DB EGY ELO tarolo, nem
 #     worktree-nkenti. Worktree-ben a modul helyebol szarmaztatott gyoker eltolodik (merve,
@@ -135,7 +135,7 @@ def _token_kapu(dry_run):
 
 
 FLEET = {'samu','zara','boni','iris','dani','geri','deeper','qwen','mira','tomi','jumanji','hidli'}
-COORDINATOR = 'marveen'
+COORDINATOR = 'webinar_magus'
 GAZDA = 'szabolcs'
 # Ismert FELELOS-nevek. NEM zart halmaz: a tablan 2026-09-06-an 40 kulonbozo felelos allt, es a
 # tobbsegi nem-flotta ertek kulso GitHub-felhasznalonev (PR-kartyak szerzoi). Ezert a nem-ismert
@@ -209,7 +209,7 @@ def _horgony_kapu(card_id, cim):
     bukott, hogy az ID ott van-e a cimben; aminek nem volt horgonya, az kezi bucket lett. Egy
     cim-mozgatas csendben leveheti a horgonyt, es a kovetkezo migracio fizeti meg.
 
-    MIERT NORMALIZALT, ES NEM NYERS `id not in title` (Marveen merese, 2026-09-06): a nyers alak a
+    MIERT NORMALIZALT, ES NEM NYERS `id not in title` (WebinarMagus merese, 2026-09-06): a nyers alak a
     tabla BEVETT PR-kartya-konvenciojat tagadna meg -- az id `PR1195`, a cim "PR #1195 (...)", tehat
     a horgony OTT VAN, csak szokozzel es kettoskereszttel. Az utolso het 354 kartyajan merve: a nyers
     feltetel 52-t (14,7%) utasitana el, a normalizalt 13-at (3,7%) -- es ez a 13 tulnyomoreszt pont a
@@ -262,7 +262,7 @@ def gepelt_ora_fejlec(text):
     m = CLOCK_RX.search(head)
     if not m:
         return False
-    # RAGOZOTT ido = idezet, nem stempli (Geri 19899/1, Marveen 19920/1 dontese): a
+    # RAGOZOTT ido = idezet, nem stempli (Geri 19899/1, WebinarMagus 19920/1 dontese): a
     # "07:40-ES FUTAS" / "10:59-kor" alakban az ora egy esemenyre mutat, a fejlec-stempli
     # viszont mindig csupasz ("16:15"). Inkabb atengedunk nehany rosszat, mint hogy a
     # lelet-jelentes szokasos nagybetus alakja bukjon.
@@ -285,11 +285,11 @@ def gepelt_ora_fejlec(text):
     if sep:
         return True
     # Nincs '--': a korpusz-regresszio (KAPUPOZICIO905) szerint a fejlec-datalas itt is el
-    # (Boni kerek zarojeles alakja, Marveen hajnali "MERES 2026-09-05 04:2x ..." stilusa).
+    # (Boni kerek zarojeles alakja, WebinarMagus hajnali "MERES 2026-09-05 04:2x ..." stilusa).
     # Datum nelkuli, '--' nelkuli mondat-kozepi ido szabad; csak a MAI datum + ora paros bukik.
     return datum is not None
 
-# GEPI IDOBELYEG-JELZES, NEM KAPU (Marveen sajat hibaja, 2026-09-16; Mira fogta meg).
+# GEPI IDOBELYEG-JELZES, NEM KAPU (WebinarMagus sajat hibaja, 2026-09-16; Mira fogta meg).
 # MIERT LETEZIK: a MIODMVALASZ913 lezaro kommentjebe a mio prod DB-bol vett
 # `2026-09-14 07:57:39.706374+00` ertekeket irtam be ORAKENT, zona-jeloles nelkul. Azok UTC-k,
 # CEST-ben 09:57. A szabaly SZO SZERINT ott allt a sajat memoriamban (kanban-kartya-szabalyok,
@@ -352,10 +352,10 @@ GEPI_FEJLEC_RX = re.compile(r'^\s*\[[^\]\n]*\d{1,2}:\d{2}, rendszerora\]\s*\n?')
 # iras pillanataba, ezert csak egy agens tartotta. Ez ugyanaz az alak, mint a homoglifanal es a
 # memoria-indexnel: a szabaly megvan, a lepes nincs.
 # 2026-09-17 OTA KAPU, NEM JELZES -- ES AZ OK A MERES, NEM AZ ELV. A jelzes 2026-09-14 ota allt
-# itt azzal az indokkal, hogy "egy jelzes eleg". 2026-09-17-en KET agens (Mira es Marveen) futott
+# itt azzal az indokkal, hogy "egy jelzes eleg". 2026-09-17-en KET agens (Mira es WebinarMagus) futott
 # bele UGYANAZON A NAPON, es MINDKET ekezet nelkuli szoveg KIMENT. Egy kapu, ami nulla esetben
 # allit meg semmit, pontosan annyit er, mintha nem lenne ott -- a jelenlete viszont megnyugtat,
-# es ez a rosszabbik fele. (Mira javaslata, msg 26275; Marveen dontese.)
+# es ez a rosszabbik fele. (Mira javaslata, msg 26275; WebinarMagus dontese.)
 # A REGI ELLENERV VALOS MARAD: kommentbe kod, log-reszlet es nyers DB-ertek is kerul legitim
 # modon, ott a hamis pozitiv a kapu lassu kikapcsolasa lenne. EZERT NEM "mindig allj meg", hanem
 # KIMONDOTT FELULBIRALAS: --ekezet-nelkul-szandekos. A surgos eset tovabbra is egy kapcsoloval
@@ -409,7 +409,7 @@ def komment_mod(a):
     """Komment egy MEGLEVO kartyara, ertesites nelkul. Kapuk + kotelezo visszaolvasas."""
     # SZERZO-KAPU (KARTYADRYRUN907, 2026-09-08). Boni es Zara egymastol fuggetlenul
     # merte 2026-09-07-en (21700, 21701), hogy --author nelkul a fejlec ES a
-    # kanban_comments.author mezo CSENDBEN 'Marveen'-re esett. A javitas akkor egy
+    # kanban_comments.author mezo CSENDBEN 'WebinarMagus'-re esett. A javitas akkor egy
     # VERZIOKOVETETLEN peldanyba ment, es a v1.37.0 kiadas nemán visszaallitotta a hibat
     # (a kartya kozben done-on allt, tehat senki nem olvasta ujra). Ezert all itt fail-closed
     # kapu FELSZOLITAS helyett: a kapu akkor is vedd, ha senki nem olvassa el a korlevelet.
@@ -419,7 +419,7 @@ def komment_mod(a):
 
     if a.author is None:
         sys.exit('MEGTAGADVA: komment-modban a szerzo KIMONDOTT: add meg az --author-t\n'
-                 '(pl. --author Boni). Korabban ez csendben "Marveen"-re esett vissza, tehat\n'
+                 '(pl. --author Boni). Korabban ez csendben "WebinarMagus"-re esett vissza, tehat\n'
                  'a kartyan MAS neve allt, mint aki irta -- es a kimenet kozben OK-t mondott.')
     text = open(a.comment_file, encoding='utf-8').read().strip()
     _ekezet_kapu(text, a.ekezet_nelkul_szandekos)
@@ -467,7 +467,7 @@ def komment_mod(a):
         if (h := gyanus(a.title)):
             sys.exit(f'MEGTAGADVA: vegyes irasrendszeru szo a cimben: {h[:5]}')
         _horgony_kapu(a.id, a.title)
-    # A LEIRAS IS MOZGATHATO (EKEZETKAPU919, 2026-09-19). Marveen kikotese: a regi szoveg NE
+    # A LEIRAS IS MOZGATHATO (EKEZETKAPU919, 2026-09-19). WebinarMagus kikotese: a regi szoveg NE
     # vesszen el -- ezt nem kulon kod adja, hanem a mar meglevo mozgatas-nyom, ami MINDEN valtozo
     # mezo TELJES regi erteket kiirja egy kommentbe (lasd lent: `reszletes`). Ezert a leiras ugy
     # kerul be, mint a tobbi mezo, es nem sajat kulon uton: egy kulon ut pont azt a nyomot kerulne
@@ -512,14 +512,14 @@ def komment_mod(a):
     if a.assignee is not None:
         uj_felelos = _felelos_feloldas(a.assignee)
         if uj_felelos != elotte['assignee'] and uj_felelos not in ISMERT_FELELOSOK and not a.assignee_uj:
-            # TIPUS-KAPU, NEM NEV-HALMAZ (Marveen merese, 2026-09-06): a felelos-oszlop NEM zart
+            # TIPUS-KAPU, NEM NEV-HALMAZ (WebinarMagus merese, 2026-09-06): a felelos-oszlop NEM zart
             # halmaz -- 40 kulonbozo ertek all rajta, tobbsegukben kulso GitHub-nevek. Egy zart
             # halmazu kapu ezert a legitim mozgatasok tobbseget tagadna meg. Amit viszont meg
             # tudunk merni: all-e MAR MASIK kartya pontosan ezen a neven. Ha nem, az tipikusan
             # elgepeles, ami csendben egy sajat, egy-elemu oszlopba viszi a kartyat.
             # ISMERT HATAR: ARCHIVALT kartya is szamit. Igy egy regi elgepeles onmagat
             # legitimalja (merve: a tablan 44 archivalt kartya all "Samu" es 2 a
-            # "Marveen+Samu+Zara" erteken). Szandekos: a szigoritas a legitim, regota hasznalt
+            # "WebinarMagus+Samu+Zara" erteken). Szandekos: a szigoritas a legitim, regota hasznalt
             # kulso neveket is elutasitana, ami gyakoribb eset, mint a regi elgepeles ujra-
             # felhasznalasa. A kapu celja az UJ elgepeles kiszurese, nem a tortenet takaritasa.
             masik = db.execute('SELECT COUNT(*) FROM kanban_cards WHERE assignee=? AND id<>?',
@@ -692,7 +692,7 @@ def main():
     p = argparse.ArgumentParser()
     p.add_argument('--id', required=True); p.add_argument('--assignee')
     p.add_argument('--title')
-    # A SUGO MONDJA MEG, MIT TUD A KAPCSOLO A KET AGON (Marveen kikotese, EKEZETKAPU919).
+    # A SUGO MONDJA MEG, MIT TUD A KAPCSOLO A KET AGON (WebinarMagus kikotese, EKEZETKAPU919).
     # A korlatot eddig csak a keveres-kapu uzenete mutatta, amibol NEM derult ki, hogy a
     # leiras utolag javithatatlan -- aki nekifutott, a megtagadasbol azt olvasta ki, hogy
     # rossz kapcsolot hasznal, nem azt, hogy nincs ilyen ut.
@@ -708,7 +708,7 @@ def main():
     p.add_argument('--assignee-uj', action='store_true', dest='assignee_uj',
                    help='komment-mod: kimondva uj (a tablan meg nem szereplo) felelos-nev')
     # NINCS CSENDES ALAPERTELMEZES (KARTYADRYRUN907, 2026-09-08). Korabban itt
-    # default='Marveen' allt, tehat egy --author nelkuli komment SZO NELKUL a
+    # default='WebinarMagus' allt, tehat egy --author nelkuli komment SZO NELKUL a
     # koordinatort nevezte meg szerzokent -- a kimenet OK-t mondott, a kartyan pedig
     # MAS neve allt. A None azert kell, hogy a komment-ag meg tudja KULONBOZTETNI a
     # kimondott erteket a nem-adottol; a letrehozo ag alapertelmezese lentebb, KIMONDVA all.
@@ -753,7 +753,7 @@ def main():
     # UGYANAZ A KANONIKUS ALAK, mint a mozgato agon -- kulonben a ket ut ugyanarra a nevre
     # KET KULONBOZO erteket irna a tablara.
     who = _felelos_feloldas(a.assignee)
-    # A FELADO KIMONDOTT (KARTYAKULDO908, 2026-09-08). Korabban itt egy 'Marveen' tartalek allt:
+    # A FELADO KIMONDOTT (KARTYAKULDO908, 2026-09-08). Korabban itt egy 'WebinarMagus' tartalek allt:
     # --author es --from nelkul az ertesites CSENDBEN a koordinator neveben ment ki. Mira merte
     # 2026-09-07-en (21680), mi tortenik ilyenkor: Tomi olyan feladat-kiosztast kapott, ami ugy
     # nezett ki, mintha a FO-AGENS adta volna, holott a kartya Mirae volt. Az attribucios hiba
@@ -766,12 +766,12 @@ def main():
     if not a.from_agent and not a.author:
         sys.exit('MEGTAGADVA: a letrehozo agon is KIMONDOTT a felado: add meg az --author-t\n'
                  '(a kartya szerzoje) vagy a --from-ot (az ertesites feladoja).\n'
-                 'Korabban ez csendben "marveen"-re esett vissza, tehat a cimzett ugy latta,\n'
+                 'Korabban ez csendben "webinar_magus"-re esett vissza, tehat a cimzett ugy latta,\n'
                  'mintha a koordinator kerte volna -- es neki is valaszolt volna vissza.')
     frm = (a.from_agent or a.author).strip().lower()
     if frm not in KULDOK:
         sys.exit(f'MEGTAGADVA: ismeretlen felado ("{frm}"). Ervenyes: {", ".join(sorted(KULDOK))}.\n'
-                 f'Ha az --author nem agens-nev (pl. "Marveen (Boni lelete)"), add meg kimondva: --from <agens>.')
+                 f'Ha az --author nem agens-nev (pl. "WebinarMagus (Boni lelete)"), add meg kimondva: --from <agens>.')
     desc = open(a.desc_file, encoding='utf-8').read() if a.desc_file else ''
     msg = open(a.msg_file, encoding='utf-8').read() if a.msg_file else ''
     # EKEZET-KAPU A LEIRASON, A LETREHOZO AGON IS (EKEZETKAPU919, 2026-09-21). A ket ag kulon
