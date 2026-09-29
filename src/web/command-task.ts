@@ -12,7 +12,7 @@ import type { ScheduledTask } from "./scheduled-tasks-io.js"
 // command-type scheduled tasks run a raw shell command directly (no LLM
 // agent, no tmux session) and alert on Telegram after N consecutive
 // failures. This keeps infra heartbeats inside the one system that gets
-// backed up (the Marveen store) instead of a separate crontab.
+// backed up (the WebinarMagus store) instead of a separate crontab.
 
 const HEALTH_PATH = join(STORE_DIR, "command-task-health.json")
 

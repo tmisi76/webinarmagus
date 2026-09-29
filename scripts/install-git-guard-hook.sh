@@ -21,7 +21,7 @@ case "$GIT_COMMON_DIR" in /*) ;; *) GIT_COMMON_DIR="$ROOT/$GIT_COMMON_DIR" ;; es
 HOOK_DIR="$(cd "$GIT_COMMON_DIR" && pwd)/hooks"
 DISPATCH="$HOOK_DIR/pre-push"
 GUARD="$HOOK_DIR/pre-push.d/10-no-force-push-protected"
-MARK="marveen-pre-push-dispatcher"
+MARK="webinar_magus-pre-push-dispatcher"
 mkdir -p "$HOOK_DIR/pre-push.d"
 
 # 1. The guard sub-hook: reject a non-fast-forward push to a protected branch.
