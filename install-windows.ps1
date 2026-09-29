@@ -172,7 +172,7 @@ INSTALL_DIR="$installPath"
 
 # Clone repo
 if [ ! -d "\$INSTALL_DIR" ]; then
-    git clone --branch main https://github.com/tmisi76/webinar-magus.git "\$INSTALL_DIR"
+    git clone --branch main https://github.com/tmisi76/webinarmagus.git "\$INSTALL_DIR"
     echo '  ✓ Repó klónozva'
 else
     echo '  ✓ Webinár Mágus mappa már létezik'
