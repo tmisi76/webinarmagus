@@ -41,7 +41,7 @@ describe('createApproval', () => {
     const hash = 'a'.repeat(40) + '0123456789abcdef01234567'
     const a = createApproval({
       id: 'ap-hash-1',
-      agent_id: 'marveen',
+      agent_id: 'webinarmagus',
       category: 'email_send',
       action_description: 'Email: to=a@b.hu, targy=Teszt',
       content_hash: hash,

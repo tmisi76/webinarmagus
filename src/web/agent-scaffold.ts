@@ -622,8 +622,8 @@ export function writeAgentSettingsFromProfile(name: string, profile: ProfileTemp
 }
 
 // Which agents are subject to the email-send hard-gate: every agent EXCEPT the
-// main agent (MAIN_AGENT_ID, e.g. Marveen). Name-agnostic -- keyed on the
-// configured main-agent id, not a hardcoded 'marveen', so a customer install
+// main agent (MAIN_AGENT_ID, e.g. WebinarMagus). Name-agnostic -- keyed on the
+// configured main-agent id, not a hardcoded 'webinarmagus', so a customer install
 // gates its own sub-agents and exempts its own owner (distribution-hardcode
 // rule). Pure + exported so the main-exempt guarantee is unit-testable.
 export function agentGetsEmailGate(name: string): boolean {
@@ -1482,8 +1482,8 @@ export function watchEgressAllowlistForReaderRender(
 
 // Copy the repo's `scheduled-tasks/<task>/task-config.json` to the
 // destination with the `agent` field rewritten to the host's
-// MAIN_AGENT_ID. The repo-side configs ship with `"agent": "marveen"`
-// hardcoded (canonical default in src/config.ts) so a non-marveen
+// MAIN_AGENT_ID. The repo-side configs ship with `"agent": "webinarmagus"`
+// hardcoded (canonical default in src/config.ts) so a non-webinarmagus
 // install would otherwise scaffold tasks bound to an agent that does
 // not exist and the scheduler would fire silently into the void on
 // every tick. All other files in the task directory (SKILL.md, etc.)

@@ -32,7 +32,7 @@
 // (activePlanByAgent, already keyed per agent) -- but looping this script
 // over every sub-agent, each with its own restart semantics
 // (writeAgentClaudePlan + restartAgentProcess instead of
-// hardRestartMarveenChannels), is deferred as a fast follow-up rather than
+// hardRestartWebinarMagusChannels), is deferred as a fast follow-up rather than
 // bundled into the riskiest PR in this series.
 import { execFileSync } from 'node:child_process'
 import { join, dirname } from 'node:path'

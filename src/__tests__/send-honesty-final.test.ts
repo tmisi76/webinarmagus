@@ -7,7 +7,7 @@ import { join } from 'node:path'
 // NOTIFYVAKSWEEP826 closing round: the two dashboard-API senders get the
 // honest-delivery treatment (channels.sh guard POSTs, the generated prod-tree
 // post-checkout hook), and the watchdog replay's stderr is routed to the
-// watchdog log instead of /dev/null. Marveen's stipulation (msg 16091): the
+// watchdog log instead of /dev/null. WebinarMagus's stipulation (msg 16091): the
 // marker fix needs its own POSITIVE CONTROL -- a deliberately unwritable log
 // target must leave a visible trace, otherwise the fix is as unmeasurable as
 // the failure was. channels.sh itself is unsafe to execute even stubbed
@@ -31,7 +31,7 @@ function stubBin(): string {
   return bin
 }
 
-describe('watchdog-replay marker: POSITIVE CONTROL for the failure trace (Marveen msg 16091)', () => {
+describe('watchdog-replay marker: POSITIVE CONTROL for the failure trace (WebinarMagus msg 16091)', () => {
   const run = (logTarget: string) => {
     const bin = stubBin()
     const data = join(stage, 'msgs.json')
@@ -98,10 +98,10 @@ describe('generated prod-tree post-checkout hook: honest alert delivery', () => 
     // installed post-checkout hook, which would alert (live curl!) and
     // auto-revert back to develop, making the measured run a silent no-op --
     // exactly what the first draft of this test did. Waive the hook for the
-    // setup step (MARVEEN_PROD_CHECKOUT_OK=1) and keep the stub curl on PATH
+    // setup step (WEBINAR_MAGUS_PROD_CHECKOUT_OK=1) and keep the stub curl on PATH
     // so no invocation can ever reach a live endpoint.
     execFileSync('git', ['-C', repo, 'checkout', '-q', '-B', 'feature-probe'], {
-      env: { ...process.env, PATH: `${bin}:/usr/bin:/bin`, MARVEEN_PROD_CHECKOUT_OK: '1' },
+      env: { ...process.env, PATH: `${bin}:/usr/bin:/bin`, WEBINAR_MAGUS_PROD_CHECKOUT_OK: '1' },
     })
     return spawnSync('/bin/bash', [hook, 'a'.repeat(40), 'b'.repeat(40), '1'], {
       cwd: repo,

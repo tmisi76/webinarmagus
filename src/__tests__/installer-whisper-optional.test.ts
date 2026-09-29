@@ -73,7 +73,7 @@ function runWhisperBlock(installerRc: number, stderrMsg = ''): { code: number; o
     'echo REACHED_THE_END',
   ].join('\n')
 
-  const file = join(mkdtempSync(join(tmpdir(), 'marveen-whisper-')), 'block.sh')
+  const file = join(mkdtempSync(join(tmpdir(), 'webinarmagus-whisper-')), 'block.sh')
   writeFileSync(file, script)
 
   try {

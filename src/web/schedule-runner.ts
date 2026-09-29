@@ -670,7 +670,7 @@ export function resolveBoundChannel(agentName: string): BoundChannel {
     // would silently redirect scheduled-task results to another person -- the
     // exact failure class the old sentinel guarded against, now throw-free and
     // thus invisible. The warn turns a silent misdirection into a searchable
-    // log line; behaviour is unchanged (Marveen, msg 7002).
+    // log line; behaviour is unchanged (WebinarMagus, msg 7002).
     const candidates = Array.isArray(raw?.allowFrom) ? raw.allowFrom.length : 0
     if (chosen && candidates > 1) {
       logger.warn({ agent: agentName, provider, candidates, chosen }, 'bound-chat resolution is ambiguous: multiple DM allowlist entries, using the first')
@@ -879,7 +879,7 @@ async function attemptFireTask(
     // steps: the pane accepts the keystrokes and the wedged session never acts
     // on them, and the context-guard's rescue restart then discards the queued
     // input (2026-07-17: reggeli-napindito force-injected into a saturated
-    // marveen-channels and vanished without a trace). Closes the KNOWN
+    // webinarmagus-channels and vanished without a trace). Closes the KNOWN
     // FOLLOW-UP that previously lived here: saturation is the one busy-state
     // forceSend must respect. Defer via the pending-retry queue (the caller
     // maps 'busy' to a retry row, exempt from skipIfBusy for forceSend); the
@@ -951,7 +951,7 @@ async function attemptFireTask(
       // Target the RUNNING agent's own bound channel, NOT the global
       // ALLOWED_CHAT_ID. The latter is the main/admin chat; injecting it here
       // pointed every sub-agent's task result at the boss's chat instead of its
-      // own owner (e.g. attilamarveenja -> Papp Attila). The old "chat_id: 0"
+      // own owner (e.g. attilawebinarmagusja -> Papp Attila). The old "chat_id: 0"
       // sentinel encoded the same intent, but the official Telegram plugin rejects it
       // (assertAllowedChat: "0" is never allowlisted), so the binding is
       // resolved to a CONCRETE id here at prompt-build time.
@@ -1269,7 +1269,7 @@ export async function runScheduledTaskNow(
 // catch-up summary). SLACKAWARE: the alerts go over whatever channel the MAIN
 // agent is bound to (CHANNEL_PROVIDER), so the token is resolved for that
 // provider. Every provider keeps the historical dual-location lookup:
-// marveen/.env first, then the main agent's channel .env (2026-07-08: every
+// webinarmagus/.env first, then the main agent's channel .env (2026-07-08: every
 // scheduler alert was silently suppressed on hosts where the token had moved
 // to the plugin env after the channels migration -- that fallback must hold
 // for Telegram and Slack alike). readChannelToken maps the provider to its

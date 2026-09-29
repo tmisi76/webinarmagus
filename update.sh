@@ -1,5 +1,5 @@
 #!/bin/bash
-# Marveen Updater
+# WebinarMagus Updater
 
 set -e
 
@@ -13,8 +13,8 @@ NC='\033[0m'
 INSTALL_DIR="$(cd "$(dirname "$0")" && pwd)"
 cd "$INSTALL_DIR"
 # ── Language (saved by installer, falls back to HU) ──────────────────────────
-MARVEEN_LANG="$(cat "${INSTALL_DIR}/.lang" 2>/dev/null || echo hu)"
-export MARVEEN_LANG
+WEBINAR_MAGUS_LANG="$(cat "${INSTALL_DIR}/.lang" 2>/dev/null || echo hu)"
+export WEBINAR_MAGUS_LANG
 # shellcheck source=install-lang.sh
 source "$(dirname "$0")/install-lang.sh"
 
@@ -250,7 +250,7 @@ fi
 exec > >(tee -a "$UPDATE_LOG") 2>&1
 
 echo ""
-if [[ "${MARVEEN_LANG:-hu}" == "en" ]]; then
+if [[ "${WEBINAR_MAGUS_LANG:-hu}" == "en" ]]; then
   echo -e "${BOLD}Webinár Mágus update...${NC} [$(date -u +%Y-%m-%dT%H:%M:%SZ)]"
 else
   echo -e "${BOLD}Webinár Mágus frissítés...${NC} [$(date -u +%Y-%m-%dT%H:%M:%SZ)]"
@@ -269,7 +269,7 @@ echo ""
 # this is defense-in-depth for manual invocations.
 CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "")
 if [ "$CURRENT_BRANCH" = "HEAD" ] || [ -z "$CURRENT_BRANCH" ]; then
-  if [[ "${MARVEEN_LANG:-hu}" == "en" ]]; then
+  if [[ "${WEBINAR_MAGUS_LANG:-hu}" == "en" ]]; then
     echo -e "${RED}ERROR:${NC} The repo is in detached-HEAD state."
   else
     echo -e "${RED}HIBA:${NC} A repo detached-HEAD állapotban van."
@@ -294,7 +294,7 @@ if [ "$CURRENT_BRANCH" = "HEAD" ] || [ -z "$CURRENT_BRANCH" ]; then
   # `+refs/tags/<tag>:refs/tags/<tag>` sora kiesik. Az update-utra artalmatlan
   # (az ag-refbol dolgozik), de ez a parancs maradando config-valtozas.
   if [ "$(git rev-parse --is-shallow-repository 2>/dev/null)" = "true" ] || [ -f .git/shallow ]; then
-    if [[ "${MARVEEN_LANG:-hu}" == "en" ]]; then
+    if [[ "${WEBINAR_MAGUS_LANG:-hu}" == "en" ]]; then
       echo "       This is a SHALLOW clone with no branch refs, so 'git checkout main' cannot work here."
       echo "       Fetch the release branch first, then switch to it:"
     else
@@ -309,7 +309,7 @@ if [ "$CURRENT_BRANCH" = "HEAD" ] || [ -z "$CURRENT_BRANCH" ]; then
     # MAGYARUL ment, mikozben a folotte allo HIBA/ERROR fejlec helyesen valtott.
     # A #1438-ban szandekosan maradt igy, mert a kartya a regresszio-merest a
     # valtozatlan HU alakra kotte ki; a HU szoveg itt BAJTRA ugyanaz maradt.
-    if [[ "${MARVEEN_LANG:-hu}" == "en" ]]; then
+    if [[ "${WEBINAR_MAGUS_LANG:-hu}" == "en" ]]; then
       echo "       Switch to a release branch, then you can start the update again, e.g.:"
     else
       echo "       Allj at egy release branchre, majd indithatod ujra a frissitest, pl.:"
@@ -322,7 +322,7 @@ fi
 # ref to fast-forward to (e.g. a local-only feature branch). Fail early with
 # a clear message instead of letting set -e abort mid-run.
 if ! git ls-remote --exit-code --heads origin "$CURRENT_BRANCH" >/dev/null 2>&1; then
-  if [[ "${MARVEEN_LANG:-hu}" == "en" ]]; then
+  if [[ "${WEBINAR_MAGUS_LANG:-hu}" == "en" ]]; then
     echo -e "${RED}ERROR:${NC} Branch '${CURRENT_BRANCH}' does not exist on origin."
   else
     echo -e "${RED}HIBA:${NC} A '${CURRENT_BRANCH}' branch nem létezik az origin-on."
@@ -331,7 +331,7 @@ if ! git ls-remote --exit-code --heads origin "$CURRENT_BRANCH" >/dev/null 2>&1;
   # nyelvfuggo volt, az alatta allo ket sor nem. Ugyanabban a kepernyoben all,
   # mint a Guard 1 uzenete, ezert a ketto EGYUTT valt nyelvet -- egy felig javitott
   # kepernyo rosszabb, mint egy egyseges magyar.
-  if [[ "${MARVEEN_LANG:-hu}" == "en" ]]; then
+  if [[ "${WEBINAR_MAGUS_LANG:-hu}" == "en" ]]; then
     echo "       You can only update from a branch that also exists on origin (a tracked branch)."
     echo "       Switch to a release branch, e.g.:"
   else
@@ -362,8 +362,8 @@ DIRTY=$(git status --porcelain --untracked-files=no | grep -vE ' HEARTBEAT\.md$'
 if [ -n "$DIRTY" ]; then
   if [ "${AUTO_STASH:-0}" = "1" ]; then
     echo -e "  Lokalis valtozasok stash-elve (auto-stash)..."
-    if ! git stash push -u -m "marveen-update-auto-stash $(date +%Y%m%d-%H%M%S)"; then
-      if [[ "${MARVEEN_LANG:-hu}" == "en" ]]; then
+    if ! git stash push -u -m "webinarmagus-update-auto-stash $(date +%Y%m%d-%H%M%S)"; then
+      if [[ "${WEBINAR_MAGUS_LANG:-hu}" == "en" ]]; then
         echo -e "${RED}ERROR:${NC} Auto-stash failed. Check: git status"
       else
         echo -e "${RED}HIBA:${NC} Auto-stash sikertelen. Nézd meg: git status"
@@ -372,7 +372,7 @@ if [ -n "$DIRTY" ]; then
     fi
     STASHED_AUTO=1
   else
-    if [[ "${MARVEEN_LANG:-hu}" == "en" ]]; then
+    if [[ "${WEBINAR_MAGUS_LANG:-hu}" == "en" ]]; then
       echo -e "${RED}ERROR:${NC} The working tree has uncommitted changes."
     else
       echo -e "${RED}HIBA:${NC} A working tree módosult állapotban van."
@@ -395,7 +395,7 @@ restore_stash_before_exit() {
     if git stash pop; then
       STASHED_AUTO=0
     else
-      if [[ "${MARVEEN_LANG:-hu}" == "en" ]]; then
+      if [[ "${WEBINAR_MAGUS_LANG:-hu}" == "en" ]]; then
         echo -e "${RED}WARNING:${NC} Auto-stash pop had conflicts; the stash remains in 'git stash list'."
       else
         echo -e "${RED}FIGYELEM:${NC} Auto-stash pop konfliktusos; a stash benne marad a 'git stash list'-ben."
@@ -486,7 +486,7 @@ repair_morning_timer() {
   for morn_timer in "$units_dir/"*-morning.timer; do
     [ -f "$morn_timer" ] || continue
     if grep -q '^Requires=.*-morning\.service' "$morn_timer"; then
-      sed -i.marveen-bak '/^Requires=.*-morning\.service/d' "$morn_timer" && rm -f "${morn_timer}.marveen-bak"
+      sed -i.webinarmagus-bak '/^Requires=.*-morning\.service/d' "$morn_timer" && rm -f "${morn_timer}.webinarmagus-bak"
       systemctl --user daemon-reload 2>/dev/null || true
       echo -e "  Reggeli-napindito timer javitva (Requires= a [Unit]-bol eltavolitva): $(basename "$morn_timer")"
     fi
@@ -508,8 +508,8 @@ migrate_channels_restart() {
   for chan_unit in "$units_dir/"*-channels.service; do
     [ -f "$chan_unit" ] || continue
     if grep -q '^Restart=on-failure[[:space:]]*$' "$chan_unit"; then
-      if sed -i.marveen-bak 's/^Restart=on-failure[[:space:]]*$/Restart=always/' "$chan_unit" 2>/dev/null; then
-        rm -f "${chan_unit}.marveen-bak"
+      if sed -i.webinarmagus-bak 's/^Restart=on-failure[[:space:]]*$/Restart=always/' "$chan_unit" 2>/dev/null; then
+        rm -f "${chan_unit}.webinarmagus-bak"
         _patched=1
         echo -e "  Csatorna-unit javitva (Restart=on-failure -> always): $(basename "$chan_unit")"
       else
@@ -556,7 +556,7 @@ install_keepalive_probe_timer() {
     # BOT_NAME is only assigned further down this script, so read it here
     # instead of inheriting an empty one into the unit Description.
     _bot_name="$(sed -n 's/^BOT_NAME=//p' "$INSTALL_DIR/.env" 2>/dev/null | head -1 | tr -d '"')"
-    [ -n "$_bot_name" ] || _bot_name="Marveen"
+    [ -n "$_bot_name" ] || _bot_name="WebinarMagus"
     _tz_line="# no explicit TZ detected; inheriting host default"
     _tz="$(timedatectl show -p Timezone --value 2>/dev/null || cat /etc/timezone 2>/dev/null || true)"
     [ -n "$_tz" ] && [ "$_tz" != "UTC" ] && _tz_line="Environment=TZ=$_tz"
@@ -838,7 +838,7 @@ if [ "$OLD_VERSION" = "$NEW_VERSION" ]; then
       echo -e "  ${ORANGE}↻${NC} Mar a legfrissebb verzion ($NEW_VERSION), de a dist elavult (built=${BUILT_COMMIT:-none}) -> ongyogyito ujraforditas + restart"
     fi
   elif [ "$RESEED_FLEET" != "1" ] && [ "$REGEN_CLAUDEMD" != "1" ]; then
-    if [[ "${MARVEEN_LANG:-hu}" == "en" ]]; then
+    if [[ "${WEBINAR_MAGUS_LANG:-hu}" == "en" ]]; then
       echo -e "  ${GREEN}✓${NC} Already on the latest version ($NEW_VERSION)"
     else
       echo -e "  ${GREEN}✓${NC} Már a legfrissebb verzión vagy ($NEW_VERSION)"
@@ -863,7 +863,7 @@ if [ "$OLD_VERSION" = "$NEW_VERSION" ]; then
     # run even when the code is already current. dist is verified fresh (marker
     # == HEAD), so skip the dep-install + build below and jump to the
     # seed/identity refresh.
-    if [[ "${MARVEEN_LANG:-hu}" == "en" ]]; then
+    if [[ "${WEBINAR_MAGUS_LANG:-hu}" == "en" ]]; then
       echo -e "  ${GREEN}✓${NC} Already on the latest version ($NEW_VERSION), continuing due to fleet-reseed/regen flag"
     else
       echo -e "  ${GREEN}✓${NC} Már a legfrissebb verzión ($NEW_VERSION), folytatás a kért fleet-reseed/regen miatt"
@@ -902,7 +902,7 @@ if git diff "$OLD_VERSION" "$NEW_VERSION" --name-only | grep -qE "^package(-lock
   # whether to roll back.
   echo -e "  Biztonsagi ellenorzes..."
   if ! npm audit --audit-level=high --omit=dev --silent; then
-    if [[ "${MARVEEN_LANG:-hu}" == "en" ]]; then
+    if [[ "${WEBINAR_MAGUS_LANG:-hu}" == "en" ]]; then
       echo -e "  WARNING: npm audit reported high-severity item(s)."
     else
       echo -e "  FIGYELEM: npm audit magas-súlyosságú tételt jelzett."
@@ -1206,8 +1206,8 @@ fi
 # Slack channel plugin smoke-test: if the marketplace slack-channel ref
 # changed since the last update, and a slack-provider agent exists, run
 # the smoke-test (if SLACK_SMOKE_TEST_ALLOWED=true in its .env).
-SLACK_REF_FILE="$INSTALL_DIR/store/marveen-marketplace-slack-channel-ref.txt"
-MARKETPLACE_PLUGIN_DIR="$HOME/.claude/plugins/cache/marveen-marketplace/slack-channel"
+SLACK_REF_FILE="$INSTALL_DIR/store/webinarmagus-marketplace-slack-channel-ref.txt"
+MARKETPLACE_PLUGIN_DIR="$HOME/.claude/plugins/cache/webinarmagus-marketplace/slack-channel"
 if [ -d "$MARKETPLACE_PLUGIN_DIR" ]; then
   CURRENT_REF="$(ls "$MARKETPLACE_PLUGIN_DIR" 2>/dev/null | head -1)"
   LAST_REF="$(cat "$SLACK_REF_FILE" 2>/dev/null || true)"
@@ -1225,7 +1225,7 @@ if [ -d "$MARKETPLACE_PLUGIN_DIR" ]; then
       if grep -q 'SLACK_SMOKE_TEST_ALLOWED=true' "$AGENT_ENV" 2>/dev/null; then
         echo -e "  Slack smoke-test futtatasa ($SLACK_AGENT)..."
         if ! bash "$INSTALL_DIR/scripts/smoke-test-slack-channel.sh" "$SLACK_AGENT"; then
-          if [[ "${MARVEEN_LANG:-hu}" == "en" ]]; then
+          if [[ "${WEBINAR_MAGUS_LANG:-hu}" == "en" ]]; then
             echo -e "${RED}WARNING:${NC} Slack smoke-test FAILED. Check the plugin integration."
           else
             echo -e "${RED}FIGYELEM:${NC} Slack smoke-test SIKERTELEN. Ellenőrizd a plugin integrációt."
@@ -1275,7 +1275,7 @@ if [ "$STASHED_AUTO" = "1" ]; then
     if [ "${SKIP_BUILD:-0}" != "1" ]; then
       echo -e "  Ujraforditas a visszaallitott helyi valtozasokkal..."
       if ! retry 2 3 npm run build --silent; then
-        if [[ "${MARVEEN_LANG:-hu}" == "en" ]]; then
+        if [[ "${WEBINAR_MAGUS_LANG:-hu}" == "en" ]]; then
           echo -e "${RED}WARNING:${NC} Rebuild after stash-restore failed; dist/ may not reflect local changes."
         else
           echo -e "${RED}FIGYELEM:${NC} Az ujraforditas a stash-visszaallitas utan sikertelen; a dist/ lehet hogy nem tartalmazza a helyi valtozasokat."
@@ -1286,7 +1286,7 @@ if [ "$STASHED_AUTO" = "1" ]; then
       fi
     fi
   else
-    if [[ "${MARVEEN_LANG:-hu}" == "en" ]]; then
+    if [[ "${WEBINAR_MAGUS_LANG:-hu}" == "en" ]]; then
       echo -e "${RED}WARNING:${NC} Auto-stash pop had conflicts; the stash remains in 'git stash list'."
     else
       echo -e "${RED}FIGYELEM:${NC} Auto-stash pop konfliktusos; a stash benne marad a 'git stash list'-ben."
@@ -1299,7 +1299,7 @@ fi
 #
 # Two hard constraints force this shape:
 #   1) Self-kill: when triggered from the dashboard, update.sh runs INSIDE the
-#      marveen-*-dashboard systemd cgroup. stop.sh tears that cgroup down, which
+#      webinarmagus-*-dashboard systemd cgroup. stop.sh tears that cgroup down, which
 #      reaps THIS script before start.sh runs -> services stay dead. setsid is
 #      NOT enough (same cgroup); only a separate cgroup (systemd-run --scope)
 #      survives. So the restart must run OUTSIDE our cgroup.
@@ -1381,10 +1381,10 @@ echo -e "  Szolgaltatasok ujrainditasa..."
 RESULT_PHASE="restart"
 # The finalizer owns the result file from here; do not let our EXIT trap write.
 FINALIZE_LAUNCHED=1
-# MARVEEN_UPDATE_NOTIFY=1 (set by the unattended auto-update task) makes the
+# WEBINAR_MAGUS_UPDATE_NOTIFY=1 (set by the unattended auto-update task) makes the
 # finalizer send a channel report after the restart+health outcome. A manual
 # dashboard-triggered run leaves it unset -> silent (the UI polls the status).
-FINALIZE_ARGS=("$INSTALL_DIR" "$OLD_VERSION_FULL" "$OLD_VERSION" "${WEB_PORT:-3420}" "$RESULT_FILE" "$BUILT_COMMIT_FILE" "$NEW_VERSION" "${NODE_PIN_DIR:-}" "${MARVEEN_UPDATE_NOTIFY:-0}")
+FINALIZE_ARGS=("$INSTALL_DIR" "$OLD_VERSION_FULL" "$OLD_VERSION" "${WEB_PORT:-3420}" "$RESULT_FILE" "$BUILT_COMMIT_FILE" "$NEW_VERSION" "${NODE_PIN_DIR:-}" "${WEBINAR_MAGUS_UPDATE_NOTIFY:-0}")
 XDG_RUN="${XDG_RUNTIME_DIR:-/run/user/$(id -u 2>/dev/null)}"
 if command -v systemd-run >/dev/null 2>&1 && [ -d "$XDG_RUN" ]; then
   # Linux/systemd: the finalizer runs inside a transient scope whose OWN cgroup
@@ -1405,7 +1405,7 @@ else
 fi
 
 echo ""
-if [[ "${MARVEEN_LANG:-hu}" == "en" ]]; then
+if [[ "${WEBINAR_MAGUS_LANG:-hu}" == "en" ]]; then
   echo -e "${GREEN}✓ Update applied (${OLD_VERSION} -> ${NEW_VERSION}); restarting and health-checking...${NC}"
 else
   echo -e "${GREEN}✓ Frissites alkalmazva (${OLD_VERSION} -> ${NEW_VERSION}); ujrainditas es health-check folyamatban...${NC}"

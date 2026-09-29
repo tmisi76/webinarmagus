@@ -5,7 +5,7 @@
 // to run scripts/heartbeat-metrics.sh and copy its output verbatim, and the
 // digest still shipped fabricated numbers -- 2026-09-10 19:00-22:00 every
 // round reported a du-shaped DB size (488) against the instrument's apparent
-// size (473.6), plus hot=0 beside a measured 1. Marveen's pre-registered
+// size (473.6), plus hot=0 beside a measured 1. WebinarMagus's pre-registered
 // natural experiment (card HBMETRICSWIRE910, comment 2026-09-10 22:10)
 // resolved to outcome (a): the FIRST round of a fresh session (2026-09-11
 // 09:01) still said 488, so the drift is not context decay -- the round

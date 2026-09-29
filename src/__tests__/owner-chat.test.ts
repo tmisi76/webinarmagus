@@ -92,7 +92,7 @@ describe('resolveOwnerChatId', () => {
   })
 
   it('NEVER returns the placeholder, whatever the inputs', () => {
-    // The claim Marveen asked for explicitly, stated as its own test: it is a
+    // The claim WebinarMagus asked for explicitly, stated as its own test: it is a
     // different claim from "the real id gets through", and it is the one that
     // rules out the silent 400s.
     const inputs: Array<[unknown, string | null]> = [

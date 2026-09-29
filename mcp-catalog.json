@@ -65,7 +65,7 @@
       "GMAIL_MCP_TOOL_PREFIX": "v2_"
     },
     "authType": "oauth",
-    "authNote": "ArtyMcLabin/Gmail-MCP-Server fork FORRASBOL vendorolva, pinelt commit 83e8dafebc87dd3e6a26c04acb5ec6e199c1636e (2026-08-12) -- verzio-emeles SOHA nem csendes bump: uj commit + diff + build + parhuzamos igazolasi kor kell (VENDOR.md). Sajat config-konyvtar: ~/.gmail-mcp-v2/ (a regi ~/.gmail-mcp-hez NEM nyul). A v2_ tool-prefix az atmeneti parhuzamos futashoz; a regi gmail-MCP kivetele elott Marveen GO kell.",
+    "authNote": "ArtyMcLabin/Gmail-MCP-Server fork FORRASBOL vendorolva, pinelt commit 83e8dafebc87dd3e6a26c04acb5ec6e199c1636e (2026-08-12) -- verzio-emeles SOHA nem csendes bump: uj commit + diff + build + parhuzamos igazolasi kor kell (VENDOR.md). Sajat config-konyvtar: ~/.gmail-mcp-v2/ (a regi ~/.gmail-mcp-hez NEM nyul). A v2_ tool-prefix az atmeneti parhuzamos futashoz; a regi gmail-MCP kivetele elott WebinarMagus GO kell.",
     "infoUrl": "https://github.com/ArtyMcLabin/Gmail-MCP-Server",
     "verifiedAt": "2026-09-07",
     "verifiedNote": "Forras-audit: process-en beluli tobb-fiok NINCS (singleton kliens, 28x userId:'me'), tobb fiok = instance-per-account TOOL_PREFIX-szel; kimeno host csak googleapis; build nalunk a pinelt forrasbol, dist/ a repoban a mi buildunk."
@@ -224,7 +224,7 @@
       "ELEVENLABS_API_KEY": ""
     },
     "authType": "apikey",
-    "authNote": "API kulcs: https://elevenlabs.io - Settings -> API Keys. ELOFELTETEL: ez a szerver Python-alapu, a futtatasahoz `uv` kell (https://docs.astral.sh/uv/). A Marveen telepitoje NEM telepiti fel; ha hianyzik, a connector inditasa \"uvx: command not found\" hibaval all meg.",
+    "authNote": "API kulcs: https://elevenlabs.io - Settings -> API Keys. ELOFELTETEL: ez a szerver Python-alapu, a futtatasahoz `uv` kell (https://docs.astral.sh/uv/). A WebinarMagus telepitoje NEM telepiti fel; ha hianyzik, a connector inditasa \"uvx: command not found\" hibaval all meg.",
     "infoUrl": "https://github.com/elevenlabs/elevenlabs-mcp",
     "verifiedAt": "2026-09-19",
     "verifiedNote": "JAVITVA: a korabbi `npx -y elevenlabs-mcp` NEM LETEZO csomagra mutatott. npm view elevenlabs-mcp -> E404, \"Unpublished on 2026-03-08\" (pozitiv kontroll: a tobbi katalogus-csomagra ugyanez a hivas ad adatot). Tehat minden ElevenLabs-telepites elbukott, es egy scope nelkuli, visszavont nev allt egy `npx -y` mogott. A HIVATALOS terjesztes PyPI, nem npm: elevenlabs-mcp 0.12.2 (pip3 index versions, pozitiv es negativ kontrollal). AZONOSSAG a wheel METADATA-jabol, helyben kiolvasva (letoltes --only-binary, tehat kodfuttatas nelkul): Author-email mind @elevenlabs.io (Jacek Duszenko, Paul Asjes, Louis Jordan, Luke Harries), license \"Copyright (c) 2025 Eleven Labs Inc.\", entry point elevenlabs-mcp = elevenlabs_mcp.server:main. Egyezik az infoUrl szerinti elevenlabs/elevenlabs-mcp repoval. Telepiteskor futo script NINCS: a wheel telepitese nem futtat kodot, ellentetben egy npm postinstall-lal. Npm-oldalon nincs hivatalos alternativa: @elevenlabs/mcp, @elevenlabs/elevenlabs-mcp, @elevenlabs/mcp-server, elevenlabs-mcp-server mind E404, es az @elevenlabs scope letezik ugyan (cli, client, react, types), de MCP-szervert nem tartalmaz."

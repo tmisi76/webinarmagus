@@ -27,7 +27,7 @@ INSTALL_DIR="$(cd "$(dirname "$0")/../.." && pwd)"
 HOOKS_DIR="$INSTALL_DIR/scripts/hooks"
 
 # Run a hook with isolation env vars. MAIN_AGENT_ID is pinned so a payload with
-# no cwd resolves deterministically to agent 'marveen'. Extra env (e.g.
+# no cwd resolves deterministically to agent 'webinarmagus'. Extra env (e.g.
 # LEDGER_CONTEXT_WINDOW=3) can be exported by the caller and is inherited.
 run_hook() {
     local hook="$1"
@@ -36,24 +36,24 @@ run_hook() {
     # OWNER_NAME is pinned to 'Gyula' so the replay's inbound prefix is
     # deterministic regardless of the install's .env (assertions below grep for
     # "Gyula:"). Same reasoning as pinning MAIN_AGENT_ID.
-    LEDGER_DB_PATH="$db" LEDGER_OWNER_CHAT="10000000001" MAIN_AGENT_ID="marveen" \
+    LEDGER_DB_PATH="$db" LEDGER_OWNER_CHAT="10000000001" MAIN_AGENT_ID="webinarmagus" \
         OWNER_NAME="Gyula" \
         python3 "$HOOKS_DIR/$hook" "$@"
 }
 
-# Run the live-drain from cwd=INSTALL_DIR so agent_id resolves to 'marveen'
+# Run the live-drain from cwd=INSTALL_DIR so agent_id resolves to 'webinarmagus'
 # (matching the capture/outbound rows). The drain's dedup statefile lands beside
 # the DB (dirname of LEDGER_DB_PATH), so per-case subdirs keep it isolated.
 run_drain() { # db
     ( cd "$INSTALL_DIR" && LEDGER_DB_PATH="$1" LEDGER_OWNER_CHAT="10000000001" \
-        MAIN_AGENT_ID="marveen" python3 "$HOOKS_DIR/ledger-live-drain.py" )
+        MAIN_AGENT_ID="webinarmagus" python3 "$HOOKS_DIR/ledger-live-drain.py" )
 }
 
 # The task's scheduler preCheck, run through the shipped wrapper from a foreign
 # cwd: the wrapper itself must pin cwd to the install root.
 run_drain_precheck() { # db
     ( cd / && LEDGER_DB_PATH="$1" LEDGER_OWNER_CHAT="10000000001" \
-        MAIN_AGENT_ID="marveen" bash "$HOOKS_DIR/ledger-live-drain-precheck.sh" )
+        MAIN_AGENT_ID="webinarmagus" bash "$HOOKS_DIR/ledger-live-drain-precheck.sh" )
 }
 
 # Age every row in a ledger DB backwards so an open question clears the grace window.
@@ -501,7 +501,7 @@ else
     fail "live drain: output missing question text"
 fi
 assert_eq "live drain: statefile records the surfaced message_id" "1122" \
-    "$(cat "$TMPDIR_BASE/ld1/.ledger-drain-marveen" 2>/dev/null)"
+    "$(cat "$TMPDIR_BASE/ld1/.ledger-drain-webinarmagus" 2>/dev/null)"
 
 # (g2) same open question again -> dedup, no output
 OUT_G2="$(run_drain "$DB_LD1")"
@@ -535,7 +535,7 @@ emit_inbound 10000000001 1140 "Precheck utan is felszinre kell jonnie" | run_hoo
 age_rows "$DB_LD6" 120
 assert_eq "drain precheck: open question -> empty stdout (run the turn)" "" "$(run_drain_precheck "$DB_LD6")"
 assert_eq "drain precheck: never records the surfaced id" "" \
-    "$(cat "$TMPDIR_BASE/ld6/.ledger-drain-marveen" 2>/dev/null)"
+    "$(cat "$TMPDIR_BASE/ld6/.ledger-drain-webinarmagus" 2>/dev/null)"
 if printf '%s' "$(run_drain "$DB_LD6")" | grep -q "message_id=1140"; then
     pass "drain precheck: the real drain still surfaces the question afterwards"
 else

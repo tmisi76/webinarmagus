@@ -2,7 +2,7 @@
 """Test the accent gate of scripts/kartya-es-ertesites.py (EKEZETKAPU917).
 
 2026-09-14 ota egy JELZES allt itt ("nem allitalak meg"). 2026-09-17-en KET agens
-(Mira es Marveen) futott bele UGYANAZON A NAPON, es MINDKET ekezet nelkuli szoveg
+(Mira es WebinarMagus) futott bele UGYANAZON A NAPON, es MINDKET ekezet nelkuli szoveg
 KIMENT -- vagyis a jelzes nulla esetben allitott meg barmit is. Egy kapu, ami soha
 nem fog, pontosan annyit er, mintha nem lenne ott; a jelenlete viszont megnyugtat.
 
@@ -125,7 +125,7 @@ def main():
     check('rovid szoveg bekerult', db_count('EKEZET4') == 1)
 
     # 5. ARANY-KAPU (EKEZETARANY921, 2026-09-21). Az elozo alak `any`-predikatum volt: egy 800+
-    #    karakteres, ekezet nelkuli szoveg ATMENT, ha a vegen allt EGY ekezetes szo (Marveen merese:
+    #    karakteres, ekezet nelkuli szoveg ATMENT, ha a vegen allt EGY ekezetes szo (WebinarMagus merese:
     #    831 karakter, 0,36 szazalek). Ez a kartya KAPUJA: a token-ekezetes hosszu szoveg MEGTAGADVA,
     #    a 3. eset (rendesen ekezetezett, 10,6 szazalek) valtozatlanul atmegy -- a ketto EGYUTT a
     #    bizonyitek, kulon egyik sem.
@@ -142,7 +142,7 @@ def main():
     check('5 a megtagadas kimondja a MERT aranyt es a kuszobot',
           'ekezet-arany' in (r.stdout + r.stderr) and '4%' in (r.stdout + r.stderr), (r.stdout + r.stderr)[:300])
     check('5 a sor NEM keletkezett meg', db_count('EKEZET5') == 0, f'{db_count("EKEZET5")} sor')
-    #    A kiut MEGMARAD (Marveen kikotese): ugyanez a szoveg kimondott felulbiralassal bemegy.
+    #    A kiut MEGMARAD (WebinarMagus kikotese): ugyanez a szoveg kimondott felulbiralassal bemegy.
     seed('EKEZET6')
     r = comment('EKEZET6', TOKEN_EKEZET, ('--ekezet-nelkul-szandekos',))
     check('5 kimondott felulbiralassal a token-ekezetes szoveg is bemegy', r.returncode == 0 and db_count('EKEZET6') == 1,

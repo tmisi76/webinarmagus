@@ -204,8 +204,8 @@ Mindenhol **Webinár Mágus**:
 A történeti belső azonosítók nem cserélendők vak keresés-cserével.
 
 Ilyenek lehetnek:
-- `/api/marveen`
-- `MARVEEN_*`
+- `/api/webinarmagus`
+- `WEBINAR_MAGUS_*`
 - meglévő DB/fájlnév
 - régi service/migration azonosítók
 

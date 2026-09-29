@@ -1,6 +1,6 @@
 // CLAUDEPLANWATCHDOG912: resolveMainConfigDecision() used to know only about
 // the generic, credential-less flotta-isolated dir (ensureMainAgentIsolatedConfigDir).
-// The JS in-process respawn paths (channel-monitor.ts's resumeMarveenSession /
+// The JS in-process respawn paths (channel-monitor.ts's resumeWebinarMagusSession /
 // respawnMainSessionFresh) build their launch command from THIS decision, not
 // from scripts/main-agent-isolated-config.mjs -- so a main agent that had just
 // been rotated onto a claude-plans entry (POST /api/claude-plans/rotate) got

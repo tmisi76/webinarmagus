@@ -36,7 +36,7 @@ def main():
           re.search(r'ap\.add_argument\(\s*"--cc"\s*,\s*default=OWNER_CC', src) is not None)
     check('az OWNER_CC a configbol jon (lib._env), nem literal',
           re.search(r'OWNER_CC\s*=\s*lib\._env\(\s*"SUPPORT_OWNER_CC"\s*\)', src) is not None)
-    # TERMEK-KAPU: a Marveen minden vevo gepere kimegy, tehat a repoban NEM allhat
+    # TERMEK-KAPU: a WebinarMagus minden vevo gepere kimegy, tehat a repoban NEM allhat
     # egyetlen telepites gazdajanak a cime sem. Ezt a template-identity-hygiene teszt
     # is meri; itt azert ismetlem, mert EZ A FAJL az, ahol az elso valtozat elbukott.
     check('NINCS hardcode-olt szemelyes cim a fajlban',

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """EMAILKAPU901 PR2: the email_send level becomes a real switch on the main agent.
 
-Branches proven (Marveen msgs 17900/17936):
+Branches proven (WebinarMagus msgs 17900/17936):
   - level 1: the send is DENIED outright.
   - level 2: denied without approval; ALLOWED against an approved, matching,
     in-window approval; the SAME send a SECOND time is denied again (one-shot
@@ -94,7 +94,7 @@ def approve(store, anchor, resolved_ago=0, status="approved", consumed=None):
     con.execute(
         "INSERT INTO approvals (id, agent_id, category, action_description, status,"
         " requested_at, resolved_at, resolved_by, content_hash, consumed_at)"
-        " VALUES (hex(randomblob(6)), 'marveen', 'email_send', 'Email teszt', ?,"
+        " VALUES (hex(randomblob(6)), 'webinarmagus', 'email_send', 'Email teszt', ?,"
         f" {NOW_S}-?-60, CASE WHEN ?='pending' THEN NULL ELSE {NOW_S}-? END,"
         " 'szabi', ?, ?)",
         (status, resolved_ago, status, resolved_ago, anchor, consumed))
@@ -231,7 +231,7 @@ with tempfile.TemporaryDirectory() as td:
     check("fail-closed: non-dict tool_input -> DENIED (exit 2, never 1)",
           code == 2, f"exit={code}")
 
-    # Marveen's #1149 review: this gate AUTHORIZES, so unlike the copy gate it
+    # WebinarMagus's #1149 review: this gate AUTHORIZES, so unlike the copy gate it
     # must fail closed on an unparseable payload too -- the docstring and the
     # code now state the same contract.
     env = dict(os.environ, EMAIL_APPROVAL_GATE_STORE=store,

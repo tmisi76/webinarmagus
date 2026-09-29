@@ -133,7 +133,7 @@ WEB_PORT="${WEB_PORT:-3420}"
 clear
 echo ""
 echo -e "${BOLD}  ▐▛███▜▌   Webinár Mágus${NC}"
-if [[ "${MARVEEN_LANG:-hu}" == "en" ]]; then
+if [[ "${WEBINAR_MAGUS_LANG:-hu}" == "en" ]]; then
   echo -e "${BOLD} ▝▜█████▛▘  Your AI team, running while you sleep.${NC}"
 else
   echo -e "${BOLD} ▝▜█████▛▘  $(_t tagline)${NC}"
@@ -583,14 +583,14 @@ fi
 # XDG_RUNTIME_DIR + DBUS: headless szerveren automatikusan beallitjuk
 # (detektalas: nincs DISPLAY es nincs WAYLAND_DISPLAY)
 if [ -z "${DISPLAY:-}" ] && [ -z "${WAYLAND_DISPLAY:-}" ]; then
-  XDG_BLOCK='# marveen-user-bus: XDG_RUNTIME_DIR + DBUS headless szerveren
+  XDG_BLOCK='# webinarmagus-user-bus: XDG_RUNTIME_DIR + DBUS headless szerveren
 if [ -z "${XDG_RUNTIME_DIR:-}" ] && [ -d "/run/user/$(id -u)" ]; then
   export XDG_RUNTIME_DIR="/run/user/$(id -u)"
 fi
 if [ -n "${XDG_RUNTIME_DIR:-}" ] && [ -S "$XDG_RUNTIME_DIR/bus" ] && [ -z "${DBUS_SESSION_BUS_ADDRESS:-}" ]; then
   export DBUS_SESSION_BUS_ADDRESS="unix:path=$XDG_RUNTIME_DIR/bus"
 fi'
-  ensure_block_in_rc 'marveen-user-bus' "$XDG_BLOCK"
+  ensure_block_in_rc 'webinarmagus-user-bus' "$XDG_BLOCK"
   # Aktivaljuk az aktualis sessionban is
   if [ -z "${XDG_RUNTIME_DIR:-}" ] && [ -d "/run/user/$(id -u)" ]; then
     export XDG_RUNTIME_DIR="/run/user/$(id -u)"
@@ -959,16 +959,16 @@ BOT_NAME=${BOT_NAME:-"Webinár Mágus"}
 
 # Derive the ASCII slug the backend uses everywhere (tmux sessions, systemd
 # unit labels, DB agent_id, API routing). NFKD + ASCII + lowercase dashes,
-# empty fallback to "marveen" so we never end up with a blank identifier.
+# empty fallback to "webinarmagus" so we never end up with a blank identifier.
 MAIN_AGENT_ID=$(python3 - "$BOT_NAME" <<'PYEOF'
 import sys, unicodedata, re
 s = sys.argv[1].strip()
 s = unicodedata.normalize('NFKD', s).encode('ASCII', 'ignore').decode()
 s = re.sub(r'[^a-zA-Z0-9]+', '-', s).strip('-').lower()
-print(s or 'marveen')
+print(s or 'webinarmagus')
 PYEOF
 )
-if [ "$MAIN_AGENT_ID" != "marveen" ]; then
+if [ "$MAIN_AGENT_ID" != "webinarmagus" ]; then
   echo -e "  ${DIM}$(_t macos.agent_id_info)${MAIN_AGENT_ID}${NC}"
 fi
 
@@ -1140,7 +1140,7 @@ if [ -n "${OAUTH_TOKEN_INPUT:-}" ] && printf '%s' "$OAUTH_TOKEN_INPUT" | grep -E
   # authenticates from whatever refreshes that root -- on Linux the shared
   # ~/.claude/.credentials.json -- which periodically expires and 401s the bot
   # into a parked TUI that the router reads as busy, so the channel goes silent
-  # with no error (the confirmed root cause of the 2026-07-23 marveen-channels
+  # with no error (the confirmed root cause of the 2026-07-23 webinarmagus-channels
   # outage). The setting existed but nothing ever turned it on, so every
   # default install was wired to that failure mode.
   #
@@ -1253,7 +1253,7 @@ fi
 
 # Default scheduled tasks scaffoldolasa ~/.claude/scheduled-tasks/ ala. A
 # template-ek {{MAIN_AGENT_ID}} placeholdert hasznalnak, igy a felhasznalo
-# valasztott agent slugja kerul be a hardcoded "marveen" helyett. Letezo task
+# valasztott agent slugja kerul be a hardcoded "webinarmagus" helyett. Letezo task
 # konyvtarakat soha nem irjuk felul.
 SCHED_TPL_DIR="$INSTALL_DIR/templates/scheduled-tasks"
 SCHED_TARGET_DIR="$HOME/.claude/scheduled-tasks"
@@ -1411,8 +1411,8 @@ elif [ "$CHANNEL_PROVIDER" = "discord" ]; then
   PLUGIN_ID="discord@claude-plugins-official"
   PLUGIN_SHORT="discord"
 else
-  PLUGIN_MARKETPLACE="Szotasz/marveen-marketplace"
-  PLUGIN_ID="slack-channel@marveen-marketplace"
+  PLUGIN_MARKETPLACE="tmisi76/webinarmagus-marketplace"
+  PLUGIN_ID="slack-channel@webinarmagus-marketplace"
   PLUGIN_SHORT="slack-channel"
 fi
 
@@ -1436,7 +1436,7 @@ fi
 
 # Enable plugin at project scope so --channels can boot-time activate it
 cd "$INSTALL_DIR"
-if claude plugin enable "$PLUGIN_SHORT@marveen-marketplace" --scope project 2>/dev/null || \
+if claude plugin enable "$PLUGIN_SHORT@webinarmagus-marketplace" --scope project 2>/dev/null || \
    claude plugin enable "$PLUGIN_ID" --scope project 2>/dev/null; then
   ok "${CHANNEL_PROVIDER} plugin project-scope-ban engedelyezve"
 else
@@ -1914,7 +1914,7 @@ AccuracySec=20s
 WantedBy=timers.target
 EOF
 
-# marveen-host-watchdog.service -- host/WSL-VM restart detector (btime-based).
+# webinarmagus-host-watchdog.service -- host/WSL-VM restart detector (btime-based).
 # Distinguishes a whole-VM restart (all units down at once, NOT an app crash)
 # from a service crash, and Telegrams it. See scripts/host-restart-watchdog.sh.
 cat >"$SYSTEMD_DIR/${SERVICE_ID}-host-watchdog.service" <<EOF
@@ -1926,7 +1926,7 @@ Wants=network-online.target
 [Service]
 Type=oneshot
 ExecStart=$INSTALL_DIR/scripts/host-restart-watchdog.sh
-Environment=MARVEEN_STORE=$INSTALL_DIR/store
+Environment=WEBINAR_MAGUS_STORE=$INSTALL_DIR/store
 Environment=TELEGRAM_ENV=$HOME/.claude/channels/telegram/.env
 Environment=PATH=$HOME/.local/bin:/usr/local/bin:/usr/bin:/bin
 Environment=HOME=$HOME
@@ -1938,7 +1938,7 @@ StandardError=journal
 WantedBy=default.target
 EOF
 
-# marveen-notify@.service -- templated app-crash notifier, fired by OnFailure=
+# webinarmagus-notify@.service -- templated app-crash notifier, fired by OnFailure=
 # drop-ins on the dashboard/channels units. OnFailure => app crash (vs the
 # host-watchdog's btime-change => host restart).
 cat >"$SYSTEMD_DIR/${SERVICE_ID}-notify@.service" <<EOF

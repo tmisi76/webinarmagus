@@ -1710,8 +1710,8 @@ main.kanban-active { padding-left: 16px; padding-right: 16px; }
   line-height: 1;
 }
 
-.marveen-card { border-left: 3px solid var(--accent); }
-.marveen-badge {
+.webinarmagus-card { border-left: 3px solid var(--accent); }
+.webinarmagus-badge {
   font-size: 10px;
   font-weight: 600;
   text-transform: uppercase;

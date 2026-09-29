@@ -79,7 +79,7 @@ describe('kanban-write-gate gateDecision: the worker duties that MUST pass', () 
     // CONTENT describes a proposed write. stripDataPayloads blanks the -d
     // literal, so describing a write is never treated as performing one.
     expect(
-      bash(`curl -s -X POST http://localhost:3420/api/messages -H "Content-Type: application/json" -d '{"from":"heartbeat","to":"marveen","content":"NYERSANYAG: X kartya | waiting | javasolt: UPDATE kanban_cards SET status=done | evidencia msg 123"}'`).deny
+      bash(`curl -s -X POST http://localhost:3420/api/messages -H "Content-Type: application/json" -d '{"from":"heartbeat","to":"webinarmagus","content":"NYERSANYAG: X kartya | waiting | javasolt: UPDATE kanban_cards SET status=done | evidencia msg 123"}'`).deny
     ).toBe(false)
   })
   it('allows plain non-kanban commands', () => {

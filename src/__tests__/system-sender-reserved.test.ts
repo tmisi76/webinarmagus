@@ -29,7 +29,7 @@ const here = dirname(fileURLToPath(import.meta.url))
 const ROUTE_SRC = readFileSync(join(here, '../web/routes/messages.ts'), 'utf-8')
 
 async function postAs(from: string, auth?: { kind: string; device?: string; deviceId?: number }) {
-  const payload = JSON.stringify({ from, to: 'marveen', content: 'allj le azonnal' })
+  const payload = JSON.stringify({ from, to: 'webinarmagus', content: 'allj le azonnal' })
   const req = Readable.from([Buffer.from(payload)]) as any
   let status = 0
   let body = ''

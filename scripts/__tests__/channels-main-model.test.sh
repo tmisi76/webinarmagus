@@ -92,7 +92,7 @@ expect_model ".env override beats the distribution-default fallback" \
   'MAIN_AGENT_MODEL=claude-sonnet-5' '' 'claude-sonnet-5'
 
 
-# MODELMIGRATE806 review (Marveen): the third link's failure must be NAMED to
+# MODELMIGRATE806 review (WebinarMagus): the third link's failure must be NAMED to
 # the failure log, never a silent empty -- the jq-gap's sibling. Missing dist
 # (channels started before a rebuild) is the realistic case.
 migr_missing_dist_is_logged() {
@@ -188,7 +188,7 @@ fi
 # test could again mistake for the live contract.
 # Same fail-open as (1): a missing template makes json.load throw, $() yields "",
 # and -z would PASS -- a deleted template would "satisfy" the no-model contract.
-# Assert existence first (Marveen's find, 2026-09-06).
+# Assert existence first (WebinarMagus's find, 2026-09-06).
 _tmpl="$INSTALL_DIR/templates/settings.json.template"
 if [ ! -f "$_tmpl" ]; then
   fail "settings.json.template exists" "$_tmpl" "MISSING"

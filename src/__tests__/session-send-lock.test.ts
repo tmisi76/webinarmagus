@@ -137,7 +137,7 @@ describe('sendPromptToSession delivery-lock wiring', () => {
   // missed: it typed `/rename <name>` with a bare send-keys on a
   // fire-and-forget timer. Measured 2026-09-10 09:40:01 -- a restart fired it
   // while the scheduler was chunk-pasting a task prompt into the same pane, and
-  // `/rename Marveen_is` landed in the MIDDLE of that prompt, between two words
+  // `/rename WebinarMagus_is` landed in the MIDDLE of that prompt, between two words
   // of a python expression. The reading agent saw an unprovenanced self-rename
   // command inside its own instructions.
   //

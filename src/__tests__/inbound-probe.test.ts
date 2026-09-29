@@ -303,7 +303,7 @@ describe('transcript roots across config dirs', () => {
 // hand-roll their own PROJECT_ROOT.replace(/\//g, '-'), which only strips
 // slashes. On any host whose PROJECT_ROOT contains another separator
 // character that Claude Code also encodes (e.g. a dot in the username, as in
-// /Users/a.kobza/marveen), the two encoders disagree: the hand-rolled one
+// /Users/a.kobza/webinarmagus), the two encoders disagree: the hand-rolled one
 // computes a directory Claude Code never creates, so
 // readLastIngestionTimestampAcross() always returns null -- real inbound
 // traffic never refreshes the keepalive file, and the channel-monitor

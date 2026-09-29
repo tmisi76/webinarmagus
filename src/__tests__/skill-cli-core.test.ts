@@ -14,7 +14,7 @@ import {
 /**
  * A HAROM IMPLEMENTACIOT ADAT KOTI OSSZE, NEM PROZA. Ezek ugyanazok a
  * vektorok, amiket a Python kliens (mio-upload) es a Deno szerver
- * (upload-api/attestation.ts) is hasznal; a fajl a marveen-io repobol
+ * (upload-api/attestation.ts) is hasznal; a fajl a webinarmagus-io repobol
  * koltozott ide valtozatlanul. Ha barmelyik implementacio elcsuszik a
  * kanonikalizalasban vagy az alairasban, ITT bukik, nem egy code review-n.
  */

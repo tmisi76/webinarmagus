@@ -33,7 +33,7 @@ function resolutionBlock(src: string): string {
 
 /** Resolve with a given environment and .env content. */
 function resolve(opts: { envVar?: string; dotenv?: string }): string {
-  const dir = mkdtempSync(join(tmpdir(), 'marveen-ollamaurl-'))
+  const dir = mkdtempSync(join(tmpdir(), 'webinarmagus-ollamaurl-'))
   if (opts.dotenv !== undefined) writeFileSync(join(dir, '.env'), opts.dotenv)
 
   const script = [
@@ -59,7 +59,7 @@ describe('installer: OLLAMA_URL resolution matches the runtime', () => {
   })
 
   it('takes OLLAMA_URL from the .env the installer has already written', () => {
-    expect(resolve({ dotenv: 'BOT_NAME=Marveen\nOLLAMA_URL=http://10.0.0.5:11434\n' }))
+    expect(resolve({ dotenv: 'BOT_NAME=WebinarMagus\nOLLAMA_URL=http://10.0.0.5:11434\n' }))
       .toBe('http://10.0.0.5:11434')
   })
 
@@ -73,7 +73,7 @@ describe('installer: OLLAMA_URL resolution matches the runtime', () => {
   })
 
   it('falls back when .env has no OLLAMA_URL key', () => {
-    expect(resolve({ dotenv: 'BOT_NAME=Marveen\n' })).toBe(DEFAULT_URL)
+    expect(resolve({ dotenv: 'BOT_NAME=WebinarMagus\n' })).toBe(DEFAULT_URL)
   })
 })
 

@@ -72,7 +72,7 @@ function runHook(payload: Record<string, unknown>): Promise<number> {
     const child = execFile(
       'python3',
       [hookCopy],
-      { encoding: 'utf-8', env: { ...process.env, WEB_PORT: String(port), MARVEEN_AGENT_ID: 'test-agent' } },
+      { encoding: 'utf-8', env: { ...process.env, WEB_PORT: String(port), WEBINAR_MAGUS_AGENT_ID: 'test-agent' } },
       (err: any) => resolve(err ? (typeof err.code === 'number' ? err.code : 1) : 0),
     )
     child.stdin?.end(JSON.stringify(payload))

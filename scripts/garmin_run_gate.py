@@ -53,12 +53,12 @@ ANALYSIS_SCRIPT = GARMIN_DIR / "running_analysis.py"
 STATE_FILE = GARMIN_DIR / "last_analyzed_run.json"
 PENDING_FILE = GARMIN_DIR / "pending_run_analysis.txt"
 
-MARVEEN_DIR = Path(__file__).resolve().parents[1]
-TOKEN_FILE = MARVEEN_DIR / "store" / ".dashboard-token"
+WEBINAR_MAGUS_DIR = Path(__file__).resolve().parents[1]
+TOKEN_FILE = WEBINAR_MAGUS_DIR / "store" / ".dashboard-token"
 MESSAGES_URL = "http://localhost:3420/api/messages"
 # Proof-of-life artefact: its mtime answers "did the silent path actually run
 # today", which "is the task enabled" does not.
-HEARTBEAT_FILE = MARVEEN_DIR / "store" / "garmin-run-gate-last.txt"
+HEARTBEAT_FILE = WEBINAR_MAGUS_DIR / "store" / "garmin-run-gate-last.txt"
 
 RC_NOTHING_NEW = 0
 RC_NEW_RUN = 2

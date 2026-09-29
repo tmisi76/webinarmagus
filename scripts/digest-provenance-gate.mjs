@@ -31,11 +31,11 @@
 //      content (whitespace-normalized). A fabricated attribution cannot carry
 //      a verifiable citation.
 //
-// KNOWN LIMIT (accepted by Marveen, msg 16050): a wrong-AGENT-name in prose
+// KNOWN LIMIT (accepted by WebinarMagus, msg 16050): a wrong-AGENT-name in prose
 // (the Dani/geri error) is not mechanically catchable; mandatory verbatim
 // citations only constrain it, they do not eliminate it.
 //
-// Failure posture (Marveen stipulation, msg 16050): an INTERNAL error while
+// Failure posture (WebinarMagus stipulation, msg 16050): an INTERNAL error while
 // validating an in-scope POST (DB unreadable, payload file missing) DENIES
 // loudly with the error in the reason -- never fail-open, never a silent
 // swallow. Empty/malformed stdin (a non-matching hook event) allows, same as

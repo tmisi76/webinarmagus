@@ -39,7 +39,7 @@ describe('the guard stays silent where silence is correct', () => {
     // The resolved dir is the whole point of the guard; having it means the
     // thing we are afraid of did not happen.
     expect(mainSharedConfigTrigger({
-      isolatedConfigDir: '/srv/marveen/.channels-config',
+      isolatedConfigDir: '/srv/webinarmagus/.channels-config',
       fleetToken: true,
       isolatedDirExists: true,
     })).toBeNull()

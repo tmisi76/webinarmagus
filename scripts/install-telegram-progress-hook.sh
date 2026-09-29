@@ -32,7 +32,7 @@ SRC_DIR="$(cd "$(dirname "$0")" && pwd)/hooks"
 # The watchdog unit/label name keys off SERVICE_ID, matching install-linux.sh's
 # ${SERVICE_ID}-dashboard/-channels units and the macOS com.${SERVICE_ID}.*
 # launchd labels. Derive it from the install .env so a renamed install
-# (BOT_NAME != Marveen) does NOT get an orphaned marveen-* unit left behind.
+# (BOT_NAME != WebinarMagus) does NOT get an orphaned webinarmagus-* unit left behind.
 INSTALL_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 # Read a single key from a .env file without sourcing it.
 # Sourcing executes the file: an unquoted value with spaces (e.g. OWNER_NAME=Foo Bar)
@@ -52,8 +52,8 @@ read_env() {
 SERVICE_ID="$(read_env SERVICE_ID)"
 MAIN_AGENT_ID_ENV="$(read_env MAIN_AGENT_ID)"
 BOT_NAME="$(read_env BOT_NAME)"
-SERVICE_ID="${SERVICE_ID:-${MAIN_AGENT_ID_ENV:-marveen}}"
-BOT_NAME="${BOT_NAME:-Marveen}"
+SERVICE_ID="${SERVICE_ID:-${MAIN_AGENT_ID_ENV:-webinarmagus}}"
+BOT_NAME="${BOT_NAME:-WebinarMagus}"
 
 # The daemon runs the repo copy directly -- no drift-prone ~/.claude/hooks copy.
 WATCHDOG="$SRC_DIR/telegram_progress_watchdog.py"
@@ -91,7 +91,7 @@ if [ "$OS" = "Darwin" ]; then
         <string>$WATCHDOG</string>
     </array>
     <!-- launchd's default PATH is minimal; the watchdog shells out to tmux. -->
-    <!-- MARVEEN_ROOT: launchd passes no shell env to a job, so the watchdog
+    <!-- WEBINAR_MAGUS_ROOT: launchd passes no shell env to a job, so the watchdog
          cannot see the operator's environment. It self-locates from its own
          path when run from the repo copy (see telegram_progress_watchdog.py),
          but this makes the install root explicit as a belt (TGWDOGVAK913). -->
@@ -99,7 +99,7 @@ if [ "$OS" = "Darwin" ]; then
     <dict>
         <key>PATH</key>
         <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
-        <key>MARVEEN_ROOT</key>
+        <key>WEBINAR_MAGUS_ROOT</key>
         <string>$INSTALL_DIR</string>
     </dict>
     <key>StartInterval</key>
@@ -127,10 +127,10 @@ Description=${BOT_NAME} Telegram progress-indicator watchdog (sentry)
 
 [Service]
 Type=oneshot
-# MARVEEN_ROOT belt (TGWDOGVAK913): the watchdog self-locates from its own path
+# WEBINAR_MAGUS_ROOT belt (TGWDOGVAK913): the watchdog self-locates from its own path
 # when run from the repo copy, but a systemd job gets no shell env either, so
 # make the install root explicit here too.
-Environment=MARVEEN_ROOT=$INSTALL_DIR
+Environment=WEBINAR_MAGUS_ROOT=$INSTALL_DIR
 ExecStart=$PY $WATCHDOG
 UNITEOF
   cat > "$UNIT_DIR/$SVC.timer" <<TIMEREOF

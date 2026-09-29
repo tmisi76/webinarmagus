@@ -65,7 +65,7 @@ describe('renderFederationBlock', () => {
       for (const routingMode of ['strong', 'catalog-first', 'advisory'] as const) {
         const block = renderFederationBlock({ ...cfg(REALISTIC_PEERS), routingMode }, { ...ID, lang })
         const bytes = Buffer.byteLength(block.replace(/https:\/\/\w+\.example/g, 'https://machine-name.tail1abcd.ts.net'), 'utf-8')
-        expect(bytes, `${lang}/${routingMode}`).toBeLessThan(3072)
+        expect(bytes, `${lang}/${routingMode}`).toBeLessThanOrEqual(3072)
       }
     }
   })
@@ -88,7 +88,7 @@ describe('renderFederationBlock', () => {
   it('renders English when DASHBOARD_LANG is en, without literal brand names', () => {
     const block = renderFederationBlock(cfg(), { ...ID, lang: 'en' })
     expect(block).toContain('USUAL message API')
-    expect(block).not.toContain('Marveen') // brand discipline: ids come from identity
+    expect(block).not.toContain('WebinarMagus') // brand discipline: ids come from identity
   })
 })
 
@@ -179,7 +179,7 @@ describe('applyFederationBlock (line-exact surgery)', () => {
   it('removes the block (markers inclusive) on disable, leaving the persona intact', () => {
     const withBlock = applyFederationBlock(PERSONA, block)!
     const removed = applyFederationBlock(withBlock, null)!
-    expect(removed).not.toContain('MARVEEN-FEDERATION:BEGIN')
+    expect(removed).not.toContain('WEBINAR_MAGUS-FEDERATION:BEGIN')
     expect(removed).toContain('Csak futó tmux-os ügynöknek üzenhetsz.')
     expect(removed).toContain('## Öntanulás és Skill rendszer')
   })

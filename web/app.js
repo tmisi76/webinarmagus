@@ -9,19 +9,19 @@ function bumpAvatarEpoch() { _avatarEpoch = Date.now() }
 function avatarBust() { return _avatarEpoch ? `?t=${_avatarEpoch}` : '' }
 
 // === i18n runtime ===
-// Priority: localStorage['marveen.lang'] > DASHBOARD_LANG (server default, read
+// Priority: localStorage['webinarmagus.lang'] > DASHBOARD_LANG (server default, read
 // from /api/settings on init) > 'hu' (hardcoded fallback).
 // Rick's spec (kanban card 209696a9): t(key,params), window._i18n={hu,en},
 // window._lang; {name} interpolation; EN-fallback then key; dev-mode warning.
 ;(() => {
-  const LS_KEY = 'marveen.lang'
+  const LS_KEY = 'webinarmagus.lang'
   const VALID = new Set(['hu', 'en'])
 
   // Brand tokens ({brand} = product/brand name, {bot} = main agent display
-  // name, {agentId} = canonical slug) are filled from /api/marveen once it
+  // name, {agentId} = canonical slug) are filled from /api/webinarmagus once it
   // resolves (see initSidebarBrand). Until then these defaults keep a stock
   // install byte-identical. Explicit params passed to t() still win over them.
-  window._brandTokens = window._brandTokens || { brand: 'Webinár Mágus', bot: 'Webinár Mágus', agentId: 'marveen' }
+  window._brandTokens = window._brandTokens || { brand: 'Webinár Mágus', bot: 'Webinár Mágus', agentId: 'webinarmagus' }
 
   window.t = function t(key, params = {}) {
     const lang = window._lang || 'hu'
@@ -29,7 +29,7 @@ function avatarBust() { return _avatarEpoch ? `?t=${_avatarEpoch}` : '' }
       window._i18n?.[lang]?.[key] ??
       window._i18n?.['en']?.[key] ??
       key
-    if (str === key && localStorage.getItem('marveen.dev') === '1') {
+    if (str === key && localStorage.getItem('webinarmagus.dev') === '1') {
       console.warn('[i18n] missing key:', key)
     }
     const vals = { ...window._brandTokens, ...params }
@@ -93,17 +93,17 @@ function avatarBust() { return _avatarEpoch ? `?t=${_avatarEpoch}` : '' }
 // strip it from the visible URL, and then inject it into every /api/* fetch
 // as a Bearer header so the server lets us through.
 
-// The main (channels) agent's real id. The backend /api/marveen route returns
-// the configured MAIN_AGENT_ID (NOT the literal "marveen") in window._marveen;
+// The main (channels) agent's real id. The backend /api/webinarmagus route returns
+// the configured MAIN_AGENT_ID (NOT the literal "webinarmagus") in window._webinarmagus;
 // use this everywhere an agent id is sent to /api/agents/... or compared to a
-// fleet name, so the dashboard works on non-"marveen" installs. Falls back to
-// "marveen" only before /api/marveen has resolved (or on a legacy backend).
+// fleet name, so the dashboard works on non-"webinarmagus" installs. Falls back to
+// "webinarmagus" only before /api/webinarmagus has resolved (or on a legacy backend).
 function mainAgentId() {
-  return window._marveen?.agentId || 'marveen'
+  return window._webinarmagus?.agentId || 'webinarmagus'
 }
 
 (() => {
-  const TOKEN_KEY = 'marveen-dashboard-token'
+  const TOKEN_KEY = 'webinarmagus-dashboard-token'
   const urlParams = new URLSearchParams(window.location.search)
   const urlToken = urlParams.get('token')
   // Keep the token in memory for the whole session in addition to localStorage.
@@ -145,8 +145,8 @@ function mainAgentId() {
       // a session whose localStorage copy was purged.
       try { localStorage.removeItem(TOKEN_KEY) } catch { /* storage blocked */ }
       if (!urlToken) sessionToken = ''
-      if (!window.__marveenAuthPrompted) {
-        window.__marveenAuthPrompted = true
+      if (!window.__webinarmagusAuthPrompted) {
+        window.__webinarmagusAuthPrompted = true
         handleAuthFailure()
       }
     }
@@ -243,7 +243,7 @@ function mainAgentId() {
   function showStandaloneTokenPrompt(tokenKey) {
     if (document.getElementById('mv-token-overlay')) return
     // Lang files are not yet loaded here; use a local inline lookup so EN mode works.
-    const _lang = localStorage.getItem('marveen.lang') || 'hu'
+    const _lang = localStorage.getItem('webinarmagus.lang') || 'hu'
     const _pwa = {
       hu: {
         title: 'Hozzáférés szükséges',
@@ -419,10 +419,10 @@ navLinks.forEach((link) => {
 })
 
 // === Collapsible sidebar groups ===
-// Open/closed state lives in localStorage (marveen.sidebarGroups) as a JSON
+// Open/closed state lives in localStorage (webinarmagus.sidebarGroups) as a JSON
 // array of open group keys. Missing or corrupt state means everything starts
 // collapsed -- that is the designed default, not an error.
-const SIDEBAR_GROUPS_LS_KEY = 'marveen.sidebarGroups'
+const SIDEBAR_GROUPS_LS_KEY = 'webinarmagus.sidebarGroups'
 // Declarative single source of truth for the group -> pages mapping. The markup
 // order is only the default snapshot: at boot the static links are re-parented
 // into their group containers per this map, so regrouping a page (say, moving
@@ -773,7 +773,7 @@ let kanbanProjectFilter = ''
 // (e.g. card "gorcsevivan" vs list "GorcsevIvan") still filters correctly.
 let kanbanAssigneeFilter = ''
 // Swimlane grouping: 'none' (flat board, default) | 'assignee' | 'priority'.
-// The initial value is pulled from window._marveen.kanbanSwimlanes.defaultGroup
+// The initial value is pulled from window._webinarmagus.kanbanSwimlanes.defaultGroup
 // the first time loadKanban() runs (see kanbanGroupByInitialized below), then
 // fully user-controlled via the toolbar dropdown.
 let kanbanGroupBy = 'none'
@@ -808,23 +808,23 @@ document.querySelectorAll('.kanban-add-btn').forEach((btn) => {
 
 async function loadKanban() {
   try {
-    // Always refresh the marveen config so values changed on the Settings page
+    // Always refresh the webinarmagus config so values changed on the Settings page
     // (e.g. WIP limits) show up on the board on the next Kanban open, without a
-    // hard reload. The full /api/marveen payload includes kanbanAging, kanbanWip,
+    // hard reload. The full /api/webinarmagus payload includes kanbanAging, kanbanWip,
     // kanbanSwimlanes and kanbanLabels, so the labels (from the labels feature)
     // stay populated too. Also covers opening the Kanban page first, before the
-    // Agents page populated window._marveen.
+    // Agents page populated window._webinarmagus.
     try {
-      const mr = await fetch('/api/marveen')
-      if (mr.ok) window._marveen = { ...(window._marveen || {}), ...(await mr.json()) }
-    } catch { /* ignore -- aging/WIP/swimlanes/labels just won't render until _marveen loads */ }
+      const mr = await fetch('/api/webinarmagus')
+      if (mr.ok) window._webinarmagus = { ...(window._webinarmagus || {}), ...(await mr.json()) }
+    } catch { /* ignore -- aging/WIP/swimlanes/labels just won't render until _webinarmagus loads */ }
     if (!kanbanGroupByInitialized) {
       kanbanGroupByInitialized = true
       // A user's own past choice (saved to localStorage) wins over the
       // server-configured default, so switching the grouping sticks across
       // page reloads instead of resetting every time.
-      const stored = localStorage.getItem('marveen.kanbanGroupBy')
-      const defaultGroup = window._marveen?.kanbanSwimlanes?.defaultGroup
+      const stored = localStorage.getItem('webinarmagus.kanbanGroupBy')
+      const defaultGroup = window._webinarmagus?.kanbanSwimlanes?.defaultGroup
       const initialGroup = (stored === 'assignee' || stored === 'priority' || stored === 'none')
         ? stored
         : (defaultGroup === 'assignee' || defaultGroup === 'priority' ? defaultGroup : 'none')
@@ -836,11 +836,11 @@ async function loadKanban() {
       // Active label-filter selection, restored the same way as the groupBy
       // choice -- a fresh page load should not lose the filters set up.
       try {
-        const storedLabels = JSON.parse(localStorage.getItem('marveen.kanbanLabelFilter') || '[]')
+        const storedLabels = JSON.parse(localStorage.getItem('webinarmagus.kanbanLabelFilter') || '[]')
         if (Array.isArray(storedLabels)) kanbanLabelFilter = new Set(storedLabels)
       } catch { /* ignore malformed storage */ }
       try {
-        const storedHiddenCols = JSON.parse(localStorage.getItem('marveen.kanbanHiddenColumns') || '[]')
+        const storedHiddenCols = JSON.parse(localStorage.getItem('webinarmagus.kanbanHiddenColumns') || '[]')
         if (Array.isArray(storedHiddenCols)) kanbanHiddenColumns = new Set(storedHiddenCols)
       } catch { /* ignore malformed storage */ }
     }
@@ -865,7 +865,7 @@ async function loadKanban() {
 
 document.getElementById('kanbanGroupBy').addEventListener('change', (e) => {
   kanbanGroupBy = e.target.value
-  localStorage.setItem('marveen.kanbanGroupBy', kanbanGroupBy)
+  localStorage.setItem('webinarmagus.kanbanGroupBy', kanbanGroupBy)
   renderKanban()
 })
 
@@ -897,7 +897,7 @@ function renderKanbanColumnChips() {
     chip.addEventListener('click', () => {
       if (kanbanHiddenColumns.has(def.status)) kanbanHiddenColumns.delete(def.status)
       else kanbanHiddenColumns.add(def.status)
-      localStorage.setItem('marveen.kanbanHiddenColumns', JSON.stringify([...kanbanHiddenColumns]))
+      localStorage.setItem('webinarmagus.kanbanHiddenColumns', JSON.stringify([...kanbanHiddenColumns]))
       renderKanban()
     })
     container.appendChild(chip)
@@ -1044,7 +1044,7 @@ function clearKanbanQuickFilters() {
 }
 
 function persistKanbanFilters() {
-  localStorage.setItem('marveen.kanbanLabelFilter', JSON.stringify([...kanbanLabelFilter]))
+  localStorage.setItem('webinarmagus.kanbanLabelFilter', JSON.stringify([...kanbanLabelFilter]))
 }
 
 // Quick-filter chip row: one chip per defined label (not per priority), tinted
@@ -1215,7 +1215,7 @@ function renderSwimlaneBoard(grouped, embeddedSubtaskIds) {
   const leftoverKeys = [...presentKeys].filter(k => !orderedKeys.includes(k)).sort((a, b) => a.localeCompare(b))
   const keys = [...orderedKeys, ...leftoverKeys]
 
-  const separatorColor = window._marveen?.kanbanSwimlanes?.separatorColor
+  const separatorColor = window._webinarmagus?.kanbanSwimlanes?.separatorColor
 
   for (const key of keys) {
     const meta = kanbanSwimlaneMeta(key)
@@ -1298,7 +1298,7 @@ const WIP_COUNT_IDS = {
 }
 
 function updateWipBadges(grouped) {
-  const cfg = window._marveen?.kanbanWip
+  const cfg = window._webinarmagus?.kanbanWip
   for (const [status, cards] of Object.entries(grouped)) {
     const el = document.getElementById(WIP_COUNT_IDS[status])
     if (!el) continue
@@ -1418,9 +1418,9 @@ function createCardEl(card, embeddedChildren = []) {
     : ''
 
   // Card aging: left stripe + top-right badge based on hours since last update.
-  // Skipped for done cards. Config thresholds and colours come from window._marveen.kanbanAging.
+  // Skipped for done cards. Config thresholds and colours come from window._webinarmagus.kanbanAging.
   let agingBadgeHtml = ''
-  const agingCfg = window._marveen?.kanbanAging
+  const agingCfg = window._webinarmagus?.kanbanAging
   // Age from the last STATUS CHANGE, not from updated_at. A comment sets
   // updated_at (see addKanbanComment in src/db.ts), so a card that has not
   // moved in weeks used to look fresh as soon as anyone wrote on it -- and the
@@ -1522,9 +1522,9 @@ function createCardEl(card, embeddedChildren = []) {
 // each /move call names the owner as `actor`. That is what lets the backend tell
 // an assignment ("the owner dragged this onto you") apart from a self-pickup ("the
 // agent moved its own card"), and only wake the agent in the first case. Falls
-// back to undefined until /api/marveen has loaded -- an unnamed mover means the
+// back to undefined until /api/webinarmagus has loaded -- an unnamed mover means the
 // backend dispatches as it always did, never the opposite.
-function kanbanMoveActor() { return window._marveen?.ownerName || undefined }
+function kanbanMoveActor() { return window._webinarmagus?.ownerName || undefined }
 
 // === Drag & Drop ===
 // Wires the drag/drop handlers for one column-body element. Used for the
@@ -1920,7 +1920,7 @@ async function renderCardLabelsSection(card) {
     newNameInput.value = ''
   }
 
-  const palette = window._marveen?.kanbanLabels?.colors || ['#64748b']
+  const palette = window._webinarmagus?.kanbanLabels?.colors || ['#64748b']
   newColorsEl.innerHTML = ''
   let selectedColor = palette[0]
   palette.forEach((color, i) => {
@@ -2591,7 +2591,7 @@ let agents = []
 let contextGuardPct = {}
 let currentAgent = null
 // API-safe agent id for the currently open detail modal. Sub-agents key off
-// their name; the main agent's detail object carries name:'marveen' for legacy
+// their name; the main agent's detail object carries name:'webinarmagus' for legacy
 // UI checks but its real agent-dir id is agentId (MAIN_AGENT_ID, e.g.
 // 'gorcsevivan') -- the /api/agents/<id>/skills endpoints need that real id.
 function agentApiName() {
@@ -2982,9 +2982,9 @@ async function loadAgents() {
     // The federation status fetch is deliberately failure-proof (.catch ->
     // null): it must NEVER take down the Agents page -- including on an
     // older backend where the route 404s.
-    const [agentsRes, marveenRes, fedStatus, ctxGuard] = await Promise.all([
+    const [agentsRes, webinarmagusRes, fedStatus, ctxGuard] = await Promise.all([
       fetch('/api/agents'),
-      fetch('/api/marveen'),
+      fetch('/api/webinarmagus'),
       fetch('/api/federation/status').then((r) => (r.ok ? r.json() : null)).catch(() => null),
       // Same failure-proofing as federation status above: an older backend or a
       // transient error here must not take down the whole Agents page over a
@@ -2999,12 +2999,12 @@ async function loadAgents() {
         if (typeof g.pct === 'number' && isFinite(g.pct)) contextGuardPct[g.agent] = g.pct
       }
     }
-    if (marveenRes.ok) {
-      window._marveen = await marveenRes.json()
+    if (webinarmagusRes.ok) {
+      window._webinarmagus = await webinarmagusRes.json()
       // A backend CHANNEL_PROVIDER-éhez igazitsuk a kliens-default-ot,
       // hogy ne 'telegram' jelenjen meg amikor a backend discord-on van.
-      if (window._marveen?.channelProvider) {
-        currentChannelProvider = window._marveen.channelProvider
+      if (window._webinarmagus?.channelProvider) {
+        currentChannelProvider = window._webinarmagus.channelProvider
         const sel = document.getElementById('chProviderSelect')
         if (sel) sel.value = currentChannelProvider
         if (typeof updateProviderUI === 'function') updateProviderUI()
@@ -3293,7 +3293,7 @@ async function showIdleFlushScheduleWarning(agent) {
 }
 
 async function openMainAgentDetail() {
-  const m = window._marveen
+  const m = window._webinarmagus
   if (!m) return
 
   // Reuse the agent detail modal for Webinár Mágus
@@ -3306,7 +3306,7 @@ async function openMainAgentDetail() {
   document.getElementById('agentDetailTitle').textContent = displayName
   const avatar = document.getElementById('agentDetailAvatar')
   avatar.className = 'detail-avatar gradient-1'
-  avatar.innerHTML = `<img src="/api/marveen/avatar${avatarBust()}" alt="${escapeHtml(displayName)}">`
+  avatar.innerHTML = `<img src="/api/webinarmagus/avatar${avatarBust()}" alt="${escapeHtml(displayName)}">`
   document.getElementById('agentDetailName').textContent = displayName
   document.getElementById('agentDetailDesc').textContent = m.description || ''
   document.getElementById('agentDetailModel').textContent = m.model || '-'
@@ -3325,8 +3325,8 @@ async function openMainAgentDetail() {
   document.getElementById('agentStopBtn').hidden = true
   // Sync the settings tab model select with Webinár Mágus's actual model so it
   // doesn't carry over the previously opened sub-agent's selection.
-  const marveenModelSelect = document.getElementById('editAgentModel')
-  if (marveenModelSelect) {
+  const webinarmagusModelSelect = document.getElementById('editAgentModel')
+  if (webinarmagusModelSelect) {
     // The main agent's real model (e.g. 'claude-opus-4-8') may not match any
     // static option verbatim (the option is 'claude-opus-4-8[1m]'), so a plain
     // .value assignment finds no match and the select silently displays the
@@ -3334,22 +3334,22 @@ async function openMainAgentDetail() {
     // Inject the real id as an option so the (read-only) select shows the truth
     // -- same trick as the sub-agent panel's dynamic-model-opt.
     const mv = m.activeModel || m.model || ''
-    Array.from(marveenModelSelect.querySelectorAll('option.dynamic-model-opt')).forEach(o => o.remove())
-    if (mv && !Array.from(marveenModelSelect.options).some(o => o.value === mv)) {
+    Array.from(webinarmagusModelSelect.querySelectorAll('option.dynamic-model-opt')).forEach(o => o.remove())
+    if (mv && !Array.from(webinarmagusModelSelect.options).some(o => o.value === mv)) {
       const opt = document.createElement('option')
       opt.value = mv
       opt.className = 'dynamic-model-opt'
       opt.textContent = mv
-      marveenModelSelect.appendChild(opt)
+      webinarmagusModelSelect.appendChild(opt)
     }
-    marveenModelSelect.value = mv
+    webinarmagusModelSelect.value = mv
   }
   // Populate the model dropdown groups (auto/manual) AND surface the OpenRouter
   // curation button -- this is the main agent, the only place curation lives.
   loadAvailableModels()
   // Surface the "channels restart" button -- destructive, but mobile-safe
   // when the Telegram plugin wedges and you're away from a terminal.
-  document.getElementById('marveenRestartBtn').hidden = false
+  document.getElementById('webinarmagusRestartBtn').hidden = false
 
   // Settings tab - load real CLAUDE.md / SOUL.md / .mcp.json (read-only).
   // Editing the main agent's identity files via the dashboard is intentionally
@@ -3358,7 +3358,7 @@ async function openMainAgentDetail() {
   // Webinár Mágus on Telegram instead.
   let mFull = m
   try {
-    const claudeRes = await fetch('/api/marveen')
+    const claudeRes = await fetch('/api/webinarmagus')
     if (claudeRes.ok) {
       mFull = await claudeRes.json()
       document.getElementById('editClaudeMd').value = mFull.claudeMd || ''
@@ -3432,7 +3432,7 @@ function applyMainAgentReadonlyMode(readOnly) {
   if (authModeGroup) authModeGroup.hidden = readOnly
   const memoryIsolationGroup = document.getElementById('memoryIsolationGroup')
   if (memoryIsolationGroup) memoryIsolationGroup.hidden = readOnly
-  const note = document.getElementById('marveenReadonlyNote')
+  const note = document.getElementById('webinarmagusReadonlyNote')
   if (note) note.hidden = !readOnly
 }
 
@@ -3496,30 +3496,30 @@ function renderAgents() {
   agentsGrid.querySelectorAll('.agent-card:not(.add-card)').forEach((el) => el.remove())
 
   // Webinár Mágus card (always first)
-  if (window._marveen) {
-    const m = window._marveen
+  if (window._webinarmagus) {
+    const m = window._webinarmagus
     const displayName = m.name || 'Webinár Mágus'
-    // The model is no longer hardcoded: /api/marveen reports the configured
+    // The model is no longer hardcoded: /api/webinarmagus reports the configured
     // model (readActiveModelFromProjectDir). Mirror the sub-agent card, which
     // uses the model value as both the badge label and class. Fall back to
-    // 'opus' only before /api/marveen has resolved (or on a legacy backend).
+    // 'opus' only before /api/webinarmagus has resolved (or on a legacy backend).
     const mainModelLabel = m.model || 'opus'
     const mainModelClass = m.model || 'opus'
     const mCard = document.createElement('div')
-    mCard.className = 'agent-card marveen-card'
+    mCard.className = 'agent-card webinarmagus-card'
     mCard.innerHTML = `
       <div class="agent-card-top">
-        <div class="agent-avatar gradient-1"><img src="/api/marveen/avatar${avatarBust()}" alt="${escapeHtml(displayName)}"></div>
+        <div class="agent-avatar gradient-1"><img src="/api/webinarmagus/avatar${avatarBust()}" alt="${escapeHtml(displayName)}"></div>
         <div class="agent-card-info">
-          <div class="agent-name">${escapeHtml(displayName)} <span class="marveen-badge">${t('agents.main_badge')}</span></div>
+          <div class="agent-name">${escapeHtml(displayName)} <span class="webinarmagus-badge">${t('agents.main_badge')}</span></div>
           <div class="agent-desc">${escapeHtml(m.description || '')}</div>
         </div>
       </div>
       <div class="agent-card-footer">
         <span class="agent-model-badge ${escapeHtml(mainModelClass)}">${escapeHtml(mainModelLabel)}</span>
         ${contextPctBadgeHtml(mainAgentId())}
-        <span class="process-indicator" title="${t('agents.marveen_process_tip')}"><span class="process-dot running"></span>${t('agents.status.running')}</span>
-        <span class="tg-status" title="${t('agents.marveen_channel_tip')}"><span class="tg-dot connected"></span>${t('agents.status.online')}</span>
+        <span class="process-indicator" title="${t('agents.webinarmagus_process_tip')}"><span class="process-dot running"></span>${t('agents.status.running')}</span>
+        <span class="tg-status" title="${t('agents.webinarmagus_channel_tip')}"><span class="tg-dot connected"></span>${t('agents.status.online')}</span>
       </div>
       <div class="agent-card-actions">
         <button class="btn-secondary btn-compact agent-conversation-btn" title="${t('agents.btn.conversation')}">
@@ -3537,7 +3537,7 @@ function renderAgents() {
       e.stopPropagation(); openTerminalModal(mainAgentId())
     })
     mCard.querySelector('.agent-conversation-btn')?.addEventListener('click', (e) => {
-      e.stopPropagation(); openConversationModal(mainAgentId(), t('agents.marveen_boss'))
+      e.stopPropagation(); openConversationModal(mainAgentId(), t('agents.webinarmagus_boss'))
     })
     mCard.addEventListener('click', () => onAgentCardClick(mainAgentId(), openMainAgentDetail))
     agentsGrid.insertBefore(mCard, addBtn)
@@ -3545,7 +3545,7 @@ function renderAgents() {
 
   for (const agent of agents) {
     // Skip the main agent — it is already rendered as the dedicated Webinár Mágus
-    // card above (window._marveen block). Without this guard a second card
+    // card above (window._webinarmagus block). Without this guard a second card
     // appears once the agents/atlas/ config directory is created.
     if (agent.name === mainAgentId()) continue
 
@@ -3664,7 +3664,7 @@ async function refreshAgentTerminalBusy() {
   const mainId = mainAgentId()
   if (agentsGrid) {
     agentsGrid.querySelectorAll('.agent-card:not(.add-card):not(.federated-agent-card)').forEach((card) => {
-      const id = card.classList.contains('marveen-card') ? mainId : card.dataset.name
+      const id = card.classList.contains('webinarmagus-card') ? mainId : card.dataset.name
       const entry = id ? byName.get(id) : null
       const working = !!entry && entry.state === 'working'
       const btn = card.querySelector('.agent-terminal-btn')
@@ -3848,7 +3848,7 @@ async function openAgentDetail(agentName) {
   updateProcessControl(currentAgent)
 
   // Channels restart button is Webinár Mágus-only -- hide on normal agents.
-  document.getElementById('marveenRestartBtn').hidden = true
+  document.getElementById('webinarmagusRestartBtn').hidden = true
 
   // Restore editable Settings (Webinár Mágus detail flips this to read-only).
   applyMainAgentReadonlyMode(false)
@@ -3893,7 +3893,7 @@ async function openAgentDetail(agentName) {
       const objectUrl = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = objectUrl
-      a.download = `marveen-agent-${name}.tar.gz`
+      a.download = `webinarmagus-agent-${name}.tar.gz`
       document.body.appendChild(a)
       a.click()
       a.remove()
@@ -3949,7 +3949,7 @@ document.getElementById('avatarChangeBtn').addEventListener('click', () => {
   gallery.hidden = !gallery.hidden
   if (!gallery.hidden) {
     const isMainAgent = currentAgent && currentAgent.role === 'main'
-    const avatarEndpoint = isMainAgent ? '/api/marveen/avatar' : `/api/agents/${encodeURIComponent(currentAgent.name)}/avatar`
+    const avatarEndpoint = isMainAgent ? '/api/webinarmagus/avatar' : `/api/agents/${encodeURIComponent(currentAgent.name)}/avatar`
 
     const grid = document.getElementById('detailAvatarGrid')
     grid.innerHTML = ''
@@ -3967,7 +3967,7 @@ document.getElementById('avatarChangeBtn').addEventListener('click', () => {
           if (!res.ok) throw new Error()
           showToast(t('agents.toast.avatar_updated'))
           bumpAvatarEpoch()
-          const imgUrl = isMainAgent ? `/api/marveen/avatar${avatarBust()}` : `/api/agents/${encodeURIComponent(currentAgent.name)}/avatar${avatarBust()}`
+          const imgUrl = isMainAgent ? `/api/webinarmagus/avatar${avatarBust()}` : `/api/agents/${encodeURIComponent(currentAgent.name)}/avatar${avatarBust()}`
           document.getElementById('agentDetailAvatar').innerHTML = `<img src="${imgUrl}" alt="">`
           gallery.hidden = true
           loadAgents()
@@ -4034,7 +4034,7 @@ document.getElementById('avatarChangeBtn').addEventListener('click', () => {
   async function uploadAvatarFile(file) {
     if (!currentAgent) return
     const isMainAgent = currentAgent.role === 'main'
-    const endpoint = isMainAgent ? '/api/marveen/avatar' : `/api/agents/${encodeURIComponent(currentAgent.name)}/avatar`
+    const endpoint = isMainAgent ? '/api/webinarmagus/avatar' : `/api/agents/${encodeURIComponent(currentAgent.name)}/avatar`
     const form = new FormData()
     form.append('avatar', file, file.name)
     try {
@@ -4042,7 +4042,7 @@ document.getElementById('avatarChangeBtn').addEventListener('click', () => {
       if (!res.ok) throw new Error()
       showToast(t('agents.toast.avatar_uploaded'))
       bumpAvatarEpoch()
-      const imgUrl = isMainAgent ? `/api/marveen/avatar${avatarBust()}` : `/api/agents/${encodeURIComponent(currentAgent.name)}/avatar${avatarBust()}`
+      const imgUrl = isMainAgent ? `/api/webinarmagus/avatar${avatarBust()}` : `/api/agents/${encodeURIComponent(currentAgent.name)}/avatar${avatarBust()}`
       document.getElementById('agentDetailAvatar').innerHTML = `<img src="${imgUrl}" alt="">`
       document.getElementById('detailAvatarGallery').hidden = true
       resetAvatarUpload()
@@ -4138,17 +4138,17 @@ function updateProcessControl(agent) {
   }
 }
 
-document.getElementById('marveenRestartBtn').addEventListener('click', async () => {
+document.getElementById('webinarmagusRestartBtn').addEventListener('click', async () => {
   if (!confirm(t('agents.confirm.hard_restart'))) return
-  const btn = document.getElementById('marveenRestartBtn')
+  const btn = document.getElementById('webinarmagusRestartBtn')
   btn.disabled = true
   try {
-    const res = await fetch('/api/marveen/restart', { method: 'POST' })
+    const res = await fetch('/api/webinarmagus/restart', { method: 'POST' })
     if (!res.ok) {
       const err = await res.json().catch(() => ({}))
       throw new Error(err.error || t('agents.toast.restart_failed'))
     }
-    showToast(t('agents.toast.marveen_restarted'))
+    showToast(t('agents.toast.webinarmagus_restarted'))
   } catch (err) {
     showToast(`Hiba: ${err.message}`)
   } finally {
@@ -4221,7 +4221,7 @@ let currentChannelProvider = 'telegram'
 // a UI nem hardcode-olt 'telegram'-mal indul barmelyik oldalra is navigal a user.
 ;(async function initChannelProviderDefault() {
   try {
-    const res = await fetch('/api/marveen')
+    const res = await fetch('/api/webinarmagus')
     if (!res.ok) return
     const data = await res.json()
     if (!data.channelProvider || data.channelProvider === currentChannelProvider) return
@@ -4384,7 +4384,7 @@ async function loadAvailableModels() {
     }
     // Browse popup = the curation UI (tick/untick which manual models exist).
     // MAIN AGENT ONLY -- sub-agents just pick from the curated dropdown above.
-    // Keep the name checks for compatibility with legacy /api/marveen payloads
+    // Keep the name checks for compatibility with legacy /api/webinarmagus payloads
     // that predate the explicit role field.
     const mid = (typeof mainAgentId === 'function') ? mainAgentId() : ''
     const isMainAgent = !!currentAgent && (
@@ -4684,7 +4684,7 @@ document.getElementById('analyzeAllModelsBtn').addEventListener('click', async (
               body: JSON.stringify({
                 title: t('agents.model.card_title', { agent: r.agent }),
                 description: t('agents.model.card_desc', { current: r.currentModel, suggested: r.suggestedModel, reason: r.reason }),
-                assignee: 'marveen',
+                assignee: 'webinarmagus',
                 priority: 'normal',
                 status: 'planned',
               }),
@@ -4720,7 +4720,7 @@ if (exportAllAgentsBtn) {
       const objectUrl = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = objectUrl
-      a.download = 'marveen-fleet.tar.gz'
+      a.download = 'webinarmagus-fleet.tar.gz'
       document.body.appendChild(a)
       a.click()
       a.remove()
@@ -5204,7 +5204,7 @@ document.getElementById('saveMcpJsonBtn').addEventListener('click', async () => 
 // === Channel tab ===
 // Provider-aware "connected" check: a sub-agent record carries hasTelegram /
 // hasDiscord / hasSlack flags from the backend, Webinár Mágus carries the same
-// shape from /api/marveen. Falls back to hasTelegram for legacy callers.
+// shape from /api/webinarmagus. Falls back to hasTelegram for legacy callers.
 function agentIsConnected(agent) {
   if (!agent) return false
   if (currentChannelProvider === 'discord') return !!agent.hasDiscord
@@ -6380,7 +6380,7 @@ const CADENCE_ICON = { 0: '⚡', 1: '☀️', 2: '📅', 3: '🗓️', 5: '•' 
 function makeScheduleRow(task) {
     const row = document.createElement('div')
     row.className = 'schedule-row'
-    const agent = scheduleAgents.find(a => a.name === task.agent) || { name: task.agent || mainAgentId(), avatar: '/api/marveen/avatar', label: task.agent || mainAgentId() }
+    const agent = scheduleAgents.find(a => a.name === task.agent) || { name: task.agent || mainAgentId(), avatar: '/api/webinarmagus/avatar', label: task.agent || mainAgentId() }
 
     row.innerHTML = `
       <div class="schedule-agent-avatar">
@@ -6563,7 +6563,7 @@ function renderTimeline(tasks) {
   }
 
   for (const [agentName, agTasks] of Object.entries(agentTasks)) {
-    const agent = scheduleAgents.find(a => a.name === agentName) || { name: agentName, avatar: '/api/marveen/avatar', label: agentName }
+    const agent = scheduleAgents.find(a => a.name === agentName) || { name: agentName, avatar: '/api/webinarmagus/avatar', label: agentName }
 
     const row = document.createElement('div')
     row.className = 'timeline-row'
@@ -6708,7 +6708,7 @@ function renderWeekView(data) {
       const count = tasks.length
 
       tasks.forEach((task, idx) => {
-        const agent = scheduleAgents.find(a => a.name === task.agent) || { name: task.agent || mainAgentId(), avatar: '/api/marveen/avatar' }
+        const agent = scheduleAgents.find(a => a.name === task.agent) || { name: task.agent || mainAgentId(), avatar: '/api/webinarmagus/avatar' }
 
         const card = document.createElement('div')
         card.className = 'week-task-card'
@@ -7996,7 +7996,7 @@ function showZoomIndicator() {
 async function loadDailyLog() {
   // "Minden ügynök" (empty value) falls back to the first agent in the
   // filter dropdown, which is the main agent on any BOT_NAME -- avoids a
-  // hardcoded "marveen" slug that would 404 on zino/haver/etc installs.
+  // hardcoded "webinarmagus" slug that would 404 on zino/haver/etc installs.
   const sel = document.getElementById('memAgentFilter')
   const agent = sel.value || (sel.options[1] ? sel.options[1].value : '')
   if (!agent) {
@@ -11309,7 +11309,7 @@ function renderTeamGraph(container, data, opts = {}) {
     div.dataset.agentId = node.id
     if (activeIds.has(node.id)) div.classList.add('team-node-active')
     const avatarUrl = node.id === mainAgentId
-      ? `/api/marveen/avatar${avatarBust()}`
+      ? `/api/webinarmagus/avatar${avatarBust()}`
       : `/api/agents/${encodeURIComponent(node.id)}/avatar${avatarBust()}`
     div.innerHTML = `
       <div class="team-node-avatar"><img src="${avatarUrl}" alt="${escapeHtml(node.label || node.id)}" onerror="this.style.display='none'"></div>
@@ -11524,23 +11524,23 @@ function chatAvatarHtml(agentName, size = 32) {
   const hasAvatar = chatAgentHasAvatar.get(lower)
   if (!hasAvatar) return chatMonogramEl(agentName, size)
   const src = lower === mainAgentId().toLowerCase()
-    ? `/api/marveen/avatar${avatarBust()}`
+    ? `/api/webinarmagus/avatar${avatarBust()}`
     : `/api/agents/${encodeURIComponent(lower)}/avatar${avatarBust()}`
   return `<img class="chat-avatar" src="${src}" width="${size}" height="${size}" alt="${escapeHtml(agentName)}" data-agent-name="${escapeHtml(agentName)}" onerror="chatImgError(this)">`
 }
 
 // Guard against the boot race: the Messages page can be opened before the
-// initial /api/marveen fetch resolves window._marveen. Until it does,
-// mainAgentId() returns the literal 'marveen' FALLBACK, which IS a real agent
+// initial /api/webinarmagus fetch resolves window._webinarmagus. Until it does,
+// mainAgentId() returns the literal 'webinarmagus' FALLBACK, which IS a real agent
 // id on a default install but is NOT one wherever the main agent was renamed
-// -- composing to it creates a phantom "marveen" thread that sits pending
+// -- composing to it creates a phantom "webinarmagus" thread that sits pending
 // forever and shows up as a duplicate of the true main agent (whatever id this
-// install actually uses). Resolve _marveen before rendering any chat target.
+// install actually uses). Resolve _webinarmagus before rendering any chat target.
 async function ensureMainAgentLoaded() {
-  if (window._marveen?.agentId) return
+  if (window._webinarmagus?.agentId) return
   try {
-    const r = await fetch('/api/marveen')
-    if (r.ok) window._marveen = { ...(window._marveen || {}), ...(await r.json()) }
+    const r = await fetch('/api/webinarmagus')
+    if (r.ok) window._webinarmagus = { ...(window._webinarmagus || {}), ...(await r.json()) }
   } catch { /* sidebar falls back to the literal id -- best effort */ }
 }
 
@@ -11551,21 +11551,21 @@ async function loadMessagesPage() {
 
 const CHAT_SYSTEM_AGENTS = new Set(['heartbeat','telegram-coordinator','channel-coordinator'])
 // The owner's own message thread is pinned to the top and labelled "<name> (te)".
-// The owner display name comes from the backend (OWNER_NAME via /api/marveen ->
-// window._marveen.ownerName), not a hardcoded literal, so a renamed install
-// recognizes its real owner. Empty until _marveen resolves (no false match).
-function chatOwnerName() { return window._marveen?.ownerName || '' }
+// The owner display name comes from the backend (OWNER_NAME via /api/webinarmagus ->
+// window._webinarmagus.ownerName), not a hardcoded literal, so a renamed install
+// recognizes its real owner. Empty until _webinarmagus resolves (no false match).
+function chatOwnerName() { return window._webinarmagus?.ownerName || '' }
 
 // The main agent's display name (BOT_NAME). mainAgentId() is the routing id
-// (e.g. "marveen") used for matching, avatar lookups and API calls; this is
-// what the user should SEE. Sourced from the backend (/api/marveen -> name,
+// (e.g. "webinarmagus") used for matching, avatar lookups and API calls; this is
+// what the user should SEE. Sourced from the backend (/api/webinarmagus -> name,
 // mirrored into _brandTokens.bot by initSidebarBrand), so a renamed install
-// shows its real bot name. Falls back to the id before _marveen resolves.
+// shows its real bot name. Falls back to the id before _webinarmagus resolves.
 // Regression #519/#520: keep the four Messages-view display points routing the
 // main agent id through chatDisplayName -- a later refactor once stripped this
 // and leaked the raw routing id again. Guarded by messages-view-display-name.test.ts.
 function mainAgentDisplayName() {
-  return window._marveen?.name || window._brandTokens?.bot || mainAgentId()
+  return window._webinarmagus?.name || window._brandTokens?.bot || mainAgentId()
 }
 // Map a routing agent id to its user-facing label: the main agent's id becomes
 // its BOT_NAME display name; every other agent already carries a human name as
@@ -11601,7 +11601,7 @@ async function loadChatAgentList() {
     const threads = threadsRes.ok ? await threadsRes.json() : []
     if (fedStatus && Array.isArray(fedStatus.peers)) federatedPeerStatus = fedStatus.peers
 
-    // Build fleet list: API agents + marveen, minus system agents; plus
+    // Build fleet list: API agents + webinarmagus, minus system agents; plus
     // federated agents from the poller cache so a remote conversation can be
     // STARTED without prior history. The system-agent filter runs on the
     // unqualified segment too ('teodor/heartbeat' is just as much noise).
@@ -11627,11 +11627,11 @@ async function loadChatAgentList() {
       if (t.agent) threadIndex.set(t.agent, { lastMsg: t.lastMessage, count: t.count || 0 })
     }
     // Also include thread agents not in fleet (e.g. the owner's own direct msgs).
-    // Suppress the literal 'marveen' fallback id when it is NOT the real main
+    // Suppress the literal 'webinarmagus' fallback id when it is NOT the real main
     // agent: a stale phantom thread (from the boot-race bug) would otherwise
     // render as a duplicate of the true main agent.
     for (const t of threads) {
-      if (t.agent === 'marveen' && mainAgentId() !== 'marveen') continue
+      if (t.agent === 'webinarmagus' && mainAgentId() !== 'webinarmagus') continue
       if (t.agent && !fleetNames.includes(t.agent) && !CHAT_SYSTEM_AGENTS.has(t.agent)) {
         fleetNames.push(t.agent)
       }
@@ -11766,7 +11766,7 @@ async function loadChatThread(agentName) {
 function buildBubbleHtml(m) {
   const isOutgoing = m.from_agent === mainAgentId()
   // senderName stays the routing id (avatar lookup keys off it); senderLabel is
-  // what the user sees, so the main agent reads as its BOT_NAME, not "marveen".
+  // what the user sees, so the main agent reads as its BOT_NAME, not "webinarmagus".
   const senderName = isOutgoing ? mainAgentId() : m.from_agent
   const senderLabel = chatDisplayName(senderName)
   const when = m.created_at ? new Date(m.created_at * 1000).toLocaleString('hu-HU', {month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}) : ''
@@ -12135,7 +12135,7 @@ async function loadOverview() {
 }
 
 // Brand mark + product-brand chrome: pull the configured brand from
-// /api/marveen and apply it to the dashboard chrome (tab title, mobile topbar,
+// /api/webinarmagus and apply it to the dashboard chrome (tab title, mobile topbar,
 // sidebar name, updates subtitle). brandName is the product/system name and is
 // distinct from the main agent's display name; the backend defaults brandName to
 // BOT_NAME, so a brand-unaware install keeps showing the agent name. If the
@@ -12143,12 +12143,12 @@ async function loadOverview() {
 async function initSidebarBrand() {
   try {
     const img = document.createElement('img')
-    img.src = '/api/marveen/avatar' + avatarBust()
+    img.src = '/api/webinarmagus/avatar' + avatarBust()
     img.onload = () => {
       const mark = document.getElementById('sidebarBrandMark')
       if (mark) { mark.textContent = ''; mark.appendChild(img) }
     }
-    const res = await fetch('/api/marveen')
+    const res = await fetch('/api/webinarmagus')
     if (res.ok) {
       const m = await res.json()
       const brand = m.brandName || m.name
@@ -12158,7 +12158,7 @@ async function initSidebarBrand() {
       window._brandTokens = {
         brand: brand || 'Webinár Mágus',
         bot: m.name || brand || 'Webinár Mágus',
-        agentId: m.agentId || 'marveen',
+        agentId: m.agentId || 'webinarmagus',
       }
       if (typeof renderStaticI18n === 'function') renderStaticI18n()
       if (brand) {
@@ -12216,7 +12216,7 @@ function renderUpdatesBadge(status) {
 // to yet another branch re-warns) and a permanent notice on the Updates page.
 // Dev machines follow develop on purpose; one dismissal silences the banner
 // for them while the Updates-page notice stays as the quiet ground truth.
-const BRANCH_DRIFT_DISMISS_PREFIX = 'marveen.branch-drift-dismissed.'
+const BRANCH_DRIFT_DISMISS_PREFIX = 'webinarmagus.branch-drift-dismissed.'
 const BRANCH_HEAL_COMMAND = 'git checkout main && bash update.sh'
 
 function branchDriftDismissed(branch) {
@@ -12711,7 +12711,7 @@ function wireOnboarding(step) {
         const d = await res.json().catch(() => ({}))
         if (!res.ok) { idBtn.disabled = false; onbMsg(d.error || t('onboarding.error'), true); return }
         // The name is live in the .env now -- repaint the chrome from
-        // /api/marveen so the sidebar/title reflect it immediately, and
+        // /api/webinarmagus so the sidebar/title reflect it immediately, and
         // surface the automatic channels restart (same pattern as the
         // claude-auth step) instead of silently advancing.
         if (typeof initSidebarBrand === 'function') initSidebarBrand()
@@ -12823,8 +12823,8 @@ function wireOnboarding(step) {
     const loadPending = async () => {
       try {
         // Same boot race the Messages page already guards against (see
-        // ensureMainAgentLoaded): until /api/marveen resolves window._marveen,
-        // mainAgentId() returns the literal 'marveen' fallback. On a renamed
+        // ensureMainAgentLoaded): until /api/webinarmagus resolves window._webinarmagus,
+        // mainAgentId() returns the literal 'webinarmagus' fallback. On a renamed
         // install that is not the main agent, so the backend takes the
         // sub-agent branch, finds no such agent dir and answers 404 -- and the
         // wizard rendered that as "no pending pairing" while the Channel view,
@@ -14008,7 +14008,7 @@ function renderTokenModePanel(body) {
 
 // Dismissible setup banner: shown only when the operator is authed via the token
 // and has not yet created a browser login. Dismissal persists per browser.
-const AUTH_BANNER_DISMISS_KEY = 'marveen.auth-banner-dismissed'
+const AUTH_BANNER_DISMISS_KEY = 'webinarmagus.auth-banner-dismissed'
 
 async function initAuthBanner() {
   const banner = document.getElementById('authSetupBanner')
@@ -14685,7 +14685,7 @@ document.getElementById('settingsResetBtn')?.addEventListener('click', resetAllS
 
 // === Token Usage Monitor ===
 const TU_COLORS = {
-  marveen: '#6366f1',
+  webinarmagus: '#6366f1',
   codi: '#f59e0b',
   dexi: '#ec4899',
   finci: '#10b981',
@@ -16235,7 +16235,7 @@ function openTerminalModal(agentName) {
   // token via ?token=; in password-login (session-cookie) mode there is no
   // token, so we open a plain URL and the browser attaches the mv_session
   // cookie automatically -- the gate's cookie branch covers the SSE path.
-  const token = localStorage.getItem('marveen-dashboard-token') || ''
+  const token = localStorage.getItem('webinarmagus-dashboard-token') || ''
   const streamBase = `/api/agents/${encodeURIComponent(agentName)}/pane/stream`
   const sse = new EventSource(token ? `${streamBase}?token=${encodeURIComponent(token)}` : streamBase)
   sse.onmessage = (e) => {
@@ -16344,7 +16344,7 @@ async function openConversationModal(agentName, displayName) {
 // Latest page (offset=0); resets the loaded window.
 async function loadConversation() {
   const container = document.getElementById('conversationContainer')
-  const token = localStorage.getItem('marveen-dashboard-token') || ''
+  const token = localStorage.getItem('webinarmagus-dashboard-token') || ''
   try {
     const r = await fetch(`/api/agents/${encodeURIComponent(conversationAgentName)}/conversation?limit=${CONVERSATION_PAGE_SIZE}&offset=0`, {
       headers: { 'Authorization': 'Bearer ' + token },
@@ -16367,7 +16367,7 @@ async function loadOlderConversation() {
   conversationLoadingOlder = true
   const btn = document.getElementById('conversationLoadOlder')
   if (btn) { btn.disabled = true; btn.textContent = t('conversation.loading') }
-  const token = localStorage.getItem('marveen-dashboard-token') || ''
+  const token = localStorage.getItem('webinarmagus-dashboard-token') || ''
   try {
     const offset = conversationEntries.length
     const r = await fetch(`/api/agents/${encodeURIComponent(conversationAgentName)}/conversation?limit=${CONVERSATION_PAGE_SIZE}&offset=${offset}`, {
@@ -16653,9 +16653,9 @@ async function fedApplyToMainAgent() {
   if (!confirm(t('federation.confirm.apply'))) return
   try {
     // Server-side apply: restarts the main channels agent by MAIN_AGENT_ID,
-    // so the client does not depend on window._marveen being loaded (the
+    // so the client does not depend on window._webinarmagus being loaded (the
     // Federation page does not populate it -> the old /api/agents/:name path
-    // 404'd when it fell back to the 'marveen' default).
+    // 404'd when it fell back to the 'webinarmagus' default).
     const res = await fetch('/api/federation/apply', {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}',
     })
@@ -17005,7 +17005,7 @@ async function openResearchDoc(agent, name) {
   const closeBtn = document.getElementById('mobileLoginClose')
 
   async function render() {
-    const token = localStorage.getItem('marveen-dashboard-token')
+    const token = localStorage.getItem('webinarmagus-dashboard-token')
     if (!token) {
       qrBox.innerHTML = `<p class="muted">${t('mobile_login.no_token')}</p>`
       return

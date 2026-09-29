@@ -54,45 +54,45 @@ export function readAgentTeamsConfig(name: string): { hasTeams: boolean } {
   return { hasTeams: !!m?.[1]?.trim() }
 }
 
-// Marveen's channel state is resolved by channelStateDir (#915): env
+// WebinarMagus's channel state is resolved by channelStateDir (#915): env
 // override, then the legacy shared ~/.claude path while unmigrated, then the
 // install-scoped dir. Read it the same way the plugin does.
-export function readMarveenTelegramConfig(): { hasTelegram: boolean; botUsername?: string } {
+export function readWebinarMagusTelegramConfig(): { hasTelegram: boolean; botUsername?: string } {
   const envPath = join(channelStateDir('telegram'), '.env')
   if (!existsSync(envPath)) return { hasTelegram: false }
   const content = readFileOr(envPath, '')
   const tokenMatch = content.match(/TELEGRAM_BOT_TOKEN=(.+)/)
   const token = tokenMatch?.[1]?.trim()
   if (!token) return { hasTelegram: false }
-  return { hasTelegram: true, botUsername: marveenBotUsernameCache.value }
+  return { hasTelegram: true, botUsername: webinarmagusBotUsernameCache.value }
 }
 
 // Discord / Slack mirror of the above: same channelStateDir resolution as
-// the Telegram reader. Lets the dashboard answer "is Marveen connected?"
+// the Telegram reader. Lets the dashboard answer "is WebinarMagus connected?"
 // per provider without per-agent state lookup. botUsername omitted -- the Discord/Slack flows don't
 // surface a @username the same way Telegram does.
-export function readMarveenDiscordConfig(): { hasDiscord: boolean } {
+export function readWebinarMagusDiscordConfig(): { hasDiscord: boolean } {
   const envPath = join(channelStateDir('discord'), '.env')
   if (!existsSync(envPath)) return { hasDiscord: false }
   const tokenMatch = readFileOr(envPath, '').match(/DISCORD_BOT_TOKEN=(.+)/)
   return { hasDiscord: !!tokenMatch?.[1]?.trim() }
 }
 
-export function readMarveenGooglechatConfig(): { hasGooglechat: boolean } {
+export function readWebinarMagusGooglechatConfig(): { hasGooglechat: boolean } {
   const envPath = join(channelStateDir('googlechat'), '.env')
   if (!existsSync(envPath)) return { hasGooglechat: false }
   const m = readFileOr(envPath, '').match(/GOOGLECHAT_PROJECT_ID=(.+)/)
   return { hasGooglechat: !!m?.[1]?.trim() }
 }
 
-export function readMarveenTeamsConfig(): { hasTeams: boolean } {
+export function readWebinarMagusTeamsConfig(): { hasTeams: boolean } {
   const envPath = join(channelStateDir('teams'), '.env')
   if (!existsSync(envPath)) return { hasTeams: false }
   const m = readFileOr(envPath, '').match(/TEAMS_BOT_APP_ID=(.+)/)
   return { hasTeams: !!m?.[1]?.trim() }
 }
 
-export function readMarveenSlackConfig(): { hasSlack: boolean } {
+export function readWebinarMagusSlackConfig(): { hasSlack: boolean } {
   const envPath = join(channelStateDir('slack'), '.env')
   if (!existsSync(envPath)) return { hasSlack: false }
   const tokenMatch = readFileOr(envPath, '').match(/SLACK_BOT_TOKEN=(.+)/)
@@ -100,9 +100,9 @@ export function readMarveenSlackConfig(): { hasSlack: boolean } {
 }
 
 // Bot username changes require a restart anyway, so a long cache is fine.
-export const marveenBotUsernameCache: { value?: string; fetchedAt: number } = { fetchedAt: 0 }
+export const webinarmagusBotUsernameCache: { value?: string; fetchedAt: number } = { fetchedAt: 0 }
 
-export async function refreshMarveenBotUsername(): Promise<void> {
+export async function refreshWebinarMagusBotUsername(): Promise<void> {
   const envPath = join(channelStateDir('telegram'), '.env')
   if (!existsSync(envPath)) return
   const tokenMatch = readFileOr(envPath, '').match(/TELEGRAM_BOT_TOKEN=(.+)/)
@@ -112,8 +112,8 @@ export async function refreshMarveenBotUsername(): Promise<void> {
     const r = await fetch(`https://api.telegram.org/bot${token}/getMe`, { signal: AbortSignal.timeout(TOOL_TIMEOUTS['telegram']) })
     const data = await r.json() as { ok?: boolean; result?: { username?: string } }
     if (data.ok && data.result?.username) {
-      marveenBotUsernameCache.value = `@${data.result.username}`
-      marveenBotUsernameCache.fetchedAt = Date.now()
+      webinarmagusBotUsernameCache.value = `@${data.result.username}`
+      webinarmagusBotUsernameCache.fetchedAt = Date.now()
     }
   } catch { /* offline; cache stays stale */ }
 }
@@ -216,8 +216,8 @@ export async function sendWelcomeMessage(agentName: string, token: string): Prom
   }
 }
 
-export async function sendMarveenAvatarChange(avatarPath: string): Promise<void> {
-  // Marveen's token is in the global .env
+export async function sendWebinarMagusAvatarChange(avatarPath: string): Promise<void> {
+  // WebinarMagus's token is in the global .env
   const envPath = join(PROJECT_ROOT, '.env')
   const envContent = readFileOr(envPath, '')
   const tokenMatch = envContent.match(/TELEGRAM_BOT_TOKEN=(.+)/)
@@ -237,9 +237,9 @@ export async function sendMarveenAvatarChange(avatarPath: string): Promise<void>
     const msg = messages[Math.floor(Math.random() * messages.length)]
     await sendTelegramMessage(token, chatId, msg)
     await sendTelegramPhoto(token, chatId, avatarPath, 'Állítsd be profilképként: nyisd meg a @BotFather chatet, /setuserpic, válaszd ki a botodat, küldd be ezt a képet.')
-    logger.info('Marveen avatar change message sent')
+    logger.info('WebinarMagus avatar change message sent')
   } catch (err) {
-    logger.warn({ err }, 'Failed to send Marveen avatar change message')
+    logger.warn({ err }, 'Failed to send WebinarMagus avatar change message')
   }
 }
 
@@ -288,7 +288,7 @@ export function parseTelegramToken(name: string): string | null {
   return match ? match[1].trim() : null
 }
 
-export async function sendMarveenAlert(text: string): Promise<void> {
+export async function sendWebinarMagusAlert(text: string): Promise<void> {
   try {
     const envPath = join(PROJECT_ROOT, '.env')
     const envContent = readFileOr(envPath, '')
@@ -299,6 +299,6 @@ export async function sendMarveenAlert(text: string): Promise<void> {
     if (!chatId) { logger.warn('Telegram send skipped: no owner chat on this install'); return }
     await sendTelegramMessage(token, chatId, text)
   } catch (err) {
-    logger.warn({ err }, 'Failed to send marveen plugin alert')
+    logger.warn({ err }, 'Failed to send webinarmagus plugin alert')
   }
 }

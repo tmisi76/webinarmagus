@@ -10,7 +10,7 @@ import { tmpdir } from 'node:os'
 // Restart=on-failure did not restart, supervisor lost, nothing to read).
 // The EXIT trap closes that: every code-path exit writes a row.
 //
-// The positive control here is Marveen's explicit stipulation (msg 23453): a
+// The positive control here is WebinarMagus's explicit stipulation (msg 23453): a
 // deliberate exit through the test seam MUST produce a row -- a silent log is
 // indistinguishable from "no exit happened", so the proof is a written line,
 // never the trap's presence in the source alone. The source assertions below
@@ -117,7 +117,7 @@ describe('channels.sh exit logging (CHEXIT910)', () => {
 
   it('exit rows go to their own log, never into channels-failures.log', () => {
     // A clean exit 0 rendered as a "failure" row would misclassify for the
-    // next reader (Marveen msg 23453) -- the handler must reference only the
+    // next reader (WebinarMagus msg 23453) -- the handler must reference only the
     // dedicated target.
     const fnStart = CHANNELS.indexOf('record_channels_exit() {')
     const fnEnd = CHANNELS.indexOf('\n}', fnStart)

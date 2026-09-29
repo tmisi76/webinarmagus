@@ -1,8 +1,8 @@
-// mio-scan, Node/TS port for the `marveen skill` CLI (MIOCLISKILL831).
+// mio-scan, Node/TS port for the `webinarmagus skill` CLI (MIOCLISKILL831).
 //
 // EZ A SZABALYKESZLET HARMADIK PELDANYA, es ezt ki kell mondani:
 //   1. packages/mio-agent-security/bin/mio-scan  (Python, az EREDETI)
-//   2. marveen-io supabase/functions/_shared/mio-scan.ts  (Deno, a webes ut)
+//   2. webinarmagus-io supabase/functions/_shared/mio-scan.ts  (Deno, a webes ut)
 //   3. ez a fajl  (Node, a CLI-ut)
 // Harom peldany egy szabalykeszletbol csendben elcsuszik egymastol, es a
 // kovetkezmeny nem elmeleti: ugyanaz a fajl az egyik uton atmenne, a masikon

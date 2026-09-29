@@ -42,7 +42,7 @@ log() { echo "$(date '+%Y-%m-%d %H:%M:%S') [$LOG_TAG] $*"; }
 # silence. Fail loud instead when nothing owns recovery.
 channel_watchdog_installed() {
   if [ "$(uname -s)" = "Darwin" ]; then
-    launchctl list 2>/dev/null | grep -q 'com\.marveen\.channel-watchdog'
+    launchctl list 2>/dev/null | grep -q 'com\.webinarmagus\.channel-watchdog'
   else
     systemctl --user is-enabled channel-watchdog.timer >/dev/null 2>&1
   fi
@@ -50,7 +50,7 @@ channel_watchdog_installed() {
 
 # --- resolve the channels session (launch-order / rename independent) ---
 MAIN_AGENT_ID="$(grep -E '^MAIN_AGENT_ID=' "$INSTALL_DIR/.env" 2>/dev/null | head -1 | cut -d= -f2-)"
-MAIN_AGENT_ID="${MAIN_AGENT_ID:-marveen}"
+MAIN_AGENT_ID="${MAIN_AGENT_ID:-webinarmagus}"
 MAIN_AGENT_ID="${MAIN_AGENT_ID//[^a-zA-Z0-9_-]/}"
 SESSION="${MAIN_AGENT_ID}-channels"
 

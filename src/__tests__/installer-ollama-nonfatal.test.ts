@@ -79,7 +79,7 @@ function runOllamaBlock(opts: { apiUp: boolean; pullBody?: string }): { code: nu
     'echo REACHED_THE_END',
   ].join('\n')
 
-  const file = join(mkdtempSync(join(tmpdir(), 'marveen-ollama-')), 'block.sh')
+  const file = join(mkdtempSync(join(tmpdir(), 'webinarmagus-ollama-')), 'block.sh')
   writeFileSync(file, script)
   try {
     const out = execFileSync('/bin/bash', [file], { encoding: 'utf-8', stdio: ['ignore', 'pipe', 'pipe'] })

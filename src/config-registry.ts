@@ -261,7 +261,7 @@ export const SETTINGS_REGISTRY: SettingDefinition[] = [
     key: 'DASHBOARD_PUBLIC_URL',
     type: 'string',
     default: '',
-    description: 'A dashboard nyilvánosan elérhető URL-je (pl. https://marveen.example.com). Üres = nincs CORS whitelist bővítés.',
+    description: 'A dashboard nyilvánosan elérhető URL-je (pl. https://webinarmagus.example.com). Üres = nincs CORS whitelist bővítés.',
     module: 'system',
     secret: false,
     requiresRestart: true,

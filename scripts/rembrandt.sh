@@ -34,7 +34,7 @@ esac
 case "$EFFORT" in low|medium|high|xhigh|max|ultra) ;; *) echo "bad effort: $EFFORT" >&2; exit 2 ;; esac
 
 SESSION="worker-rembrandt-$PROJECT"
-OUTDIR="/home/ubuntu/marveen/store/rembrandt"
+OUTDIR="/home/ubuntu/webinarmagus/store/rembrandt"
 mkdir -p "$OUTDIR"
 STAMP=$(date +%Y%m%d-%H%M%S)
 OUT="$OUTDIR/$PROJECT-$STAMP.md"

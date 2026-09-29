@@ -15,7 +15,7 @@ import { PROJECT_ROOT } from '../config.js'
 // fleet-wide -- a functional loss on the channel-having sub-agents (jumanji,
 // mira). The fix ports them into templates/settings.json.template, the
 // strip-surviving layer that ensureAgentHooks writes into each agent's project
-// scope. Marveen's conditions (msg 24600): effect-based proof (not
+// scope. WebinarMagus's conditions (msg 24600): effect-based proof (not
 // registration), a mutant control that shows the loss without the change, and
 // the strip-surviving layer (never the isolated dir).
 

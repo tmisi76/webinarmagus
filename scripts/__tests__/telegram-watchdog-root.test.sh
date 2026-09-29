@@ -1,24 +1,24 @@
 #!/bin/bash
-# TGWDOGVAK913 -- the watchdog must find the REAL fleet root, not ~/marveen.
+# TGWDOGVAK913 -- the watchdog must find the REAL fleet root, not ~/webinarmagus.
 #
 # The daemon is launched by launchd/systemd, which pass NO shell env to a job,
-# so MARVEEN_ROOT is unset unless the installer wrote it into the unit. The old
-# default `~/marveen` does not exist on a real install (root: <home>/ClaudeClaw),
+# so WEBINAR_MAGUS_ROOT is unset unless the installer wrote it into the unit. The old
+# default `~/webinarmagus` does not exist on a real install (root: <home>/ClaudeClaw),
 # so the watchdog scanned two non-existent globs and its log stayed 0 bytes -- a
 # sentry guarding nothing. The fix self-locates from __file__ when the daemon
-# runs the repo copy at <root>/scripts/hooks/, keeps MARVEEN_ROOT as an explicit
-# override, and ~/marveen as the last-resort legacy fallback.
+# runs the repo copy at <root>/scripts/hooks/, keeps WEBINAR_MAGUS_ROOT as an explicit
+# override, and ~/webinarmagus as the last-resort legacy fallback.
 #
 # This test measures the ROOT RESOLUTION specifically (the existing wedged test
-# always pins MARVEEN_ROOT, so it never exercises the derivation that broke):
-#   1. run from the repo-copy layout with MARVEEN_ROOT UNSET -> finds the marker
+# always pins WEBINAR_MAGUS_ROOT, so it never exercises the derivation that broke):
+#   1. run from the repo-copy layout with WEBINAR_MAGUS_ROOT UNSET -> finds the marker
 #      under <root>/agents (the fallback fires: proof it self-located);
 #   2. MUTATION: run the same script from a NON scripts/hooks/ location with
-#      MARVEEN_ROOT unset -> falls to ~/marveen, finds nothing (the vacuous
+#      WEBINAR_MAGUS_ROOT unset -> falls to ~/webinarmagus, finds nothing (the vacuous
 #      behaviour the fix leaves behind only when NOT run from the repo copy);
-#   3. MARVEEN_ROOT override wins regardless of the script's location.
+#   3. WEBINAR_MAGUS_ROOT override wins regardless of the script's location.
 #
-# Fully hermetic: HOME pinned to a temp tree (so ~/marveen and ~/.claude resolve
+# Fully hermetic: HOME pinned to a temp tree (so ~/webinarmagus and ~/.claude resolve
 # into empty temp dirs, never the operator's real ones) and all Bot API traffic
 # routed to a local stub via TELEGRAM_API_BASE.
 
@@ -85,49 +85,49 @@ echo "telegram-watchdog-root tests (TGWDOGVAK913)"
 echo "==========================================="
 
 # ---------------------------------------------------------------------------
-# (1) FIX: run from the repo-copy layout, MARVEEN_ROOT unset -> self-locates.
+# (1) FIX: run from the repo-copy layout, WEBINAR_MAGUS_ROOT unset -> self-locates.
 # ---------------------------------------------------------------------------
 echo ""
-echo "(1) __file__ derivation from <root>/scripts/hooks/ (MARVEEN_ROOT unset)"
+echo "(1) __file__ derivation from <root>/scripts/hooks/ (WEBINAR_MAGUS_ROOT unset)"
 R1="$TMP/case1"; HOME1="$TMP/home1"
 mkdir -p "$R1/scripts/hooks" "$HOME1"
 cp "$REAL_WATCHDOG" "$R1/scripts/hooks/telegram_progress_watchdog.py"
 plant_marker "$R1" a1
 : > "$REQLOG"
-env -u MARVEEN_ROOT HOME="$HOME1" TELEGRAM_API_BASE="$API_BASE" \
+env -u WEBINAR_MAGUS_ROOT HOME="$HOME1" TELEGRAM_API_BASE="$API_BASE" \
   TELEGRAM_WATCHDOG_FORCE_AGENT_UP=0 \
   python3 "$R1/scripts/hooks/telegram_progress_watchdog.py"
 assert_eq "self-located to <root>: the wedged marker fired (generic error)" "1" "$(count editMessageText)"
 
 # ---------------------------------------------------------------------------
-# (2) MUTATION: run from a NON scripts/hooks/ location -> falls to ~/marveen.
+# (2) MUTATION: run from a NON scripts/hooks/ location -> falls to ~/webinarmagus.
 # Same marker, but the script sits at <root>/.claude/hooks/ (the old installer
-# copy location), so the derivation cannot fire and ~/marveen (empty temp home)
+# copy location), so the derivation cannot fire and ~/webinarmagus (empty temp home)
 # is scanned -> nothing found. This is exactly the vacuous state the card
 # describes; it proves the fix is what makes case (1) fire.
 # ---------------------------------------------------------------------------
 echo ""
-echo "(2) mutation: run from ~/.claude/hooks-style path -> ~/marveen, finds nothing"
+echo "(2) mutation: run from ~/.claude/hooks-style path -> ~/webinarmagus, finds nothing"
 R2="$TMP/case2"; HOME2="$TMP/home2"
 mkdir -p "$R2/.claude/hooks" "$HOME2"
 cp "$REAL_WATCHDOG" "$R2/.claude/hooks/telegram_progress_watchdog.py"
 plant_marker "$R2" a2
 : > "$REQLOG"
-env -u MARVEEN_ROOT HOME="$HOME2" TELEGRAM_API_BASE="$API_BASE" \
+env -u WEBINAR_MAGUS_ROOT HOME="$HOME2" TELEGRAM_API_BASE="$API_BASE" \
   TELEGRAM_WATCHDOG_FORCE_AGENT_UP=0 \
   python3 "$R2/.claude/hooks/telegram_progress_watchdog.py"
-assert_eq "not run from repo copy: no delivery (falls to nonexistent ~/marveen)" "0" "$(count editMessageText)"
+assert_eq "not run from repo copy: no delivery (falls to nonexistent ~/webinarmagus)" "0" "$(count editMessageText)"
 
 # ---------------------------------------------------------------------------
-# (3) OVERRIDE: MARVEEN_ROOT wins regardless of the script's location.
+# (3) OVERRIDE: WEBINAR_MAGUS_ROOT wins regardless of the script's location.
 # ---------------------------------------------------------------------------
 echo ""
-echo "(3) MARVEEN_ROOT override wins (script at the non-repo path)"
+echo "(3) WEBINAR_MAGUS_ROOT override wins (script at the non-repo path)"
 : > "$REQLOG"
-MARVEEN_ROOT="$R2" HOME="$HOME2" TELEGRAM_API_BASE="$API_BASE" \
+WEBINAR_MAGUS_ROOT="$R2" HOME="$HOME2" TELEGRAM_API_BASE="$API_BASE" \
   TELEGRAM_WATCHDOG_FORCE_AGENT_UP=0 \
   python3 "$R2/.claude/hooks/telegram_progress_watchdog.py"
-assert_eq "MARVEEN_ROOT override reaches the marker: fired" "1" "$(count editMessageText)"
+assert_eq "WEBINAR_MAGUS_ROOT override reaches the marker: fired" "1" "$(count editMessageText)"
 
 echo ""
 echo "==========================================="

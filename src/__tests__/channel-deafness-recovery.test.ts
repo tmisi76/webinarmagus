@@ -170,11 +170,11 @@ describe('shouldDeferKeepaliveRespawn', () => {
 // ---------------------------------------------------------------------------
 // B2 CONTRACT: cross-path respawn storm prevention
 //
-// Invariant: after an inbound-probe respawn fires (setting marveenLastHardRestart
-// via hardRestartMarveenChannels), the keepalive path must be suppressed for
+// Invariant: after an inbound-probe respawn fires (setting webinarmagusLastHardRestart
+// via hardRestartWebinarMagusChannels), the keepalive path must be suppressed for
 // KEEPALIVE_RESPAWN_GRACE_MS. This is achieved by passing msSinceLastRespawn
 // = now - lastMainRespawnAt() to shouldRespawnForStaleKeepalive, where
-// lastMainRespawnAt() = Math.max(marveenLastKeepaliveRespawn, marveenLastHardRestart).
+// lastMainRespawnAt() = Math.max(webinarmagusLastKeepaliveRespawn, webinarmagusLastHardRestart).
 //
 // The pure-function test below locks the decision: even when only the
 // inbound-probe path has respawned (keepalive variable = 0, hardRestart > 0),
@@ -244,7 +244,7 @@ describe('B2 cross-path respawn storm prevention', () => {
     // The keepalive path computes msSinceLastRespawn = now - Math.max(0, T_respawn) = elapsed.
     // If elapsed < GRACE_MS, shouldRespawnForStaleKeepalive must return false.
     const elapsedSinceInboundRespawn = GRACE_MS - 60_000 // 14 min — within grace
-    // Math.max(marveenLastKeepaliveRespawn=0, marveenLastHardRestart=T_respawn):
+    // Math.max(webinarmagusLastKeepaliveRespawn=0, webinarmagusLastHardRestart=T_respawn):
     // Since 0 < T_respawn, max = T_respawn, so msSinceCrossPath = elapsed < GRACE.
     expect(shouldRespawnForStaleKeepalive({
       keepaliveAgeMs: AGE_MS,
@@ -266,7 +266,7 @@ describe('B2 cross-path respawn storm prevention', () => {
 
   it('suppresses keepalive respawn when keepalive path itself respawned recently (pre-existing self-grace)', () => {
     const elapsedSinceKeepaliveRespawn = GRACE_MS - 30_000 // 14.5 min — within grace
-    // Math.max(marveenLastKeepaliveRespawn=T, marveenLastHardRestart=0) = T_keepalive
+    // Math.max(webinarmagusLastKeepaliveRespawn=T, webinarmagusLastHardRestart=0) = T_keepalive
     expect(shouldRespawnForStaleKeepalive({
       keepaliveAgeMs: AGE_MS,
       stalenessThresholdMs: STALE_MS,

@@ -188,7 +188,7 @@ describe('bashEgressDenyTargetPath', () => {
 
 describe('ensureBashEgressDeny for the main agent', () => {
   it('writes the rules into the config dir it was given', () => {
-    const dir = mkdtempSync(join(tmpdir(), 'marveen-egress-'))
+    const dir = mkdtempSync(join(tmpdir(), 'webinarmagus-egress-'))
     try {
       expect(ensureBashEgressDeny(MAIN_AGENT_ID, dir)).toBe(true)
       const written = JSON.parse(readFileSync(join(dir, 'settings.json'), 'utf-8'))
@@ -201,7 +201,7 @@ describe('ensureBashEgressDeny for the main agent', () => {
   })
 
   it('keeps the config dir\'s other keys -- the file is rebuilt on every start and only its own keys survive', () => {
-    const dir = mkdtempSync(join(tmpdir(), 'marveen-egress-'))
+    const dir = mkdtempSync(join(tmpdir(), 'webinarmagus-egress-'))
     try {
       writeFileSync(join(dir, 'settings.json'), JSON.stringify({ hooks: { PreCompact: [] }, enabledPlugins: { x: true } }))
       ensureBashEgressDeny(MAIN_AGENT_ID, dir)

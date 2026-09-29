@@ -47,9 +47,9 @@ branch is measurable without speaking to the owner.
 """
 import argparse, json, os, re, subprocess, sys, time
 
-# The install root, NOT the home directory. The earlier `~/marveen/...` default
+# The install root, NOT the home directory. The earlier `~/webinarmagus/...` default
 # assumed the checkout lives at a fixed path under $HOME; on an install rooted
-# elsewhere it silently CREATED an orphan `~/marveen/store` (os.makedirs is
+# elsewhere it silently CREATED an orphan `~/webinarmagus/store` (os.makedirs is
 # permissive) and parked the state where nobody looks. Derive it from this file
 # instead, with the harness override winning when present.
 INSTALL_ROOT = os.environ.get("CLAUDE_PROJECT_DIR") or os.path.dirname(

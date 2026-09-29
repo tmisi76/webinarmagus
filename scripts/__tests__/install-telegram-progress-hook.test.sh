@@ -56,9 +56,9 @@ run_env_parse() {
   local install_dir="$1"
   # Extract the read_env function + the 5 lines that follow it (the calls).
   # The function starts with 'read_env()' and ends at the blank line before
-  # SERVICE_ID assignment; we grab them all up to BOT_NAME="${BOT_NAME:-Marveen}".
+  # SERVICE_ID assignment; we grab them all up to BOT_NAME="${BOT_NAME:-WebinarMagus}".
   local func_block
-  func_block="$(sed -n '/^read_env()/,/^BOT_NAME=.*Marveen/p' "$SCRIPT")"
+  func_block="$(sed -n '/^read_env()/,/^BOT_NAME=.*WebinarMagus/p' "$SCRIPT")"
   bash -c "
     set -euo pipefail
     INSTALL_DIR='$install_dir'
@@ -134,8 +134,8 @@ mkdir -p "$CASE"
 OUT="$(run_env_parse "$CASE")"
 EXIT=$?
 assert_zero "no .env: exits 0"                  $EXIT
-assert_eq   "no .env: SERVICE_ID=marveen"  "SERVICE_ID=marveen" "$(echo "$OUT" | grep '^SERVICE_ID=')"
-assert_eq   "no .env: BOT_NAME=Marveen"    "BOT_NAME=Marveen"   "$(echo "$OUT" | grep '^BOT_NAME=')"
+assert_eq   "no .env: SERVICE_ID=webinarmagus"  "SERVICE_ID=webinarmagus" "$(echo "$OUT" | grep '^SERVICE_ID=')"
+assert_eq   "no .env: BOT_NAME=WebinarMagus"    "BOT_NAME=WebinarMagus"   "$(echo "$OUT" | grep '^BOT_NAME=')"
 
 # ---------------------------------------------------------------------------
 # (f) MAIN_AGENT_ID fallback when SERVICE_ID absent

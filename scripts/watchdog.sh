@@ -1,6 +1,6 @@
 #!/bin/bash
 # Watchdog: checks sessions every 5 minutes, restarts if missing.
-# Cron: */5 * * * * ~/marveen/scripts/watchdog.sh
+# Cron: */5 * * * * ~/webinarmagus/scripts/watchdog.sh
 
 INSTALL_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 LOG="$INSTALL_DIR/logs/watchdog.log"
@@ -129,7 +129,7 @@ replay_unfinished_messages() {
   # injected message writes a dated marker into the dashboard log -- this used
   # to be a fully record-less injection path, invisible to every detector.
   # stderr goes to the watchdog log, NOT /dev/null (NOTIFYVAKSWEEP826 zaro
-  # kor, Marveen msg 16091): the replay python is honest about a failed
+  # kor, WebinarMagus msg 16091): the replay python is honest about a failed
   # marker write, but the old 2>/dev/null buried exactly that line -- the
   # instrument built against silence would have gone blind silently.
   python3 "$INSTALL_DIR/scripts/watchdog-replay.py" \
@@ -151,7 +151,7 @@ fi
 
 # ── Main agent session ─────────────────────────────────────────────────────
 MAIN_AGENT_ID="$(grep -E '^MAIN_AGENT_ID=' "$INSTALL_DIR/.env" 2>/dev/null | head -1 | cut -d= -f2-)"
-MAIN_AGENT_ID="${MAIN_AGENT_ID:-marveen}"
+MAIN_AGENT_ID="${MAIN_AGENT_ID:-webinarmagus}"
 MAIN_SESSION="${MAIN_AGENT_ID}-channels"
 
 if ! tmux has-session -t "$MAIN_SESSION" 2>/dev/null; then
@@ -171,7 +171,7 @@ if ! tmux has-session -t "$MAIN_SESSION" 2>/dev/null; then
     echo "$(timestamp) [watchdog] $MAIN_SESSION missing but a respawn is within the 900s grace -- deferring (systemd/channels.sh/channel-watchdog cover it)" >> "$LOG"
   else
     echo "$(timestamp) [watchdog] $MAIN_SESSION missing, restarting..." >> "$LOG"
-    nohup "$INSTALL_DIR/scripts/channels.sh" >> "$INSTALL_DIR/logs/marveen-channels.log" 2>&1 &
+    nohup "$INSTALL_DIR/scripts/channels.sh" >> "$INSTALL_DIR/logs/webinarmagus-channels.log" 2>&1 &
     sleep 5
     if tmux has-session -t "$MAIN_SESSION" 2>/dev/null; then
       echo "$(timestamp) [watchdog] $MAIN_SESSION restarted OK" >> "$LOG"
