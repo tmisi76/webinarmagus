@@ -261,9 +261,9 @@ def status_line(agent):
 
 def transcript_path(agent):
     if agent == MAIN_AGENT:
-        proj = "-home-ubuntu-marveen"
+        proj = "-home-ubuntu-webinar_magus"
     else:
-        proj = f"-home-ubuntu-marveen-agents-{agent}"
+        proj = f"-home-ubuntu-webinar_magus-agents-{agent}"
     d = os.path.expanduser(f"~/.claude/projects/{proj}")
     try:
         files = [os.path.join(d, f) for f in os.listdir(d) if f.endswith(".jsonl")]

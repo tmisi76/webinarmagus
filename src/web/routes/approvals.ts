@@ -71,7 +71,7 @@ export function buildOwnerApprovalText(approval: Approval): string {
 // agent, there is no in-band signal left at all: the leg-2 short-circuit
 // below skips the main-agent message unconditionally. The old self-notify was
 // useless but VISIBLE -- losing even that would rebuild the closed loop this
-// card documents, one layer deeper (Marveen's review finding on #1026).
+// card documents, one layer deeper (WebinarMagus's review finding on #1026).
 // Everyone else already got the normal main-agent notify, so the fallback is
 // main-requester-only. The marker names the reason so the reader knows this
 // is a degraded delivery, not the normal path.
