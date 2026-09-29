@@ -2,7 +2,7 @@
 """PreToolUse gate on the MAIN agent's outbound email: Hungarian copy QA.
 
 Why this exists (Szabi, 2026-08-10 12:57): a licence-delivery email went out to a
-client with every accent stripped ("Szia Balint, itt van a Marveen licenckulcsod
+client with every accent stripped ("Szia Balint, itt van a WebinarMagus licenckulcsod
 es a telepito"). It was the second accent incident that day -- the first was a
 client-facing spreadsheet the same morning. Szabi asked for a gate that inspects
 outgoing copy BEFORE the send and rejects it if something is wrong.
@@ -55,7 +55,7 @@ import sys
 #   - graph-mail futtatasa `send` alparanccsal;
 #   - curl/wget, amelynek IDEZETLEN URL-tokenje az api.resend.com-ra mutat
 #     (a -d payloadban idezett elofordulas nem szamit -- az tartalom).
-# MASODIK KOR (Marveen adverzarialis merese, msg 14282): az elso valtozat a
+# MASODIK KOR (WebinarMagus adverzarialis merese, msg 14282): az elso valtozat a
 # quoted stringeket VAKON vagta ki, ezert ket hamis negativot nyitott -- az
 # IDEZOJELES URL a curl sajat argumentum-helyen (a curl SZOKASOS irasmodja!)
 # es a burkolo hejj `-c` string-argumentuma atment. A gyoker: az idezojel a
@@ -66,7 +66,7 @@ import sys
 # belsejeben emlitett domain tovabbra is csak tartalom (az URL-minta a token
 # ELEJERE horgonyzott). A wrapper hejj (`sh -c "..."`) string-argumentuma
 # rekurzivan elemzodik.
-# A heredoc-kivagas SORREND-FUGGETLEN (Marveen 3. kore, msg 14286): a
+# A heredoc-kivagas SORREND-FUGGETLEN (WebinarMagus 3. kore, msg 14286): a
 # hatarolo utani SOR-MARADEK (pl. atiranyitas: <<EOF > fajl) a parancs
 # resze es MEGMARAD -- csak a torzs esik ki. Enelkul (a) forditott
 # sorrendnel a torzs parancsnak latszott (FP), (b) a bevezeto sor
@@ -79,7 +79,7 @@ _PYTHON = re.compile(r"^python3?$", re.I)
 # A ket kapu (ez + scripts/email-send-gate.mjs) SZANDEKOSAN azonos
 # felismeres-szemantikat visel, es ezt kozos eset-lista orzi
 # (send-invocation-cases.json + konformancia-teszt): a divergencia
-# teszt-hibakent jelenjen meg, ne incidenskent (Marveen, msg 14289).
+# teszt-hibakent jelenjen meg, ne incidenskent (WebinarMagus, msg 14289).
 _NODEISH = re.compile(r"^(node|tsx|ts-node|deno|bun|npx)$", re.I)
 _GRAPHMAIL = re.compile(r"^graph-mail(\.ts|\.js)?$", re.I)
 _WRAPPER_SHELL = re.compile(r"^(sh|bash|zsh|dash)$", re.I)
@@ -87,7 +87,7 @@ _CURLISH = re.compile(r"^(curl|wget|http)$", re.I)
 # Interpreter kod-string argumentum (python -c / node -e): az interpreternek
 # atadott kod MUVELET, nem tartalom -- a kod-szintu kuldes-hivasokra szurunk.
 #
-# KIMONDOTT HATAR (Marveen, msg 14298): tetszoleges interpreter-kod statikus
+# KIMONDOTT HATAR (WebinarMagus, msg 14298): tetszoleges interpreter-kod statikus
 # elemzese eldonthetetlen -- ez a kapu a VELETLEN kuldest fogja meg, nem egy
 # elszant kikerulot. A lenti exec-heurisztika a NAIV alakokat fedi (a kod
 # process-inditast ES kuldo-programnevet egyutt tartalmaz); ennel tobbet nem
@@ -393,7 +393,7 @@ ACCENTLESS = {
     "afa": "áfa", "allapot": "állapot", "all": "áll",
 }
 
-# GATEHOMOGLIF816 (2026-08-16, Marveen merese): 33 cirill homoglifa ult a
+# GATEHOMOGLIF816 (2026-08-16, WebinarMagus merese): 33 cirill homoglifa ult a
 # memoria-sorokban es kartya-cimekben -- olvasva lathatatlan, de a grep/FTS
 # nema nulla-talalatot ad, ami hianyzo emleknek latszik, nem serult adatnak.
 # A szabaly a VEGYES SZORA vonatkozik (egy szon belul latin ES nem-latin betu),
@@ -549,7 +549,7 @@ def load_bad_name():
         # or an uncompilable pattern. All of these mean someone TRIED to
         # configure the rule and failed -- that must stay loud AND closed.
         state = RULES_INVALID
-    # ONE logging tail for EVERY loud state (Marveen review on #1156: the
+    # ONE logging tail for EVERY loud state (WebinarMagus review on #1156: the
     # first cut logged only the exception branches, so empty/schema-invalid
     # left no log line while missing did -- same event class, inconsistent
     # ledger).
@@ -669,7 +669,7 @@ TECHNICAL = re.compile(
       | [\w.+-]+@[\w-]+\.[\w.]+     # email
       | `[^`]*`                     # kod-span
       | \b\w+(?:_\w+)+\b            # snake_case azonosito
-      | \b\w+\.[A-Za-z]{2,10}(?:-[a-záéíóöőúüű]{1,4})?\b   # fajlnev / domain, magyar toldalekkal (video.mp4, marveen.io, Mail.app-ot)
+      | \b\w+\.[A-Za-z]{2,10}(?:-[a-záéíóöőúüű]{1,4})?\b   # fajlnev / domain, magyar toldalekkal (video.mp4, autowebinar.hu, Mail.app-ot)
       | \b[\w-]*/[\w/-]+            # utvonal / slug
       | \d+(?:[.:,]\d+)*-[^\W\d_]+   # szam + magyar toldalek (8:09-es, 2-es, 17:06-kor)
       | \b[A-ZÁÉÍÓÖŐÚÜŰ][^\W\d_]*-[a-záéíóöőúüű]{1,4}\b   # tulajdonnev + toldalek (Chrome-ot, Drive-ra)
@@ -689,7 +689,7 @@ def is_hungarian(text: str) -> bool:
     return sum(1 for m in HU_MARKERS if m in low) >= 3
 
 
-# GATETG816 (2026-08-16, Marveen merese): az is_hungarian() funkcionalis szavakra
+# GATETG816 (2026-08-16, WebinarMagus merese): az is_hungarian() funkcionalis szavakra
 # szur, ezert a TOMOR, tenykozol, felsorolasos magyar uzenet (pont a fo agens
 # Telegram-stilusa) nem eri el a 3 markert, es az ekezet-vizsgalat el sem indul --
 # a mai napindito elso bekezdese ekezetlenul atment. A nyelv-detektor ezert nem
@@ -813,7 +813,7 @@ def telegram_gate(tool_input: dict) -> None:
 
 def audit(text: str):
     """Return a list of human-readable problems."""
-    # COPYGATEENT914 (Marveen merese, 2026-09-14, egy VALODI vevo-levelen): a
+    # COPYGATEENT914 (WebinarMagus merese, 2026-09-14, egy VALODI vevo-levelen): a
     # tag-kiszedes onmagaban megkerulheto HTML-ENTITASSAL. A `&mdash;` (es a
     # szamos `&#8212;` / hex `&#x2014;` alak) atment a kapun, a cimzettnel
     # viszont gondolatjelkent renderel -- vagyis a kapu zoldet mondott arra,
@@ -845,7 +845,7 @@ def audit(text: str):
             "ugyanugy zavaro, mint az em dash. Ird at kotojel nelkul: kettospont, zarojel, vagy uj mondat."
         )
     # 4. ellenorzes (GATEHOMOGLIF816): vegyes irasrendszeru szo. SZANDEKOSAN
-    # NEM magyar-kapuzott (elteres Marveen specjetol, ervvel): az FP-vedelem
+    # NEM magyar-kapuzott (elteres WebinarMagus specjetol, ervvel): az FP-vedelem
     # maga a VEGYES-szo szabaly -- egy legitim idegen idezet szavai TISZTA
     # nem-latin betusek, sosem vegyesek. A magyar-kapu itt semmit nem vedene,
     # viszont lyukat utne: egy 2-markeres, hibatlanul ekezetes magyar szoveg
