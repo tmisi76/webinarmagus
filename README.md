@@ -8,6 +8,10 @@
 
 A Webinár Mágus egy helyben futó, többügynökös AI rendszer. A saját gépeden futó Mission Control felületből tudsz webináriumot, kampányt, emailt, hirdetést, sales folyamatot és automatizálást tervezni, valamint specialista AI ügynököknek feladatokat delegálni.
 
+## AI szolgáltató: szabad választás
+
+**Nincs kötelező Claude-előfizetés.** A Webinár Mágus technikai agent-runtime-ja automatikusan települ, a tényleges AI szolgáltatót pedig az első indításkor Te választod: **DeepSeek, Anthropic/Claude, OpenAI vagy Google Gemini**. A választás később módosítható, és az ügynökök külön modelleket is kaphatnak.
+
 ## Gyors kezdés
 
 ### macOS / Linux
