@@ -87,3 +87,7 @@ A CLI release csak akkor tekinthető késznek, ha:
 ## Desktop később
 
 A DMG/EXE build és signing kód megmarad, de a `v*` tag jelenleg nem indít desktop release buildet. Amikor rendelkezésre áll az Apple Developer és Windows code-signing credential, külön release-lépésben visszakapcsolható.
+
+## v0.1.0 release trigger
+
+Ez a commit a CLI-only v0.1.0 release branch push-triggerét aktiválja. A publikus kiadás továbbra is kizárólag CLI runtime-ot publikál.
