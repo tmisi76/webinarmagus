@@ -60,7 +60,7 @@ if ($LASTEXITCODE -ne 0) { throw "Webinár Mágus telepítés sikertelen (exit $
 # the wake-up trigger. start.sh is idempotent, therefore an already-running
 # runtime is safe.
 try {
-  $taskName = "WebinarMagus"
+  $taskName = "Webinar-Magus"
   $wslExe = Join-Path $env:SystemRoot "System32\wsl.exe"
   $action = New-ScheduledTaskAction -Execute $wslExe -Argument 'bash -lc "cd ~/webinar-magus && bash scripts/start.sh"'
   $trigger = New-ScheduledTaskTrigger -AtLogOn
