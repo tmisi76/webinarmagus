@@ -377,11 +377,11 @@ if ! command -v make &>/dev/null || ! command -v cc &>/dev/null; then
   fi
 fi
 
-# Node.js v20+ ellenorzes
+# Node.js v22+ ellenorzes
 NODE_OK=false
 if command -v node &>/dev/null; then
   NODE_VER=$(node -e 'process.stdout.write(process.version.slice(1).split(".")[0])' 2>/dev/null || echo "0")
-  [ "$NODE_VER" -ge 20 ] && NODE_OK=true
+  [ "$NODE_VER" -ge 22 ] && NODE_OK=true
 fi
 $NODE_OK || MISSING_PKGS="$MISSING_PKGS nodejs"
 
