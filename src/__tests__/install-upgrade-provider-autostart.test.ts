@@ -24,7 +24,7 @@ describe('first-run provider choice', () => {
   it('restarts a running main agent after a provider/model change', () => {
     expect(ONBOARDING).toContain('const wasRunning = agentsRunning()')
     expect(ONBOARDING).toContain('if (wasRunning)')
-    expect(ONBOARDING).toContain('hardRestartWebinarMagusChannels()')
+    expect(ONBOARDING).toContain('hardRestartWebinar-MagusChannels()')
   })
 })
 
@@ -55,7 +55,7 @@ describe('Windows background startup', () => {
 
   it('is documented for macOS and Windows', () => {
     expect(README).toContain('## Automatikus háttérben futás')
-    expect(README).toContain('Get-ScheduledTask -TaskName "WebinarMagus"')
+    expect(README).toContain('Get-ScheduledTask -TaskName "Webinar-Magus"')
     expect(README).toContain('com.webinarmagus.dashboard')
   })
 })
