@@ -159,7 +159,7 @@ export async function checkTelegramTokenBusy(
         busy: true,
         reason: 'webhook',
         // The token itself must never appear in this user-facing message.
-        error: 'A bot token érvényes, de a bot jelenleg webhookra van kötve, így a Marveen nem tud rá csatlakozni. '
+        error: 'A bot token érvényes, de a bot jelenleg webhookra van kötve, így a Webinár Mágus nem tud rá csatlakozni. '
           + `Teendő: szüntesd meg a webhookot (nyisd meg böngészőben: https://api.telegram.org/bot<A-TOKENED>/deleteWebhook), `
           + 'vagy készíts új botot a @BotFather-nél, és annak a tokenjét add meg itt.',
       }
