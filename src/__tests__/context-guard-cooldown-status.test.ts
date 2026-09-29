@@ -11,16 +11,16 @@ const SANDBOX = mkdtempSync(join(tmpdir(), 'cgstatus-'))
 
 vi.mock('../config.js', async (orig) => {
   const actual = await orig<typeof import('../config.js')>()
-  return { ...actual, MAIN_AGENT_ID: 'marveen', PROJECT_ROOT: SANDBOX, STORE_DIR: join(SANDBOX, 'store') }
+  return { ...actual, MAIN_AGENT_ID: 'webinar_magus', PROJECT_ROOT: SANDBOX, STORE_DIR: join(SANDBOX, 'store') }
 })
 vi.mock('../logger.js', () => ({
   logger: { info: vi.fn(), warn: vi.fn(), debug: vi.fn(), error: vi.fn() },
 }))
 vi.mock('../db.js', () => ({ createAgentMessage: vi.fn() }))
 vi.mock('../web/channel-monitor.js', () => ({
-  hardRestartMarveenChannels: vi.fn(() => ({ ok: true })),
+  hardRestartWebinarMagusChannels: vi.fn(() => ({ ok: true })),
   lastMainRespawnAt: () => null,
-  MARVEEN_POST_RESPAWN_GRACE_MS: 0,
+  WEBINAR_MAGUS_POST_RESPAWN_GRACE_MS: 0,
 }))
 vi.mock('../web/stuck-tool-call-watcher.js', () => ({ shouldDeferForRecentRespawn: () => false }))
 vi.mock('../web/agent-process.js', () => ({

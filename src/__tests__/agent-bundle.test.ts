@@ -187,8 +187,8 @@ describe('agent bundle export/import', () => {
   })
 
   it('builds a safe download filename', () => {
-    expect(bundleFilename('tester')).toBe('marveen-agent-tester.tar.gz')
-    expect(bundleFilename('../../etc/passwd')).toBe('marveen-agent-passwd.tar.gz')
+    expect(bundleFilename('tester')).toBe('webinar_magus-agent-tester.tar.gz')
+    expect(bundleFilename('../../etc/passwd')).toBe('webinar_magus-agent-passwd.tar.gz')
   })
 })
 
@@ -298,6 +298,6 @@ describe('fleet bundle export/import', () => {
   })
 
   it('builds a stable fleet download filename', () => {
-    expect(fleetBundleFilename()).toBe('marveen-fleet.tar.gz')
+    expect(fleetBundleFilename()).toBe('webinar_magus-fleet.tar.gz')
   })
 })

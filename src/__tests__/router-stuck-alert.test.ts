@@ -15,7 +15,7 @@ import { describe, it, expect } from 'vitest'
 import { formatStuckSessionAlert, shouldEscalateStuckSession } from '../web/message-router.js'
 import { detectPaneState } from '../pane-state.js'
 
-const MAIN = 'marveen'
+const MAIN = 'webinar_magus'
 
 const SEP = '─'.repeat(80)
 const MIN = 60 * 1000
@@ -59,7 +59,7 @@ describe('formatStuckSessionAlert: silent stall becomes a main-agent alert', () 
   it('never alerts the main agent about itself (no self-loop)', () => {
     // Messages TO the main agent use the pull model and never enter the stuck
     // branch; this guards the invariant if that ever changes.
-    expect(formatStuckSessionAlert(MAIN, MAIN, 'marveen-channels', 20 * 60 * 1000, 5)).toBeNull()
+    expect(formatStuckSessionAlert(MAIN, MAIN, 'webinar_magus-channels', 20 * 60 * 1000, 5)).toBeNull()
   })
 
   it('rounds the stall duration to whole minutes', () => {
