@@ -1,6 +1,6 @@
 #!/usr/bin/env tsx
 /**
- * `npm run skill -- <alparancs>` -- a marveen.io skill-parancs (MIOCLISKILL831).
+ * `npm run skill -- <alparancs>` -- a autowebinar.hu skill-parancs (MIOCLISKILL831).
  *
  * HAROM ALPARANCS:
  *   enroll   EGYSZERI bekotes: attest-kulcs kerese es HELYI tarolasa (0600),
@@ -10,7 +10,7 @@
  *   update   a skillek/szabalyok ujrahuzasa a szerverrol.
  *
  * MIERT A CLI SAJAT FOLYAMATABAN SZKENNEL (spec, msg 16930/b): a hatokor
- * MINDEN app.marveen.io-s regisztralo, nem csak a Claude Code alatt futo
+ * MINDEN autowebinar.hu-s regisztralo, nem csak a Claude Code alatt futo
  * ugynok. Egy hook kesobbi EXTRA reteg lehet, de nem ez az alap -- ha a
  * szken egy hookban ulne, aki hook nelkul tolt fel, szken nelkul toltene fel.
  *
@@ -43,7 +43,7 @@ import {
  * helyeken szetszorva: egy sajat peldanyt futtato telepitesnek at kell tudni
  * allitani, es a teszteknek is.
  */
-const ALAP_API = process.env.MARVEEN_API_BASE || 'https://fpxycpxdxgifimbmwgzj.supabase.co'
+const ALAP_API = process.env.WEBINAR_MAGUS_API_BASE || 'https://fpxycpxdxgifimbmwgzj.supabase.co'
 
 function fail(uzenet: string): never {
   console.error(`hiba: ${uzenet}`)
@@ -78,7 +78,7 @@ function parseArgs(argv: string[]): Args {
     scope: 'user',
     apiBase: ALAP_API,
     rotate: false,
-    accessToken: process.env.MARVEEN_ACCESS_TOKEN,
+    accessToken: process.env.WEBINAR_MAGUS_ACCESS_TOKEN,
   }
   for (let i = 1; i < argv.length; i++) {
     const a = argv[i]
@@ -97,11 +97,11 @@ function parseArgs(argv: string[]): Args {
 }
 
 function sugo(): void {
-  console.log(`marveen skill -- skillek es feltoltes a marveen.io kozossegbe
+  console.log(`webinarMagus skill -- skillek es feltoltes a autowebinar.hu kozossegbe
 
   npm run skill -- enroll [--project] [--rotate]
       Egyszeri bekotes: attest-kulcs kerese es helyi tarolas (0600).
-      Hitelesites: MARVEEN_ACCESS_TOKEN vagy --access-token; enelkul email+jelszo bekerese.
+      Hitelesites: WEBINAR_MAGUS_ACCESS_TOKEN vagy --access-token; enelkul email+jelszo bekerese.
 
   npm run skill -- enroll --key-id <id> --attest-key <titok> --member-id <uuid>
       Ugyanaz, de egy MAR KIADOTT kulccsal, szerver-hivas nelkul.
@@ -133,12 +133,12 @@ async function felhasznaloiToken(args: Args): Promise<string> {
   if (!process.stdin.isTTY) {
     fail(
       'nincs hozzaferesi token es nincs interaktiv terminal.\n' +
-        '  Add meg: MARVEEN_ACCESS_TOKEN=... vagy --access-token ...',
+        '  Add meg: WEBINAR_MAGUS_ACCESS_TOKEN=... vagy --access-token ...',
     )
   }
   const rl = createInterface({ input: process.stdin, output: process.stdout })
   try {
-    const email = await rl.question('marveen.io email: ')
+    const email = await rl.question('autowebinar.hu email: ')
     const jelszo = await rl.question('jelszo: ')
     const res = await fetch(`${args.apiBase}/auth/v1/token?grant_type=password`, {
       method: 'POST',
@@ -166,18 +166,18 @@ async function felhasznaloiToken(args: Args): Promise<string> {
  * nem eri meg a vak foltot.
  */
 function anonKulcs(): string {
-  const k = process.env.MARVEEN_ANON_KEY
+  const k = process.env.WEBINAR_MAGUS_ANON_KEY
   if (!k) {
     // NEM MONDJUK MEG, HOL TALALJA, MERT NEM TUDJUK. Megmerve: a
-    // MARVEEN_ANON_KEY sem a doksikban, sem a telepitokben, sem a
+    // WEBINAR_MAGUS_ANON_KEY sem a doksikban, sem a telepitokben, sem a
     // dashboardon nem szerepel. Egy talalgatott hely rosszabb a hianynal:
     // a tag keresne valamit, ami nincs ott. Helyette a ket ut, ami MA
     // mukodik.
     fail(
-      'az interaktiv bejelentkezeshez a MARVEEN_ANON_KEY kornyezeti valtozo kell,\n' +
+      'az interaktiv bejelentkezeshez a WEBINAR_MAGUS_ANON_KEY kornyezeti valtozo kell,\n' +
         '  es az ezen a gepen nincs beallitva. Ket ut mukodik nelkule:\n' +
         '    npm run skill -- enroll --access-token <token>\n' +
-        '      (vagy MARVEEN_ACCESS_TOKEN kornyezeti valtozokent)\n' +
+        '      (vagy WEBINAR_MAGUS_ACCESS_TOKEN kornyezeti valtozokent)\n' +
         '    npm run skill -- enroll --key-id <id> --attest-key <titok> --member-id <uuid>\n' +
         '      (egy MASIK gepen kiadott kulcs atvitele; a kulcsot ott az\n' +
         '       `enroll --access-token` adja ki, egyszer)',
@@ -189,7 +189,7 @@ function anonKulcs(): string {
 async function enroll(args: Args): Promise<void> {
   // (B) UT: EGY MAR KIADOTT KULCS ATVITELE MASIK GEPRE. Nem alapertelmezes,
   // hanem kapcsolo -- de valodi ut: egy fej nelkuli gepnek lehet, hogy sosem
-  // lesz marveen.io-bejelentkezese, csak a kulcsa.
+  // lesz autowebinar.hu-bejelentkezese, csak a kulcsa.
   //
   // ES NEM WEBFELULETROL JON. Megmerve (Samu leletebol, sajat kontrollal
   // ismetelve): az `attest` szo 0 TALALAT az apps/app/src egeszeben,
