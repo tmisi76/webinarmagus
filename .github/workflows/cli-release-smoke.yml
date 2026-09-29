@@ -163,11 +163,11 @@ jobs:
 
           LEGACY_MATCHES="$(
             grep -RIlE \
-              'Marveen|MARVEEN_|/api/marveen|marveen-marketplace|tmisi76/webinar-magus' \
+              'Mar[v]een|MARV[E]EN_|/api/mar[v]een|mar[v]een-marketplace|Marv[i]n|Malv[i]n|tmisi76/webinar-magus' \
               /tmp/runtime-check 2>/dev/null || true
           )"
           if [ -n "$LEGACY_MATCHES" ]; then
-            echo "::error::Legacy Marveen/repository references found in published runtime:"
+            echo "::error::Legacy brand/repository references found in published runtime:"
             echo "$LEGACY_MATCHES"
             exit 1
           fi
