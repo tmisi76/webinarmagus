@@ -13,7 +13,7 @@ if [ -f "$INSTALL_DIR/scripts/migrate-legacy-brand-state.sh" ]; then
 fi
 
 # Dashboard port: env WEB_PORT, else the install .env, else the 3420 default.
-WEB_PORT="${WEB_PORT:-$(grep -E '^WEB_PORT=' "$INSTALL_DIR/.env" 2>/dev/null | head -1 | cut -d= -f2- | tr -d ' "')}"
+WEB_PORT="${WEB_PORT:-$(grep -E '^WEB_PORT=' "$(dirname "$0")/../.env" 2>/dev/null | head -1 | cut -d= -f2- | tr -d ' "')}"
 WEB_PORT="${WEB_PORT:-3420}"
 
 # Read only what this script actually needs; avoid `set -a && source .env`,
