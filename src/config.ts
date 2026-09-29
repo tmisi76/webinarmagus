@@ -214,7 +214,7 @@ export function resolveServiceId(brandSlug: string, mainAgentId: string): string
 // ASCII slug used for agent/service ids, mirroring the install scripts'
 // Python NFKD rule: NFKD-normalize, drop non-ASCII, collapse runs of non-
 // alphanumerics to a single dash, trim dashes, lowercase, and fall back to
-// 'webinarMagus' when the result is empty. Exported so the launchd/systemd label
+// 'webinarmagus' when the result is empty. Exported so the launchd/systemd label
 // derivation is provable for any brand string in one place.
 export function brandSlug(raw: string): string {
   const ascii = (raw ?? '')
@@ -223,14 +223,14 @@ export function brandSlug(raw: string): string {
     .replace(/[̀-ͯ]/g, '')
     .replace(/[^\x00-\x7f]/g, '')
   const slug = ascii.replace(/[^a-zA-Z0-9]+/g, '-').replace(/^-+|-+$/g, '').toLowerCase()
-  return slug || 'webinarMagus'
+  return slug || 'webinarmagus'
 }
 
 // Canonical identifier for the main agent in the DB, tmux sessions, plist
 // labels, API routing, etc. The installer derives this from BOT_NAME
 // (NFKD + ASCII + lowercase dashes). Older installs without this env var
-// fall back to "webinarMagus" so nothing breaks when upgrading in place.
-export const MAIN_AGENT_ID = env['MAIN_AGENT_ID'] ?? 'webinarMagus'
+// fall back to "webinarmagus" so nothing breaks when upgrading in place.
+export const MAIN_AGENT_ID = env['MAIN_AGENT_ID'] ?? 'webinarmagus'
 // The hidden heartbeat worker's agent id. Lives here (not in
 // heartbeat-agent-scaffold) so agent-scaffold can key gates on it without an
 // import cycle: heartbeat-agent-scaffold already imports agent-scaffold.
