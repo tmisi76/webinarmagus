@@ -89,14 +89,14 @@ describe('parsePollerPidsFromPs', () => {
 })
 
 // Rows modeled on the live 2026-06-03 incident snapshot. The tmux SERVER pid
-// is 35874; the live marveen-channels pane leader is the claude at 76621
+// is 35874; the live webinarMagus-channels pane leader is the claude at 76621
 // (claudePid == panePid for the main session). 57158 + the 70xxx claudes are
 // detached --continue leftovers reparented to the tmux server (ppid 35874).
 // A live sub-agent is modeled as a pane shell (77189) with a claude child.
 const CLAUDE = '/opt/homebrew/bin/claude'
 const PROCS: ProcRow[] = [
   // tmux server: argv EMBEDS the claude --channels string -> must NOT match.
-  { pid: 35874, ppid: 1, command: '/opt/homebrew/bin/tmux new-session -d -s marveen-channels -c /Users/x/ClaudeClaw /opt/homebrew/bin/claude --dangerously-skip-permissions --channels plugin:telegram@claude-plugins-official' },
+  { pid: 35874, ppid: 1, command: '/opt/homebrew/bin/tmux new-session -d -s webinarMagus-channels -c /Users/x/ClaudeClaw /opt/homebrew/bin/claude --dangerously-skip-permissions --channels plugin:telegram@claude-plugins-official' },
   // live main session: claude is the pane leader (pid == panePid 76621).
   { pid: 76621, ppid: 35874, command: `${CLAUDE} --dangerously-skip-permissions --model claude-opus-4-8[1m] --channels plugin:telegram@claude-plugins-official` },
   // live sub-agent: pane leader is the shell (77189), claude is its child.

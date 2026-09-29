@@ -1,5 +1,5 @@
 // TMUXWINDOWATTR920 (2026-09-20): tmux's one-line errors from the dashboard's
-// pollers ("can't find window: marveen-channels" x133, "can't find session:
+// pollers ("can't find window: webinarMagus-channels" x133, "can't find session:
 // agent-*" x~4000) sat in dashboard.error.log undated and unattributed, because
 // the SYNC child-process calls (execFileSync / execSync / spawnSync) WITHOUT a
 // stdio option copy the child's stderr onto the parent's stderr as well as
@@ -31,7 +31,7 @@ describe('tmux stderr attribution (TMUXWINDOWATTR920)', () => {
     // is Node's, not tmux's. A grandchild node writes one line to stderr and
     // exits 1; the child calls it via execFileSync; the PARENT (this test)
     // observes the child's stderr.
-    const line = "can't find window: marveen-channels"
+    const line = "can't find window: webinarMagus-channels"
     // The grandchild's code is JSON-encoded as a whole: the apostrophe in the
     // line would otherwise end a single-quoted JS string (the first draft did).
     const grandchild = `process.stderr.write(${JSON.stringify(line)});process.exit(1)`
@@ -46,7 +46,7 @@ describe('tmux stderr attribution (TMUXWINDOWATTR920)', () => {
   })
 
   it('tmuxStderr() returns the one tmux line, trimmed and bounded, falling back to the message', () => {
-    expect(tmuxStderr({ stderr: "can't find window: marveen-channels\n" })).toBe("can't find window: marveen-channels")
+    expect(tmuxStderr({ stderr: "can't find window: webinarMagus-channels\n" })).toBe("can't find window: webinarMagus-channels")
     expect(tmuxStderr({ stderr: Buffer.from('x\n') })).toBe('x')
     expect(tmuxStderr({ stderr: '', message: 'spawnSync tmux ETIMEDOUT' })).toBe('spawnSync tmux ETIMEDOUT')
     expect(tmuxStderr(new Error('boom')).length).toBeGreaterThan(0)

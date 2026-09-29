@@ -102,7 +102,7 @@ import { runMessageRouterTick } from '../web/message-router.js'
 function pendingMsg(id: number) {
   return {
     id,
-    from_agent: 'marveen',
+    from_agent: 'webinarMagus',
     to_agent: 'samu',
     content: 'held behind the modal',
     status: 'pending',

@@ -242,7 +242,7 @@ def main():
         check("edit_message clean passes (exit 0)", code, 0)
 
         # --- COPYGATEENT914: HTML-ENTITAS NEM KERULHETI MEG A GONDOLATJEL-TILTAST ---
-        # Marveen merese 2026-09-14, egy VALODI vevo-levelen: a hook a TAGEKET
+        # WebinarMagus merese 2026-09-14, egy VALODI vevo-levelen: a hook a TAGEKET
         # szedte ki, de az entitast sehol nem dekodolta, igy a `&mdash;` atment
         # es a cimzettnel gondolatjelkent renderelt. A kapu zoldet mondott arra,
         # amit tilt. Merve MIND A HAROM alakon, nem csak a bejelentettre.

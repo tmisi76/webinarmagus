@@ -310,7 +310,7 @@ const MAIN_STUCK_THRESHOLDS: StuckInputThresholds = {
 // main channel input is STILL parked, the TUI is hard-wedged: a paste
 // placeholder that Enter only expands (never submits), or a state where
 // keystrokes no longer register. Soft recovery cannot win there; the only fix
-// is a fresh claude process. Escalate to hardRestartMarveenChannels()
+// is a fresh claude process. Escalate to hardRestartWebinarMagusChannels()
 // (respawn-pane on Linux -- replaces ONLY the main pane's claude, the tmux
 // server + every other agent session stay intact). Rate-limited + capped so a
 // wedge a restart cannot clear never becomes a restart loop.
@@ -572,7 +572,7 @@ async function performStuckInputAction(
 
 // Periodic detached-channel-claude reap (CB6CF755 durable fix). The pane-
 // attribution reaper (reapDetachedChannelClaudes) already runs at RESPAWN time
-// (resumeMarveenSession + agent (re)start), but orphans that accumulate BETWEEN
+// (resumeWebinarMagusSession + agent (re)start), but orphans that accumulate BETWEEN
 // respawns -- a --continue respawn that failed to tear down its predecessor --
 // linger until the next respawn happens to fire (the "5 orphans over 13 days"
 // leak). Running the same reaper on a slow cadence here closes that gap. The
@@ -618,10 +618,10 @@ const MENU_RECOVER_CONFIRM_MS = 45_000
 const MENU_RECOVER_DEDUP_MS = 5 * 60 * 1000
 const MENU_RECOVER_CLEAR_MS = 2 * 60 * 1000
 
-type MarveenRecoveryStage = 'soft' | 'save' | 'resume' | 'hard' | 'gave_up'
-interface MarveenDownState {
+type WebinarMagusRecoveryStage = 'soft' | 'save' | 'resume' | 'hard' | 'gave_up'
+interface WebinarMagusDownState {
   downSince: number
-  stage: MarveenRecoveryStage
+  stage: WebinarMagusRecoveryStage
   lastAlertAt: number
   softAttempts: number
   stageStartedAt?: number
@@ -631,19 +631,19 @@ interface MarveenDownState {
 }
 
 const SAVE_WINDOW_MS = 60_000
-const MARVEEN_DOWN_CONFIRM_MS = 120_000
-let marveenSuspectFirstSeen: number | null = null
-let marveenDownState: MarveenDownState | null = null
+const WEBINAR_MAGUS_DOWN_CONFIRM_MS = 120_000
+let webinarMagusSuspectFirstSeen: number | null = null
+let webinarMagusDownState: WebinarMagusDownState | null = null
 
 function getMainAgentProvider(): ChannelProviderType {
   return CHANNEL_PROVIDER
 }
 
-function softReconnectMarveen(): boolean {
+function softReconnectWebinarMagus(): boolean {
   return attemptChannelMcpReconnect(MAIN_AGENT_ID).ok
 }
 
-async function triggerMarveenMemorySave(): Promise<void> {
+async function triggerWebinarMagusMemorySave(): Promise<void> {
   const prompt = [
     '[SYSTEM: channels recovery] A csatorna plugin nem reagal, kb 60 masodperc',
     `mulva hard restart lesz a ${MAIN_CHANNELS_SESSION} session-on (a beszelgetes elveszik).`,
@@ -826,7 +826,7 @@ export function buildMainSessionRespawnCmd(opts: {
 // this the main agent's nightly restart threw ENOENT on every due tick and had
 // NEVER run -- silently, because the only symptom was a log line.
 //
-// Deliberately NOT resumeMarveenSession() with a flag: that path is built around
+// Deliberately NOT resumeWebinarMagusSession() with a flag: that path is built around
 // --continue (resume-summary modal dismissal, post-resume plugin guard) and none
 // of it applies to a fresh start. What IS shared -- the two reaps, the onboarding
 // re-seed, the respawn command builder, the identity + plugin-unlock follow-ups --
@@ -884,7 +884,7 @@ export function respawnMainSessionFresh(): void {
 // kicked ([exited]) -- the #248 user-visible crash. It also runs the
 // pane-attribution detached-claude reap first, breaking the orphan->409->freeze
 // doom-loop that the launchctl path (channels.sh env-grep reap) never cleaned.
-export async function resumeMarveenSession(): Promise<boolean> {
+export async function resumeWebinarMagusSession(): Promise<boolean> {
   const provider = getProvider(getMainAgentProvider())
   try {
     // Reap any orphan bun/node poller BEFORE we respawn. tmux respawn-pane -k
@@ -895,7 +895,7 @@ export async function resumeMarveenSession(): Promise<boolean> {
     try {
       reapChannelOrphans(provider.type, PROJECT_ROOT, { tmuxPath: tmuxBin() })
     } catch (err) {
-      logger.warn({ err }, 'resumeMarveenSession: pre-respawn reap failed (continuing)')
+      logger.warn({ err }, 'resumeWebinarMagusSession: pre-respawn reap failed (continuing)')
     }
 
     // Also reap DETACHED main-session claudes. reapChannelOrphans (env-scan)
@@ -909,7 +909,7 @@ export async function resumeMarveenSession(): Promise<boolean> {
     try {
       reapDetachedChannelClaudes({ tmuxPath: tmuxBin() })
     } catch (err) {
-      logger.warn({ err }, 'resumeMarveenSession: detached-claude reap failed (continuing)')
+      logger.warn({ err }, 'resumeWebinarMagusSession: detached-claude reap failed (continuing)')
     }
 
     // A respawn onto the shared ~/.claude parks on the first-run "Select login
@@ -940,7 +940,7 @@ export async function resumeMarveenSession(): Promise<boolean> {
       await delay(2000)
       await dismissResumeSummaryModalIfPresent(MAIN_CHANNELS_SESSION)
     } catch (err) {
-      logger.warn({ err }, 'resumeMarveenSession: post-respawn modal dismiss failed (continuing)')
+      logger.warn({ err }, 'resumeWebinarMagusSession: post-respawn modal dismiss failed (continuing)')
     }
 
     // --continue replays the last conversation. When the prior session is
@@ -953,10 +953,10 @@ export async function resumeMarveenSession(): Promise<boolean> {
       await delay(2000)
       await dismissResumeSummaryModalIfPresent(MAIN_CHANNELS_SESSION)
     } catch (err) {
-      logger.warn({ err }, 'resumeMarveenSession: post-respawn modal dismiss failed (continuing)')
+      logger.warn({ err }, 'resumeWebinarMagusSession: post-respawn modal dismiss failed (continuing)')
     }
 
-    logger.warn({ provider: provider.type }, 'Marveen session respawned with --continue')
+    logger.warn({ provider: provider.type }, 'WebinarMagus session respawned with --continue')
     // Re-establish /rename on the brand-new claude process (the prior session's
     // identity is gone after respawn-pane; channels.sh sets it on a normal
     // start). /remote-control was dropped (the operator no longer uses it).
@@ -986,21 +986,21 @@ export async function resumeMarveenSession(): Promise<boolean> {
     writeRespawnStamp()
     return true
   } catch (err) {
-    logger.error({ err }, 'Marveen session respawn failed')
+    logger.error({ err }, 'WebinarMagus session respawn failed')
     return false
   }
 }
 
 // Grace history: 90s -> 150s -> 240s.
 // 2026-06-01 16:31 incident: with the reap+modal-dismiss path landed,
-// resumeMarveenSession respawned cleanly, but a >200k-token --continue
+// resumeWebinarMagusSession respawned cleanly, but a >200k-token --continue
 // session-load + plugin re-handshake exceeded the 150s window and stage 4
 // fired anyway (context lost). Bumped to 240s so the slowest realistic
 // large-context resume completes inside the window. The monitor polls every
 // 60s, so the effective resolution rounds up to the next poll - 240s gives
 // 3-4 polls' worth of slack before the hard restart escalates.
 const RESUME_GRACE_MS = 240_000
-let marveenLastHardRestart = 0
+let webinarMagusLastHardRestart = 0
 // Post-respawn cold-start grace. After ANY main-session respawn (keepalive
 // fresh-respawn, stage-3 resume, or stage-4 hard restart) the new claude needs
 // minutes to load its large context and complete the channel-plugin handshake.
@@ -1012,7 +1012,7 @@ let marveenLastHardRestart = 0
 // keepalive-staleness net, so a session that is genuinely dead after a respawn
 // is still caught by another path. Exported so the stuck-tool-call-watcher
 // shares the same post-respawn grace (single source of truth).
-export const MARVEEN_POST_RESPAWN_GRACE_MS = 360_000
+export const WEBINAR_MAGUS_POST_RESPAWN_GRACE_MS = 360_000
 
 /**
  * B2 fix: shared cross-path grace accessor.
@@ -1022,14 +1022,14 @@ export const MARVEEN_POST_RESPAWN_GRACE_MS = 360_000
  * KEEPALIVE_RESPAWN_GRACE_MS of each other.
  */
 export function lastMainRespawnAt(): number {
-  return Math.max(marveenLastKeepaliveRespawn, marveenLastHardRestart, fileRespawnStampMs())
+  return Math.max(webinarMagusLastKeepaliveRespawn, webinarMagusLastHardRestart, fileRespawnStampMs())
 }
 
 // Cross-LAYER coordination with the independent systemd-timer watchdog
 // (scripts/channel-watchdog.sh). That timer writes RESPAWN_STAMP_FILE (epoch
 // SECONDS) when IT respawns; reading it here means an out-of-process respawn
 // also suppresses this in-process watchdog for the grace window. Symmetrically,
-// hardRestartMarveenChannels writes the same file so the timer defers to us.
+// hardRestartWebinarMagusChannels writes the same file so the timer defers to us.
 // Best-effort: 0 if absent/garbage.
 const RESPAWN_STAMP_FILE = join(PROJECT_ROOT, 'store', '.channel-last-respawn')
 function fileRespawnStampMs(): number {
@@ -1075,8 +1075,8 @@ function checkExternalMainRespawn(): void {
   const verdict = classifyRespawnStampAdvance({
     stampMs,
     lastSeenStampMs: lastSeenRespawnStampMs,
-    lastSelfRespawnMs: Math.max(marveenLastHardRestart, marveenLastKeepaliveRespawn, marveenLastSessionCreate, lastSelfStampWriteMs),
-    graceMs: MARVEEN_POST_RESPAWN_GRACE_MS,
+    lastSelfRespawnMs: Math.max(webinarMagusLastHardRestart, webinarMagusLastKeepaliveRespawn, webinarMagusLastSessionCreate, lastSelfStampWriteMs),
+    graceMs: WEBINAR_MAGUS_POST_RESPAWN_GRACE_MS,
   })
   if (verdict === 'none') return
   lastSeenRespawnStampMs = stampMs
@@ -1090,12 +1090,12 @@ function checkExternalMainRespawn(): void {
 
 // --- Vanished-session recovery (self-healing main session) ---
 //
-// The down-cascade (handleMarveenDown) recovers a main session whose claude
+// The down-cascade (handleWebinarMagusDown) recovers a main session whose claude
 // process is alive but whose channel plugin died, by replacing the claude
 // process in the EXISTING pane via `tmux respawn-pane`. respawn-pane needs a
 // live pane: it cannot bring back a session that has disappeared entirely
 // (crash, self-update mid-restart, OOM kill, host reboot). On a deployment
-// where nothing supervises the session -- marveen-channels.service disabled,
+// where nothing supervises the session -- webinar-magus-channels.service disabled,
 // or any pure-tmux install -- a vanished session stays gone, and because the
 // scheduler skips every task whose target tmux session is missing
 // (schedule-runner !sessionExists branch), ALL main-agent scheduled jobs
@@ -1110,7 +1110,7 @@ const CHANNELS_SCRIPT = join(PROJECT_ROOT, 'scripts', 'channels.sh')
 // Throttle relaunches so a session that is still booting is not torn down and
 // recreated on the next 60s poll.
 const MAIN_SESSION_CREATE_GRACE_MS = 360_000
-let marveenLastSessionCreate = 0
+let webinarMagusLastSessionCreate = 0
 
 export function mainChannelsSessionExists(): boolean {
   try {
@@ -1134,7 +1134,7 @@ export type MainSessionCreateResult = 'started' | 'grace' | 'script-missing' | '
 
 export function createMainChannelsSession(): MainSessionCreateResult {
   const now = Date.now()
-  if (marveenLastSessionCreate && now - marveenLastSessionCreate < MAIN_SESSION_CREATE_GRACE_MS) {
+  if (webinarMagusLastSessionCreate && now - webinarMagusLastSessionCreate < MAIN_SESSION_CREATE_GRACE_MS) {
     return 'grace'
   }
   if (!existsSync(CHANNELS_SCRIPT)) {
@@ -1152,7 +1152,7 @@ export function createMainChannelsSession(): MainSessionCreateResult {
       cwd: PROJECT_ROOT,
     })
     child.unref()
-    marveenLastSessionCreate = now
+    webinarMagusLastSessionCreate = now
     // Fold into the shared cold-start grace so the down-cascade defers to this
     // boot instead of stacking a respawn on a session that is still coming up.
     writeRespawnStamp()
@@ -1166,14 +1166,14 @@ export function createMainChannelsSession(): MainSessionCreateResult {
 }
 
 // Hard-restart fallback when there is no systemd unit to bounce: respawn the
-// tmux pane with a FRESH claude (no --continue). Mirrors resumeMarveenSession
+// tmux pane with a FRESH claude (no --continue). Mirrors resumeWebinarMagusSession
 // but starts a clean session -- exactly what scripts/channels.sh does -- so a
 // wedged plugin gets a brand-new process even on pure-tmux installs. Distinct
 // from the stage-3 resume (which keeps --continue) by clearing session state.
-function respawnMarveenSessionFresh(): boolean {
+function respawnWebinarMagusSessionFresh(): boolean {
   const provider = getProvider(getMainAgentProvider())
   try {
-    // Same first-run-picker guard as resumeMarveenSession.
+    // Same first-run-picker guard as resumeWebinarMagusSession.
     ensureSharedClaudeOnboarded()
     const claudeCmd = buildMainSessionRespawnCmd({
       claudePath: claudeBin(),
@@ -1181,17 +1181,17 @@ function respawnMarveenSessionFresh(): boolean {
       extraPluginIds: readExtraChannelPluginIds(),
       model: readConfiguredMainModel(),
       continueSession: false,
-      // Same channels.sh-bypass concern as resumeMarveenSession: this fresh
+      // Same channels.sh-bypass concern as resumeWebinarMagusSession: this fresh
       // respawn also skips channels.sh, so it must carry the isolated config
       // itself or it 401s on the rotating macOS Keychain. null when off/no token.
       config: resolveMainConfigDecision(),
     })
     execFileSync(tmuxBin(), ['respawn-pane', '-k', '-t', MAIN_CHANNELS_SESSION, claudeCmd], { timeout: 15000 })
-    logger.warn({ provider: provider.type }, 'Hard restart: marveen session respawned fresh (no --continue)')
-    // Re-establish /rename on the fresh process (see note in resumeMarveenSession).
+    logger.warn({ provider: provider.type }, 'Hard restart: webinarMagus session respawned fresh (no --continue)')
+    // Re-establish /rename on the fresh process (see note in resumeWebinarMagusSession).
     // scheduleIdentitySetup only schedules delayed timers -> fire-and-forget.
     void scheduleIdentitySetup(MAIN_CHANNELS_SESSION, BOT_NAME)
-    // Same channels.sh-bypass concern as in resumeMarveenSession: this respawn
+    // Same channels.sh-bypass concern as in resumeWebinarMagusSession: this respawn
     // path does NOT invoke channels.sh, so the post-init plugin unlock probe
     // (#231/#232) never runs. Wire it in-process so the keep-alive-watchdog
     // fresh-respawn path also revives a Failed/disabled plugin instead of
@@ -1246,7 +1246,7 @@ export function shouldEscalateAfterResume(f: { claudePid: number | null; pluginA
 // channels plugin attached, the resume succeeded and the conversation context
 // is preserved -- nothing to do. If it did not (CC 2.1.193: --continue does not
 // re-init the plugin MCP server), escalate to a FRESH respawn so the main
-// channel becomes reachable again. respawnMarveenSessionFresh() writes the
+// channel becomes reachable again. respawnWebinarMagusSessionFresh() writes the
 // respawn stamp, so lastMainRespawnAt() suppresses the down-cascade's redundant
 // stage-4 hard restart during the ensuing cold boot.
 function schedulePostResumePluginGuard(provider: ChannelProviderType): void {
@@ -1260,7 +1260,7 @@ function schedulePostResumePluginGuard(provider: ChannelProviderType): void {
       }
       logger.warn({ provider }, 'Post-resume guard: --continue resume came up WITHOUT the channels plugin (CC 2.1.193) -- escalating to fresh respawn (context dropped, memory persists)')
       sendRoutineAlert('post-resume-fresh-respawn', `⚠️ A --continue resume suketen jott fel (nincs channel plugin). Fresh respawn most a ${MAIN_CHANNELS_SESSION} session-on (a beszelgetes elveszik, memoria marad).`)
-      respawnMarveenSessionFresh()
+      respawnWebinarMagusSessionFresh()
     } catch (err) {
       logger.warn({ err }, 'Post-resume guard probe failed (leaving recovery to the down-cascade)')
     }
@@ -1316,7 +1316,7 @@ function mainPaneClaudePid(): number | null {
   }
 }
 
-export function hardRestartMarveenChannels(): { ok: boolean; error?: string } {
+export function hardRestartWebinarMagusChannels(): { ok: boolean; error?: string } {
   // FABLEFALL1: the restarted session boots from the main/worker shared config
   // roots, which the per-agent spawn-time stamp never covers -- stamp them now
   // so the model consent dialog cannot render on the fresh boot (change-only,
@@ -1348,7 +1348,7 @@ export function hardRestartMarveenChannels(): { ok: boolean; error?: string } {
     }
     if (launchdRestartTookEffect(pidBefore, pidAfter)) {
       logger.warn({ pidBefore, pidAfter }, `Hard restart: launchctl reload of com.${SERVICE_ID}.channels`)
-      marveenLastHardRestart = Date.now()
+      webinarMagusLastHardRestart = Date.now()
       writeRespawnStamp() // coordinate with the systemd-timer watchdog
       return { ok: true }
     }
@@ -1366,13 +1366,13 @@ export function hardRestartMarveenChannels(): { ok: boolean; error?: string } {
   }
 
   // Linux: respawn-pane ONLY -- NEVER `systemctl --user restart`. The channels
-  // unit (e.g. marveen-channels.service) runs with KillMode=control-group and
+  // unit (e.g. webinar-magus-channels.service) runs with KillMode=control-group and
   // the shared tmux SERVER lives in its cgroup, so restarting the unit kills the
   // tmux server and with it EVERY agent session, not just the main one.
   // respawn-pane replaces only the claude process in the main channels pane,
   // leaving the server and all other sessions intact.
-  if (respawnMarveenSessionFresh()) {
-    marveenLastHardRestart = Date.now()
+  if (respawnWebinarMagusSessionFresh()) {
+    webinarMagusLastHardRestart = Date.now()
     return { ok: true }
   }
   return { ok: false, error: 'hard restart failed: tmux respawn-pane failed' }
@@ -1430,7 +1430,7 @@ function maybeRestartWedgedMainChannel(state: StuckInputState): void {
     return
   }
   logger.warn({ session: MAIN_CHANNELS_SESSION, attempts: state.attempts, restart: stuckRestartCount + 1 }, 'Stuck main channel input survived soft recovery -- escalating to hard restart (respawn-pane)')
-  const r = hardRestartMarveenChannels()
+  const r = hardRestartWebinarMagusChannels()
   lastStuckRestartAt = Date.now()
   if (r.ok) {
     stuckRestartCount++
@@ -1516,7 +1516,7 @@ const KEEPALIVE_RESPAWN_GRACE_MS = 15 * 60 * 1000 // let a respawned session re-
 // it never re-introduces idle false-positives, while bounding a silent deafness
 // to under an hour instead of days.
 const KEEPALIVE_LIVENESS_TRUST_CEILING_MS = 45 * 60 * 1000
-let marveenLastKeepaliveRespawn = 0
+let webinarMagusLastKeepaliveRespawn = 0
 
 /**
  * Pure decision: should the keepalive respawn be deferred because the
@@ -1618,7 +1618,7 @@ function checkMainKeepaliveStaleness(): void {
   refreshKeepaliveFromInbound()
 
   // GROUND-TRUTH SHORTCUT (2026-06-01 21:18 incident): if the channel
-  // plugin's bun poller is ALIVE under Marveen's claude pid, the channel
+  // plugin's bun poller is ALIVE under WebinarMagus's claude pid, the channel
   // is healthy by definition -- Telegram traffic CAN reach us. A stale
   // keepalive file with a live poller is just a quiet conversation, NOT
   // deafness. Respawning here would kill the session for nothing (Szabi
@@ -1680,11 +1680,11 @@ function checkMainKeepaliveStaleness(): void {
   const ageMin = Math.round((ageMs ?? 0) / 60000)
   logger.warn({ ageMs, paneState }, 'Channel keep-alive stale -- main session likely wedged/deaf, respawning via respawn-pane')
   sendRoutineAlert('keepalive-respawn', `⚠️ A fő channel keep-alive ${ageMin} perce nem frissült -- respawn-pane a ${MAIN_CHANNELS_SESSION} session-on (a beszelgetes elveszik, memoria marad).`)
-  if (respawnMarveenSessionFresh()) {
-    marveenLastKeepaliveRespawn = now
+  if (respawnWebinarMagusSessionFresh()) {
+    webinarMagusLastKeepaliveRespawn = now
     // Suppress the process-down handler during the respawn window (reuses the
     // existing hard-restart grace) so the two recovery paths don't collide.
-    marveenLastHardRestart = now
+    webinarMagusLastHardRestart = now
   }
 }
 
@@ -1692,30 +1692,30 @@ export function sendAlert(text: string): void {
   notifyChannel(text).catch(() => {})
 }
 
-async function handleMarveenDown(): Promise<void> {
+async function handleWebinarMagusDown(): Promise<void> {
   const now = Date.now()
   const providerLabel = getMainAgentProvider()
   // Cold-start guard: defer the ENTIRE down cascade while a recent respawn
   // (from any recovery path -- keepalive fresh-respawn, stage-3 resume, stage-4
   // hard restart, or the external watchdog's file stamp) is still inside its
   // boot window. lastMainRespawnAt() folds all three timestamps together, so a
-  // keepalive respawn that did NOT touch marveenLastHardRestart still suppresses
+  // keepalive respawn that did NOT touch webinarMagusLastHardRestart still suppresses
   // escalation. This is what stops the restart-on-restart stacking that caused
-  // the 2026-06-01 480s outage (see MARVEEN_POST_RESPAWN_GRACE_MS).
+  // the 2026-06-01 480s outage (see WEBINAR_MAGUS_POST_RESPAWN_GRACE_MS).
   const lastRespawn = lastMainRespawnAt()
-  if (lastRespawn && now - lastRespawn < MARVEEN_POST_RESPAWN_GRACE_MS) {
+  if (lastRespawn && now - lastRespawn < WEBINAR_MAGUS_POST_RESPAWN_GRACE_MS) {
     return
   }
-  if (!marveenDownState) {
-    marveenDownState = { downSince: now, stage: 'soft', lastAlertAt: now, softAttempts: 0 }
-    logger.warn({ provider: providerLabel }, 'Marveen channel plugin down -- stage 1 (soft /mcp reconnect, silent)')
+  if (!webinarMagusDownState) {
+    webinarMagusDownState = { downSince: now, stage: 'soft', lastAlertAt: now, softAttempts: 0 }
+    logger.warn({ provider: providerLabel }, 'WebinarMagus channel plugin down -- stage 1 (soft /mcp reconnect, silent)')
     // Diagnostic 409 probe (Telegram only). Fire-and-forget so the sync
     // check-loop is not blocked on a network call. Logs explicitly when the
     // upstream returns the orphan-poller's "terminated by other getUpdates
     // request" message, so dashboard.log carries hard evidence of the real
     // cause instead of leaving the operator to infer it from a pane scan.
-    if (providerLabel === 'telegram' && !marveenDownState.conflictProbed) {
-      marveenDownState.conflictProbed = true
+    if (providerLabel === 'telegram' && !webinarMagusDownState.conflictProbed) {
+      webinarMagusDownState.conflictProbed = true
       const tokenPath = join(channelStateDir(providerLabel, PROJECT_ROOT), '.env')
       const tok = readChannelToken(providerLabel, tokenPath)
       if (tok) {
@@ -1738,48 +1738,48 @@ async function handleMarveenDown(): Promise<void> {
           })
       }
     }
-    if (softReconnectMarveen()) marveenDownState.softAttempts += 1
+    if (softReconnectWebinarMagus()) webinarMagusDownState.softAttempts += 1
     return
   }
-  if (marveenDownState.stage === 'soft') {
-    if (marveenDownState.softAttempts < 3 && softReconnectMarveen()) {
-      marveenDownState.softAttempts += 1
-      marveenDownState.lastAlertAt = now
+  if (webinarMagusDownState.stage === 'soft') {
+    if (webinarMagusDownState.softAttempts < 3 && softReconnectWebinarMagus()) {
+      webinarMagusDownState.softAttempts += 1
+      webinarMagusDownState.lastAlertAt = now
       return
     }
-    marveenDownState.stage = 'save'
-    marveenDownState.stageStartedAt = now
-    marveenDownState.lastAlertAt = now
-    logger.warn({ provider: providerLabel }, 'Marveen channel plugin still down -- stage 2 (memory save)')
-    await triggerMarveenMemorySave()
+    webinarMagusDownState.stage = 'save'
+    webinarMagusDownState.stageStartedAt = now
+    webinarMagusDownState.lastAlertAt = now
+    logger.warn({ provider: providerLabel }, 'WebinarMagus channel plugin still down -- stage 2 (memory save)')
+    await triggerWebinarMagusMemorySave()
     return
   }
-  if (marveenDownState.stage === 'save') {
-    const saveStartedAt = marveenDownState.stageStartedAt ?? marveenDownState.downSince
+  if (webinarMagusDownState.stage === 'save') {
+    const saveStartedAt = webinarMagusDownState.stageStartedAt ?? webinarMagusDownState.downSince
     if (now - saveStartedAt < SAVE_WINDOW_MS) return
-    marveenDownState.stage = 'resume'
-    marveenDownState.stageStartedAt = now
-    marveenDownState.lastAlertAt = now
-    logger.warn({ provider: providerLabel }, 'Marveen channel plugin still down -- stage 3 (session resume)')
-    await resumeMarveenSession()
+    webinarMagusDownState.stage = 'resume'
+    webinarMagusDownState.stageStartedAt = now
+    webinarMagusDownState.lastAlertAt = now
+    logger.warn({ provider: providerLabel }, 'WebinarMagus channel plugin still down -- stage 3 (session resume)')
+    await resumeWebinarMagusSession()
     return
   }
-  if (marveenDownState.stage === 'resume') {
-    const resumeStartedAt = marveenDownState.stageStartedAt ?? marveenDownState.downSince
+  if (webinarMagusDownState.stage === 'resume') {
+    const resumeStartedAt = webinarMagusDownState.stageStartedAt ?? webinarMagusDownState.downSince
     if (now - resumeStartedAt < RESUME_GRACE_MS) return
-    marveenDownState.stage = 'hard'
-    marveenDownState.stageStartedAt = now
-    marveenDownState.lastAlertAt = now
-    logger.warn({ provider: providerLabel }, 'Marveen channel plugin still down -- stage 4 (hard restart)')
+    webinarMagusDownState.stage = 'hard'
+    webinarMagusDownState.stageStartedAt = now
+    webinarMagusDownState.lastAlertAt = now
+    logger.warn({ provider: providerLabel }, 'WebinarMagus channel plugin still down -- stage 4 (hard restart)')
     const svcName = process.platform === 'linux' ? 'systemctl' : 'launchctl'
     sendAlert(`⚠️ Session resume nem segitett. Hard restart (${svcName}) most a ${MAIN_CHANNELS_SESSION} session-on...`)
-    hardRestartMarveenChannels()
+    hardRestartWebinarMagusChannels()
     return
   }
-  if (marveenDownState.stage === 'hard') {
-    marveenDownState.stage = 'gave_up'
-    marveenDownState.lastAlertAt = now
-    logger.error({ provider: providerLabel }, 'Marveen channel plugin still down after hard restart -- giving up auto-recovery')
+  if (webinarMagusDownState.stage === 'hard') {
+    webinarMagusDownState.stage = 'gave_up'
+    webinarMagusDownState.lastAlertAt = now
+    logger.error({ provider: providerLabel }, 'WebinarMagus channel plugin still down after hard restart -- giving up auto-recovery')
     const serviceCmd = process.platform === 'linux'
       ? `\`systemctl --user status ${SERVICE_ID}-channels\``
       : `\`launchctl list | grep ${SERVICE_ID}\``
@@ -1789,19 +1789,19 @@ async function handleMarveenDown(): Promise<void> {
     sendAlert(`🚨 Hard restart SEM segitett. Kezzel kell megnezni: \`unset TMUX && tmux attach -t ${MAIN_CHANNELS_SESSION}\` es ${serviceCmd}.`)
     return
   }
-  if (now - marveenDownState.lastAlertAt > PLUGIN_ALERT_DEDUP_MS) {
-    marveenDownState.lastAlertAt = now
+  if (now - webinarMagusDownState.lastAlertAt > PLUGIN_ALERT_DEDUP_MS) {
+    webinarMagusDownState.lastAlertAt = now
     sendAlert(`🚨 ${BOT_NAME} ${providerLabel} plugin meg mindig halott. Nezd meg kezzel.`)
   }
 }
 
-function handleMarveenUp(): void {
-  marveenSuspectFirstSeen = null
-  if (marveenDownState) {
-    const downedFor = Math.round((Date.now() - marveenDownState.downSince) / 1000)
-    const stage = marveenDownState.stage
+function handleWebinarMagusUp(): void {
+  webinarMagusSuspectFirstSeen = null
+  if (webinarMagusDownState) {
+    const downedFor = Math.round((Date.now() - webinarMagusDownState.downSince) / 1000)
+    const stage = webinarMagusDownState.stage
     const providerLabel = getMainAgentProvider()
-    logger.info({ stage, downedFor, provider: providerLabel }, 'Marveen channel plugin recovered')
+    logger.info({ stage, downedFor, provider: providerLabel }, 'WebinarMagus channel plugin recovered')
     // Owner transparency (2026-07-30, "reggeli leallas"): a resume-stage
     // recovery means the main session was actually respawned -- the owner's
     // in-flight messages may have been dropped, so it must not be silent. Short
@@ -1814,17 +1814,17 @@ function handleMarveenUp(): void {
         `Ha a kieses alatt irtal es nem jott valasz, mindjart potolom.`,
       )
     }
-    marveenDownState = null
+    webinarMagusDownState = null
   }
 }
 
-function shouldEscalateMarveenDown(): boolean {
+function shouldEscalateWebinarMagusDown(): boolean {
   const now = Date.now()
-  if (marveenSuspectFirstSeen === null) {
-    marveenSuspectFirstSeen = now
+  if (webinarMagusSuspectFirstSeen === null) {
+    webinarMagusSuspectFirstSeen = now
     return false
   }
-  return now - marveenSuspectFirstSeen >= MARVEEN_DOWN_CONFIRM_MS
+  return now - webinarMagusSuspectFirstSeen >= WEBINAR_MAGUS_DOWN_CONFIRM_MS
 }
 
 export function startChannelPluginMonitor(): NodeJS.Timeout | null {
@@ -1867,13 +1867,13 @@ export function startChannelPluginMonitor(): NodeJS.Timeout | null {
     // while the plugin is structurally down.
     checkExternalMainRespawn()
 
-    type Target = { session: string; isMarveen: boolean; agentName?: string; provider: ChannelProviderType }
-    const targets: Target[] = [{ session: MAIN_CHANNELS_SESSION, isMarveen: true, provider: mainProvider }]
+    type Target = { session: string; isWebinarMagus: boolean; agentName?: string; provider: ChannelProviderType }
+    const targets: Target[] = [{ session: MAIN_CHANNELS_SESSION, isWebinarMagus: true, provider: mainProvider }]
     for (const a of listAgentNames()) {
       if (isAgentRunning(a) && agentHasChannel(a)) {
         targets.push({
           session: agentSessionName(a),
-          isMarveen: false,
+          isWebinarMagus: false,
           agentName: a,
           provider: resolveAgentProvider(a),
         })
@@ -1899,7 +1899,7 @@ export function startChannelPluginMonitor(): NodeJS.Timeout | null {
         paneErrorState.set(t.session, decision.next)
       }
       if (decision.alert) {
-        const label = t.isMarveen ? BOT_NAME : (t.agentName ?? t.session)
+        const label = t.isWebinarMagus ? BOT_NAME : (t.agentName ?? t.session)
         logger.error({ session: t.session, agent: label }, 'Agent wedged on thinking-block API error -- manual reset needed')
         sendAlert(`🚨 A(z) ${label} ágens elakadt egy thinking-block API hibában (a session-history korrupt, minden új prompt ugyanazt a 400-at adja). Kézi reset kell: állítsd le és indítsd újra, friss session indul. Részletek: tmux attach -t ${t.session}`)
       }
@@ -1938,7 +1938,7 @@ export function startChannelPluginMonitor(): NodeJS.Timeout | null {
         paneMenuState.set(t.session, decision.next)
       }
       if (decision.alert) {
-        const label = t.isMarveen ? BOT_NAME : (t.agentName ?? t.session)
+        const label = t.isWebinarMagus ? BOT_NAME : (t.agentName ?? t.session)
         if (firstRunGate === 'login') {
           logger.warn({ session: t.session, agent: label }, 'Session parked on the Claude Code login picker -- operator login needed, alerting (no keystrokes sent)')
           sendAlert(`🔑 A(z) ${label} agentnek Claude-belépés kell (első indítás, "Select login method" képernyő). Lépj be: tmux attach -t ${t.session}, majd válaszd ki a belépési módot. Addig az ütemezett feladatai és üzenetei várakoznak, belépés után maguktól kézbesítődnek.`)
@@ -2014,7 +2014,7 @@ export function startChannelPluginMonitor(): NodeJS.Timeout | null {
     // session. Per-session state lives in agentStuckInput; drop it once the
     // spell ends so the map never grows unbounded.
     for (const t of targets) {
-      if (t.isMarveen) continue
+      if (t.isWebinarMagus) continue
       const prev = agentStuckInput.get(t.session) ?? { parkedSig: null, firstSeenAt: null, lastRecoverAt: null, attempts: 0 }
       const next = await recoverStuckInputForSession(t.session, prev, MAIN_STUCK_THRESHOLDS, true)
       if (next.parkedSig === null) {
@@ -2029,11 +2029,11 @@ export function startChannelPluginMonitor(): NodeJS.Timeout | null {
     for (const t of targets) {
       const claudePid = getClaudePidForSession(t.session)
       if (!claudePid) {
-        if (!t.isMarveen && t.agentName) {
+        if (!t.isWebinarMagus && t.agentName) {
           const lastRestart = agentLastRestart.get(t.agentName)
           if (lastRestart && Date.now() - lastRestart < AGENT_RESTART_GRACE_MS) continue
         }
-        if (t.isMarveen) {
+        if (t.isWebinarMagus) {
           // The claude pid is gone. WHY decides recovery: a session that no
           // longer exists at all must be recreated from scratch (respawn-pane,
           // the only tool the down-cascade has on Linux, cannot resurrect a
@@ -2043,12 +2043,12 @@ export function startChannelPluginMonitor(): NodeJS.Timeout | null {
           // with no supervising service, and every scheduled main-agent task
           // silently skips (scheduler !sessionExists branch).
           if (!mainChannelsSessionExists()) {
-            if (shouldEscalateMarveenDown() && createMainChannelsSession() === 'started') {
-              marveenDownState = null
-              marveenSuspectFirstSeen = null
+            if (shouldEscalateWebinarMagusDown() && createMainChannelsSession() === 'started') {
+              webinarMagusDownState = null
+              webinarMagusSuspectFirstSeen = null
             }
-          } else if (shouldEscalateMarveenDown()) {
-            await handleMarveenDown()
+          } else if (shouldEscalateWebinarMagusDown()) {
+            await handleWebinarMagusDown()
           }
         }
         continue
@@ -2063,8 +2063,8 @@ export function startChannelPluginMonitor(): NodeJS.Timeout | null {
         continue
       }
       if (liveness === 'alive') {
-        if (t.isMarveen) {
-          handleMarveenUp()
+        if (t.isWebinarMagus) {
+          handleWebinarMagusUp()
           // Process-alive does NOT prove the inbound MCP pipe is healthy (the
           // deafness blind spot). Cross-check the keep-alive freshness.
           checkMainKeepaliveStaleness()
@@ -2095,8 +2095,8 @@ export function startChannelPluginMonitor(): NodeJS.Timeout | null {
         }
         continue
       }
-      if (t.isMarveen) {
-        if (shouldEscalateMarveenDown()) await handleMarveenDown()
+      if (t.isWebinarMagus) {
+        if (shouldEscalateWebinarMagusDown()) await handleWebinarMagusDown()
       } else {
         if (!agentDownSince.has(t.session)) {
           agentDownSince.set(t.session, Date.now())
@@ -2350,7 +2350,7 @@ function delay(ms: number): Promise<void> { return new Promise((r) => setTimeout
 // (safe-mode band / hard pause / cap); it NEVER kills or restarts anything.
 // FAIL-OPEN: any error/timeout allows the start, so a broken gate can never
 // freeze the fleet (worst case = pre-Commit-3 behaviour). The kill-switch
-// MARVEEN_MEM_GATE_DISABLE=1 is honoured inside the script.
+// WEBINAR_MAGUS_MEM_GATE_DISABLE=1 is honoured inside the script.
 const MEM_GATE_SCRIPT = join(PROJECT_ROOT, 'scripts', 'fleet-memory-gate.sh')
 function memGateAllowsStart(agentName: string): boolean {
   try {

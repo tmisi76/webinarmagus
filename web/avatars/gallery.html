@@ -42,9 +42,9 @@
 </div>
 <script>
   // Reflect the configured brand in the standalone gallery heading. Falls back
-  // to the static "Webinár Mágus" text above when /api/marveen is unreachable, so a
+  // to the static "Webinár Mágus" text above when /api/webinarMagus is unreachable, so a
   // stock install renders byte-identically.
-  fetch('/api/marveen').then(function (r) { return r.ok ? r.json() : null }).then(function (m) {
+  fetch('/api/webinarMagus').then(function (r) { return r.ok ? r.json() : null }).then(function (m) {
     if (!m) return
     var b = m.brandName || m.name
     if (!b) return

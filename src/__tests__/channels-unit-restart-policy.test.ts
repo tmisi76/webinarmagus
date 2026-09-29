@@ -142,13 +142,13 @@ describe('update.sh migration for already-installed machines', () => {
 
   const OLD_UNIT = [
     '[Unit]',
-    'Description=Marveen Channels (Telegram bridge)',
+    'Description=WebinarMagus Channels (Telegram bridge)',
     'StartLimitIntervalSec=300',
     'StartLimitBurst=5',
     '',
     '[Service]',
     'Type=simple',
-    'ExecStart=/root/marveen/scripts/channels.sh',
+    'ExecStart=/root/webinarMagus/scripts/channels.sh',
     'Restart=on-failure',
     'RestartSec=10',
     '',
@@ -160,7 +160,7 @@ describe('update.sh migration for already-installed machines', () => {
   it('rewrites an existing on-failure channels unit and leaves no backup file', () => {
     const dir = mkdtempSync(join(tmpdir(), 'units-'))
     try {
-      const unit = join(dir, 'marveen-channels.service')
+      const unit = join(dir, 'webinar-magus-channels.service')
       writeFileSync(unit, OLD_UNIT)
       const r = runMigration(dir)
       expect(r.code).toBe(0)
@@ -168,9 +168,9 @@ describe('update.sh migration for already-installed machines', () => {
       expect(after).toMatch(/^Restart=always$/m)
       expect(after).not.toMatch(/^Restart=on-failure$/m)
       // everything else must survive verbatim
-      expect(after).toContain('ExecStart=/root/marveen/scripts/channels.sh')
+      expect(after).toContain('ExecStart=/root/webinarMagus/scripts/channels.sh')
       expect(after).toContain('StartLimitBurst=5')
-      expect(readdirSync(dir).filter((f) => f.includes('marveen-bak'))).toEqual([])
+      expect(readdirSync(dir).filter((f) => f.includes('webinarMagus-bak'))).toEqual([])
     } finally {
       rmSync(dir, { recursive: true, force: true })
     }
@@ -179,7 +179,7 @@ describe('update.sh migration for already-installed machines', () => {
   it('is idempotent: a second run changes nothing and reports nothing', () => {
     const dir = mkdtempSync(join(tmpdir(), 'units-'))
     try {
-      const unit = join(dir, 'marveen-channels.service')
+      const unit = join(dir, 'webinar-magus-channels.service')
       writeFileSync(unit, OLD_UNIT)
       runMigration(dir)
       const firstPass = readFileSync(unit, 'utf-8')
@@ -207,7 +207,7 @@ describe('update.sh migration for already-installed machines', () => {
   it('does not touch the dashboard unit in the same directory', () => {
     const dir = mkdtempSync(join(tmpdir(), 'units-'))
     try {
-      const dash = join(dir, 'marveen-dashboard.service')
+      const dash = join(dir, 'webinarMagus-dashboard.service')
       writeFileSync(dash, OLD_UNIT.replace('channels.sh', 'start-dashboard.sh'))
       runMigration(dir)
       expect(readFileSync(dash, 'utf-8')).toMatch(/^Restart=on-failure$/m)

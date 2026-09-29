@@ -33,8 +33,8 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
 const FIXTURE = mkdtempSync(join(tmpdir(), 'guard-main-root-'))
-const PROJECT_ROOT = '/Users/x/marveen'
-const ENCODED = '-Users-x-marveen'
+const PROJECT_ROOT = '/Users/x/webinarMagus'
+const ENCODED = '-Users-x-webinarMagus'
 
 const FIXTURE_HOME = join(FIXTURE, 'home')
 const SHARED_CONFIG = join(FIXTURE_HOME, '.claude')
@@ -60,7 +60,7 @@ vi.mock('../web/inbound-probe.js', () => ({ mainConfigRoots: () => roots }))
 
 vi.mock('../config.js', async (orig) => ({
   ...(await orig<Record<string, unknown>>()),
-  MAIN_AGENT_ID: 'marveen',
+  MAIN_AGENT_ID: 'webinarMagus',
   PROJECT_ROOT,
 }))
 
@@ -97,14 +97,14 @@ describe('context-guard: which config root the main agent is measured from', () 
 
   it('measures the token count from the isolated root, not the stale shared one', async () => {
     const { measureContextTokens } = await import('../web/context-guard-runner.js')
-    expect(measureContextTokens('marveen')).toBe(ISOLATED_TOKENS)
+    expect(measureContextTokens('webinarMagus')).toBe(ISOLATED_TOKENS)
     // Stated rather than implied: this is the value the pre-fix code returned.
-    expect(measureContextTokens('marveen')).not.toBe(SHARED_TOKENS)
+    expect(measureContextTokens('webinarMagus')).not.toBe(SHARED_TOKENS)
   })
 
   it('measures idle time from the isolated root, so a live session never reads as quiet', async () => {
     const { measureIdleMs } = await import('../web/context-guard-runner.js')
-    const idle = measureIdleMs('marveen', Date.now())
+    const idle = measureIdleMs('webinarMagus', Date.now())
     expect(idle).not.toBeNull()
     // Seconds, not days. The pre-fix read would be ~4 days here, and a large
     // idle time is what trips the idle-flush tier.
@@ -116,7 +116,7 @@ describe('context-guard: which config root the main agent is measured from', () 
     const { measurePct } = await import('../web/context-guard-runner.js')
     // Explicit limit so the assertion is about the ROOT, not about model
     // calibration: 50_000 / 100_000 = 0.5, while the shared root would give 0.01.
-    expect(measurePct('marveen', 100_000)).toBeCloseTo(0.5, 5)
+    expect(measurePct('webinarMagus', 100_000)).toBeCloseTo(0.5, 5)
   })
 
   it('leaves sub-agents on their own resolver', async () => {

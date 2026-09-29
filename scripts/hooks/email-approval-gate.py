@@ -16,7 +16,7 @@ The `email_send.level` in store/autonomy-config.json becomes a real switch:
               re-sent to a different recipient -- hence every recipient field, bcc included (msg 17936, EMAILBCCHORGONY903).
   level 3  -> allow (autonomous; the outgoing-copy-gate still audits copy).
 
-Anchor semantics (Marveen msg 17900, 5+1 conditions):
+Anchor semantics (WebinarMagus msg 17900, 5+1 conditions):
   1. the hash is computed from the SAME extraction the copy gate audits
      (email_extract.collect_email_envelope -- single implementation);
   2. an approval is ONE-SHOT: consumed atomically on allow;
@@ -230,7 +230,7 @@ def main():
     try:
         payload = json.load(sys.stdin)
     except Exception:
-        # FAIL-CLOSED, deliberately DIVERGING from the copy gate (Marveen's
+        # FAIL-CLOSED, deliberately DIVERGING from the copy gate (WebinarMagus's
         # #1149 review): the copy gate AUDITS and chooses session-liveness on
         # a broken harness payload; this gate AUTHORIZES, and an unreadable
         # payload on a send-matched call must not authorize anything. Loud

@@ -13,7 +13,7 @@ import { join } from 'node:path'
 const tmpHome = mkdtempSync(join(tmpdir(), 'tombstone-home-'))
 const realHome = process.env.HOME
 process.env.HOME = tmpHome
-process.env.MAIN_AGENT_ID = process.env.MAIN_AGENT_ID || 'marveen'
+process.env.MAIN_AGENT_ID = process.env.MAIN_AGENT_ID || 'webinarMagus'
 
 let io: typeof import('../web/scheduled-tasks-io.js')
 let scaffold: typeof import('../web/agent-scaffold.js')
@@ -59,7 +59,7 @@ describe('deleted default scheduled task stays deleted (#796)', () => {
 
   it('lifts the tombstone when the task is re-created, and it then survives re-seed', () => {
     const victim = 'memoria-heartbeat'
-    io.writeScheduledTask(victim, { description: 'x', prompt: 'y', schedule: '0 0 * * *', agent: 'marveen' })
+    io.writeScheduledTask(victim, { description: 'x', prompt: 'y', schedule: '0 0 * * *', agent: 'webinarMagus' })
     expect(io.readRemovedDefaultTasks().size).toBe(0)
     scaffold.ensureDefaultScheduledTasks()
     expect(taskDirs()).toContain(victim)

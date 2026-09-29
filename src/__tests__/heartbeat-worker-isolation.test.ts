@@ -8,7 +8,7 @@ import { CHANNEL_PLUGIN_IDS } from '../web/plugin-ids.js'
 // - #237: project-scope .mcp.json={} -- necessary but not sufficient
 // - #247: project-scope .claude/settings.json enabledPlugins:false --
 //         DID NOT WORK in production (9/10/11/12 hb all spawned the
-//         Telegram plugin and crashed Marveen via 409 Conflict). The
+//         Telegram plugin and crashed WebinarMagus via 409 Conflict). The
 //         claude-agent-sdk reads ~/.claude/settings.json directly and
 //         ignores the project-scope override.
 // - THIS PR: CLAUDE_CONFIG_DIR repointing -- the SDK-documented way to

@@ -48,10 +48,10 @@ function ageRow(id: number, minutes: number): void {
 
 describe('GET /api/messages/:id carries the freshness signal the router attaches', () => {
   it('annotates a superseded row with the ROUTER\'s own wording, plus the raw numbers', async () => {
-    const first = createAgentMessage('marveen', 'olvaso', 'Az elso utasitas.')
+    const first = createAgentMessage('webinarMagus', 'olvaso', 'Az elso utasitas.')
     ageRow(first.id, 20)
-    createAgentMessage('marveen', 'olvaso', 'Masodik.')
-    createAgentMessage('marveen', 'olvaso', 'Harmadik -- ez vonja vissza az elsot.')
+    createAgentMessage('webinarMagus', 'olvaso', 'Masodik.')
+    createAgentMessage('webinarMagus', 'olvaso', 'Harmadik -- ez vonja vissza az elsot.')
 
     const { status, json } = await get(`/api/messages/${first.id}`)
     expect(status).toBe(200)
@@ -69,7 +69,7 @@ describe('GET /api/messages/:id carries the freshness signal the router attaches
   })
 
   it('stays quiet for fresh, unsuperseded traffic so the signal never becomes noise', async () => {
-    const solo = createAgentMessage('marveen', 'maganyos', 'Egyetlen, friss uzenet.')
+    const solo = createAgentMessage('webinarMagus', 'maganyos', 'Egyetlen, friss uzenet.')
 
     const { json } = await get(`/api/messages/${solo.id}`)
     expect(json.freshness.newerFromSameSender).toBe(0)

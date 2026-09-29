@@ -49,16 +49,16 @@ describe('HEARTBEAT_NEW_HOT_MEMORIES_SQL (the shipped statement, on a fixture DB
     const sqlIns = db.prepare(
       "INSERT INTO memories (agent_id,category,content,created_at) VALUES (?,?,?, unixepoch() + ?)",
     )
-    sqlIns.run('marveen', 'hot', 'fresh main-agent hot #1', -60)
-    sqlIns.run('marveen', 'hot', 'fresh main-agent hot #2 (just inside the hour)', -3590)
+    sqlIns.run('webinarMagus', 'hot', 'fresh main-agent hot #1', -60)
+    sqlIns.run('webinarMagus', 'hot', 'fresh main-agent hot #2 (just inside the hour)', -3590)
     // The exact wrong-row family HBMEMBLIND819 measured: the heartbeat's OWN
     // id. It must not be countable by accident when the caller passes the
     // main agent's id.
     sqlIns.run('heartbeat', 'hot', 'heartbeat own hot', -60)
-    sqlIns.run('marveen', 'hot', 'main-agent hot at EXACTLY the boundary (strict > excludes it)', -3600)
-    sqlIns.run('marveen', 'warm', 'fresh but warm', -60)
+    sqlIns.run('webinarMagus', 'hot', 'main-agent hot at EXACTLY the boundary (strict > excludes it)', -3600)
+    sqlIns.run('webinarMagus', 'warm', 'fresh but warm', -60)
 
-    const forMain = db.prepare(HEARTBEAT_NEW_HOT_MEMORIES_SQL).get('marveen') as { n: number }
+    const forMain = db.prepare(HEARTBEAT_NEW_HOT_MEMORIES_SQL).get('webinarMagus') as { n: number }
     expect(forMain.n).toBe(2)
 
     // And the failure shape itself, replayed: querying with the heartbeat's
@@ -70,7 +70,7 @@ describe('HEARTBEAT_NEW_HOT_MEMORIES_SQL (the shipped statement, on a fixture DB
 
   it('empty table -> 0, not NULL-shaped surprises', () => {
     const { db } = fixtureDb()
-    const row = db.prepare(HEARTBEAT_NEW_HOT_MEMORIES_SQL).get('marveen') as { n: number }
+    const row = db.prepare(HEARTBEAT_NEW_HOT_MEMORIES_SQL).get('webinarMagus') as { n: number }
     expect(row.n).toBe(0)
   })
 })

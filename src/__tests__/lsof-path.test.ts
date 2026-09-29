@@ -6,7 +6,7 @@ import { pickLsofPath } from '../lsof.js'
 // injected with env + an isExecutable predicate so it is deterministic and
 // platform-independent -- reverting the absolute-first behaviour turns them red.
 
-// The measured production PATH (Marveen, ps eww pid 48719): no /usr/sbin.
+// The measured production PATH (WebinarMagus, ps eww pid 48719): no /usr/sbin.
 const LAUNCHD_PATH = '/opt/homebrew/bin:/Users/marvin/.bun/bin:/usr/local/bin:/usr/bin:/bin'
 
 describe('pickLsofPath -- resolves lsof under a PATH that omits /usr/sbin', () => {

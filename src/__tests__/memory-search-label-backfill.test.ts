@@ -16,7 +16,7 @@ import { mkdtempSync, writeFileSync, readFileSync, mkdirSync, existsSync } from 
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 
-const tmpRoot = mkdtempSync(join(tmpdir(), 'marveen-memlabel-test-'))
+const tmpRoot = mkdtempSync(join(tmpdir(), 'webinarMagus-memlabel-test-'))
 
 vi.mock('../config.js', () => ({
   PROJECT_ROOT: tmpRoot,

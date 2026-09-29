@@ -4,8 +4,8 @@ import { readFileSync, writeFileSync, mkdtempSync, mkdirSync, chmodSync } from '
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
-// The 2026-08-03 bug: `install.sh` printed "Marveen sikeresen telepitve!" and the
-// dashboard never came up. `launchctl list` showed com.marveen.dashboard with no
+// The 2026-08-03 bug: `install.sh` printed "WebinarMagus sikeresen telepitve!" and the
+// dashboard never came up. `launchctl list` showed com.webinarMagus.dashboard with no
 // pid and last exit status 1; store/dashboard.error.log was EMPTY and the real
 // cause sat in the stdout log:
 //
@@ -68,7 +68,7 @@ function stepBlock(src: string, step: string, nextStep: string): string {
  * `node` it would resolve. Returns whichever node each npm invocation saw.
  */
 function runNpmInstallStep(): { code: number; out: string; nodes: string[] } {
-  const dir = mkdtempSync(join(tmpdir(), 'marveen-nodeabi-'))
+  const dir = mkdtempSync(join(tmpdir(), 'webinarMagus-nodeabi-'))
   const log = join(dir, 'resolved-node.log')
 
   // A fake `node@22` keg and a fake generic `node`, both on PATH. The generic

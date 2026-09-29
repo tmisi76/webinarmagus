@@ -73,7 +73,7 @@ describe('external-respawn wiring contract', () => {
     // dashboard-initiated respawn would be misreported as external.
     // Slice to the FUNCTION's own closing brace (same idiom as sliceShellFn
     // below) -- an earlier version sliced to the first brace AFTER the sought
-    // string, an ever-growing window that could not fail (Marveen's mutation
+    // string, an ever-growing window that could not fail (WebinarMagus's mutation
     // probe on 331b7d2d: assignment moved out of the function, test stayed
     // green). Verified red against that same mutation after this fix.
     const start = MONITOR.indexOf('function writeRespawnStamp')

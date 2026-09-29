@@ -33,20 +33,20 @@ CREATE TABLE memories (agent_id TEXT);
 CREATE TABLE daily_logs (agent_id TEXT);
 CREATE TABLE agent_messages (from_agent TEXT, to_agent TEXT);
 CREATE TABLE kanban_cards (assignee TEXT);
-INSERT INTO memories VALUES ('marveen');
-INSERT INTO agent_messages VALUES ('marveen', 'samu');
-INSERT INTO kanban_cards VALUES ('marveen');
+INSERT INTO memories VALUES ('webinarMagus');
+INSERT INTO agent_messages VALUES ('webinarMagus', 'samu');
+INSERT INTO kanban_cards VALUES ('webinarMagus');
 SQL
 
 # --- fake HOME with the installer's unit set ----------------------------------
 FAKE_HOME="$TMP/home"
 UNITS="$FAKE_HOME/.config/systemd/user"
-mkdir -p "$UNITS/marveen-dashboard.service.d" "$UNITS/marveen-channels.service.d"
+mkdir -p "$UNITS/webinarMagus-dashboard.service.d" "$UNITS/webinar-magus-channels.service.d"
 for unit in dashboard.service channels.service morning.service morning.timer host-watchdog.service 'notify@.service'; do
-  printf '[Unit]\nDescription=Marveen %s\n' "$unit" > "$UNITS/marveen-${unit}"
+  printf '[Unit]\nDescription=WebinarMagus %s\n' "$unit" > "$UNITS/webinarMagus-${unit}"
 done
-printf '[Unit]\nOnFailure=marveen-notify@%%n.service\n' > "$UNITS/marveen-dashboard.service.d/onfailure.conf"
-printf '[Unit]\nOnFailure=marveen-notify@%%n.service\n' > "$UNITS/marveen-channels.service.d/onfailure.conf"
+printf '[Unit]\nOnFailure=webinarMagus-notify@%%n.service\n' > "$UNITS/webinarMagus-dashboard.service.d/onfailure.conf"
+printf '[Unit]\nOnFailure=webinarMagus-notify@%%n.service\n' > "$UNITS/webinar-magus-channels.service.d/onfailure.conf"
 
 # --- PATH shim ----------------------------------------------------------------
 BIN="$TMP/bin"
@@ -91,8 +91,8 @@ grep -q '^MAIN_AGENT_ID=test-bot$' "$INSTALL/.env" \
 DB_SLUG=$(sqlite3 "$INSTALL/store/claudeclaw.db" "SELECT assignee FROM kanban_cards")
 [ "$DB_SLUG" = "test-bot" ] && pass "DB rows rewritten to the new slug" || fail "DB rows rewritten (got '$DB_SLUG')"
 
-OLD_LEFT=$(find "$UNITS" -maxdepth 1 -name 'marveen-*' | wc -l | tr -d ' ')
-[ "$OLD_LEFT" = "0" ] && pass "no marveen-* unit files left behind" || fail "no marveen-* left behind ($OLD_LEFT remain)"
+OLD_LEFT=$(find "$UNITS" -maxdepth 1 -name 'webinarMagus-*' | wc -l | tr -d ' ')
+[ "$OLD_LEFT" = "0" ] && pass "no webinarMagus-* unit files left behind" || fail "no webinarMagus-* left behind ($OLD_LEFT remain)"
 
 ALL_NEW=1
 for unit in dashboard.service channels.service morning.service morning.timer host-watchdog.service 'notify@.service'; do
@@ -104,7 +104,7 @@ grep -q 'test-bot-notify@%n.service' "$UNITS/test-bot-dashboard.service.d/onfail
   && pass "OnFailure drop-in renamed AND patched to the new notifier" \
   || fail "OnFailure drop-in renamed AND patched (dashboard)"
 
-grep -q 'stop marveen-channels.service' "$LOG" \
+grep -q 'stop webinar-magus-channels.service' "$LOG" \
   && pass "old units were stopped before the rename" || fail "old units were stopped"
 
 grep -q 'daemon-reload' "$LOG" \
@@ -129,13 +129,13 @@ fi
 # --- failure honesty: a failed start must not end in Done. --------------------
 # Rebuild the pre-migration state and make enabling the channels unit fail.
 rm -rf "$UNITS"
-mkdir -p "$UNITS/marveen-dashboard.service.d" "$UNITS/marveen-channels.service.d"
+mkdir -p "$UNITS/webinarMagus-dashboard.service.d" "$UNITS/webinar-magus-channels.service.d"
 for unit in dashboard.service channels.service morning.service morning.timer host-watchdog.service 'notify@.service'; do
-  printf '[Unit]\nDescription=Marveen %s\n' "$unit" > "$UNITS/marveen-${unit}"
+  printf '[Unit]\nDescription=WebinarMagus %s\n' "$unit" > "$UNITS/webinarMagus-${unit}"
 done
-printf '[Unit]\nOnFailure=marveen-notify@%%n.service\n' > "$UNITS/marveen-dashboard.service.d/onfailure.conf"
-printf '[Unit]\nOnFailure=marveen-notify@%%n.service\n' > "$UNITS/marveen-channels.service.d/onfailure.conf"
-sqlite3 "$INSTALL/store/claudeclaw.db" "UPDATE kanban_cards SET assignee='marveen'"
+printf '[Unit]\nOnFailure=webinarMagus-notify@%%n.service\n' > "$UNITS/webinarMagus-dashboard.service.d/onfailure.conf"
+printf '[Unit]\nOnFailure=webinarMagus-notify@%%n.service\n' > "$UNITS/webinar-magus-channels.service.d/onfailure.conf"
+sqlite3 "$INSTALL/store/claudeclaw.db" "UPDATE kanban_cards SET assignee='webinarMagus'"
 sed -i.bak '/^MAIN_AGENT_ID=/d' "$INSTALL/.env"
 : > "$LOG"
 

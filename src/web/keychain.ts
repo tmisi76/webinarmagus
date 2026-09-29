@@ -2,7 +2,7 @@ import { execFileSync } from 'node:child_process'
 import { platform } from 'node:os'
 
 const SECURITY = '/usr/bin/security'
-const SERVICE = 'com.marveen.vault'
+const SERVICE = 'com.webinarMagus.vault'
 const ACCOUNT = 'master-key'
 
 // A locked keychain makes `security` pop a GUI unlock prompt and block

@@ -21,7 +21,7 @@ import { updateEnrolledServicePorts } from '../remote-enroll-fs.js'
 const WEB = 3420
 const ID = '0f81a9a2-08d6-4f4c-9a09-93e35ad27182'
 const B64 = 'AAAAC3NzaC1lZDI1NTE5AAAAIFakefakefakefakefakefakefakefakefakefake'
-const OUR_LINE = `${restrictOptions(WEB)} ssh-ed25519 ${B64} marveen-remote:${ID}`
+const OUR_LINE = `${restrictOptions(WEB)} ssh-ed25519 ${B64} webinarMagus-remote:${ID}`
 const FOREIGN_LINE = 'ssh-rsa AAAAB3Nza... someone@laptop'
 
 describe('validateBridgeServicePorts (policy -- decided server-side)', () => {
@@ -89,7 +89,7 @@ describe('rewriteServicePorts (only our line, options rebuilt from scratch)', ()
     expect(r.after).toEqual([4007])
     const lines = r.content.split('\n')
     expect(lines[0]).toBe(FOREIGN_LINE)
-    expect(lines[1]).toBe(`${restrictOptionsWithServices(WEB, [4007])} ssh-ed25519 ${B64} marveen-remote:${ID}`)
+    expect(lines[1]).toBe(`${restrictOptionsWithServices(WEB, [4007])} ssh-ed25519 ${B64} webinarMagus-remote:${ID}`)
     expect(r.content.endsWith('\n')).toBe(true)
   })
 
@@ -120,7 +120,7 @@ describe('rewriteServicePorts (only our line, options rebuilt from scratch)', ()
   })
 
   it('a line carrying our comment but a foreign shape is not ours to rewrite', () => {
-    const odd = `command="uptime" ssh-rsa ${B64} extra marveen-remote:${ID}\n`
+    const odd = `command="uptime" ssh-rsa ${B64} extra webinarMagus-remote:${ID}\n`
     const r = rewriteServicePorts(odd, ID, WEB, [4007])
     expect(r.found).toBe(false)
     expect(r.content).toBe(odd)
@@ -206,7 +206,7 @@ async function getPorts(installId: string): Promise<{ statusCode: number; json: 
 }
 
 describe('GET /api/bridge/service-ports (HTTP) -- a fault is never dressed up as "not paired"', () => {
-  const SUITE_DEFAULT_SSH_DIR = process.env.MARVEEN_SSH_DIR
+  const SUITE_DEFAULT_SSH_DIR = process.env.WEBINAR_MAGUS_SSH_DIR
   let routeDir: string
 
   beforeAll(() => {
@@ -216,15 +216,15 @@ describe('GET /api/bridge/service-ports (HTTP) -- a fault is never dressed up as
 
   beforeEach(() => {
     routeDir = mkdtempSync(join(tmpdir(), 'bridge-ports-route-'))
-    process.env.MARVEEN_SSH_DIR = routeDir
+    process.env.WEBINAR_MAGUS_SSH_DIR = routeDir
   })
 
   afterEach(() => {
     rmSync(routeDir, { recursive: true, force: true })
     // Restore the suite-wide seam rather than deleting it: a bare delete would
     // leave every later test in this worker resolving the real ~/.ssh again.
-    if (SUITE_DEFAULT_SSH_DIR === undefined) delete process.env.MARVEEN_SSH_DIR
-    else process.env.MARVEEN_SSH_DIR = SUITE_DEFAULT_SSH_DIR
+    if (SUITE_DEFAULT_SSH_DIR === undefined) delete process.env.WEBINAR_MAGUS_SSH_DIR
+    else process.env.WEBINAR_MAGUS_SSH_DIR = SUITE_DEFAULT_SSH_DIR
   })
 
   it('no authorized_keys at all is still a plain 404 -- the ENOENT path is unchanged', async () => {
@@ -236,7 +236,7 @@ describe('GET /api/bridge/service-ports (HTTP) -- a fault is never dressed up as
   it('an enrolled line is found and its service ports returned', async () => {
     writeFileSync(
       join(routeDir, 'authorized_keys'),
-      `${restrictOptionsWithServices(WEB_PORT, [4007])} ssh-ed25519 ${B64} marveen-remote:${ID}\n`,
+      `${restrictOptionsWithServices(WEB_PORT, [4007])} ssh-ed25519 ${B64} webinarMagus-remote:${ID}\n`,
     )
     const r = await getPorts(ID)
     expect(r.statusCode).toBe(200)
@@ -246,7 +246,7 @@ describe('GET /api/bridge/service-ports (HTTP) -- a fault is never dressed up as
   it('a guard refusal surfaces as 500 + enroll813, NOT as the 404 that would send the owner off to re-pair', async () => {
     // Unsetting the seam under a test runner is exactly the condition
     // resolveSshDir() refuses. Before the fix this produced the 404 above.
-    delete process.env.MARVEEN_SSH_DIR
+    delete process.env.WEBINAR_MAGUS_SSH_DIR
     const r = await getPorts(ID)
     expect(r.statusCode).toBe(500)
     // Lowercase on the wire, like every other code this server emits.

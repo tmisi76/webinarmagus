@@ -5,8 +5,8 @@
 // What went wrong (2026-09-15): `POST /api/security/bridge-enroll` calls
 // bridgeEnroll() without deps, the default resolver fell back to
 // homedir()/.ssh, and one branch of bridge-enroll.test.ts hits that route with a
-// valid address before the file sets MARVEEN_SSH_DIR. One full suite run =
-// exactly one real `marveen-remote` key. 62 of them accumulated across the fleet
+// valid address before the file sets WEBINAR_MAGUS_SSH_DIR. One full suite run =
+// exactly one real `webinarMagus-remote` key. 62 of them accumulated across the fleet
 // (Tecton 13, isapp06 51, pestihazak 4), and the suite was green the whole time.
 //
 // Two halves, and they need opposite things from the environment:
@@ -46,7 +46,7 @@ import {
 import { isTestRun } from '../test-run-marker.js'
 import { restrictOptions, COMMENT_PREFIX } from '../remote-enroll-core.js'
 
-const LINE = `ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA marveen-remote:${randomUUID()}`
+const LINE = `ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA webinarMagus-remote:${randomUUID()}`
 
 // The production-branch block below drives updateEnrolledServicePorts, which
 // only recognises a line in the exact shape this file authors: four fields,
@@ -68,7 +68,7 @@ let savedNodeEnv: string | undefined
 
 beforeEach(() => {
   savedHome = process.env.HOME
-  savedOverride = process.env.MARVEEN_SSH_DIR
+  savedOverride = process.env.WEBINAR_MAGUS_SSH_DIR
   savedVitest = process.env['VITEST']
   savedNodeEnv = process.env['NODE_ENV']
   fakeHome = mkdtempSync(join(tmpdir(), 'enroll-seam-home-'))
@@ -89,8 +89,8 @@ afterEach(() => {
   else process.env['NODE_ENV'] = savedNodeEnv
   if (savedHome === undefined) delete process.env.HOME
   else process.env.HOME = savedHome
-  if (savedOverride === undefined) delete process.env.MARVEEN_SSH_DIR
-  else process.env.MARVEEN_SSH_DIR = savedOverride
+  if (savedOverride === undefined) delete process.env.WEBINAR_MAGUS_SSH_DIR
+  else process.env.WEBINAR_MAGUS_SSH_DIR = savedOverride
   rmSync(fakeHome, { recursive: true, force: true })
   rmSync(scratchSshDir, { recursive: true, force: true })
 })
@@ -134,12 +134,12 @@ describe('remote-enroll-fs chokepoint (ENROLL813)', () => {
 
 describe('resolveSshDir (ENROLL813)', () => {
   it('throws instead of falling back to the real ~/.ssh when the seam is unset', () => {
-    delete process.env.MARVEEN_SSH_DIR
+    delete process.env.WEBINAR_MAGUS_SSH_DIR
     expect(() => resolveSshDir()).toThrow(/ENROLL813/)
   })
 
   it('returns the override and notifies the caller so the redirect is never silent', () => {
-    process.env.MARVEEN_SSH_DIR = scratchSshDir
+    process.env.WEBINAR_MAGUS_SSH_DIR = scratchSshDir
     const seen: string[] = []
     expect(resolveSshDir((d) => seen.push(d))).toBe(scratchSshDir)
     expect(seen).toEqual([scratchSshDir])
@@ -178,7 +178,7 @@ describe('production branch -- the guards must stay INERT in a live install (ENR
   function enterProductionEnv(): void {
     delete process.env['VITEST']
     delete process.env['NODE_ENV']
-    delete process.env['MARVEEN_SSH_DIR']
+    delete process.env['WEBINAR_MAGUS_SSH_DIR']
   }
 
   it('resolveSshDir() returns the real ~/.ssh instead of throwing', () => {
@@ -189,9 +189,9 @@ describe('production branch -- the guards must stay INERT in a live install (ENR
     expect(dir).toBe(join(fakeHome, '.ssh'))
   })
 
-  it('an explicit MARVEEN_SSH_DIR still wins in production -- and is still announced, never silent', () => {
+  it('an explicit WEBINAR_MAGUS_SSH_DIR still wins in production -- and is still announced, never silent', () => {
     enterProductionEnv()
-    process.env['MARVEEN_SSH_DIR'] = scratchSshDir
+    process.env['WEBINAR_MAGUS_SSH_DIR'] = scratchSshDir
     const seen: string[] = []
     expect(resolveSshDir((d) => seen.push(d))).toBe(scratchSshDir)
     expect(seen).toEqual([scratchSshDir])

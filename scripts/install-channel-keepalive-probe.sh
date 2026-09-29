@@ -31,7 +31,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
-LABEL="com.marveen.channel-keepalive-probe"
+LABEL="com.webinarMagus.channel-keepalive-probe"
 PLIST="$HOME/Library/LaunchAgents/$LABEL.plist"
 PROBE="$PROJECT_DIR/scripts/channel-keepalive-probe.sh"
 

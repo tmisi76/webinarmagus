@@ -23,7 +23,7 @@ every run and faster-whisper's beam search is deterministic on them. Then:
 Needs the voice venv (faster-whisper, piper), a Hungarian voice, and ffmpeg.
 Skips cleanly when any is absent, so it never fails for lack of the model.
 
-Run: ~/.local/share/marveen-voice/venv/bin/python scripts/voice/test_vtools_repetition.py
+Run: ~/.local/share/webinarMagus-voice/venv/bin/python scripts/voice/test_vtools_repetition.py
 """
 
 from __future__ import annotations
@@ -42,7 +42,7 @@ from contextlib import redirect_stdout
 from pathlib import Path
 from shutil import which
 
-VOICE = os.path.expanduser("~/.local/share/marveen-voice/voices/hu_HU-imre-medium.onnx")
+VOICE = os.path.expanduser("~/.local/share/webinarMagus-voice/voices/hu_HU-imre-medium.onnx")
 SENTENCE = "Ez egy rovid teszt mondat a hangatiras ellenorzesehez."
 FFMPEG = which("ffmpeg") or "/opt/homebrew/bin/ffmpeg"
 
@@ -111,7 +111,7 @@ FAILURES: list[str] = []
 
 def main() -> None:
     if not _have_deps():
-        _skip("voice venv / piper / hu voice / ffmpeg not available; run with the marveen-voice venv")
+        _skip("voice venv / piper / hu voice / ffmpeg not available; run with the webinarMagus-voice venv")
 
     from faster_whisper import WhisperModel
 

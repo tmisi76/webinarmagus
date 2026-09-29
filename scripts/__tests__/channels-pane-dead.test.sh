@@ -30,7 +30,7 @@ FAKE="$TMPD/tmux"
 expect_check() {
   printf '#!/bin/sh\n%s\n' "$3" > "$FAKE"; chmod +x "$FAKE"
   local got
-  got="$(CHANNELS_TMUX_BIN="$FAKE" bash "$CHANNELS" --pane-dead-check marveen-channels 2>/dev/null)"
+  got="$(CHANNELS_TMUX_BIN="$FAKE" bash "$CHANNELS" --pane-dead-check webinarMagus-channels 2>/dev/null)"
   if [ "$got" = "$2" ]; then pass "$1"; else fail "$1" "$2" "$got"; fi
 }
 
@@ -45,8 +45,8 @@ expect_check "tmux prints garbage -> alive (no false restart)" alive 'echo "no s
 expect_check "tmux prints 10 (not exactly 1) -> alive"     alive 'echo 10'
 
 # The seam must receive the session name it was asked about, not a hardcoded one.
-printf '#!/bin/sh\ncase "$*" in *"-t marveen-channels "*) echo 1;; *) echo 0;; esac\n' > "$FAKE"; chmod +x "$FAKE"
-got="$(CHANNELS_TMUX_BIN="$FAKE" bash "$CHANNELS" --pane-dead-check marveen-channels 2>/dev/null)"
+printf '#!/bin/sh\ncase "$*" in *"-t webinarMagus-channels "*) echo 1;; *) echo 0;; esac\n' > "$FAKE"; chmod +x "$FAKE"
+got="$(CHANNELS_TMUX_BIN="$FAKE" bash "$CHANNELS" --pane-dead-check webinarMagus-channels 2>/dev/null)"
 if [ "$got" = "dead" ]; then pass "queries the requested session"; else fail "queries the requested session" dead "$got"; fi
 
 echo ""

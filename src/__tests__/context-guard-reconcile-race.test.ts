@@ -41,7 +41,7 @@ describe('context-guard / reconcile restart race (DANICTXHUROK906)', () => {
 })
 
 // SOURCE-LEVEL COVERAGE of the WIRING, not just the predicate. Mutation review
-// (Marveen, 2026-09-06) removed the guard-side markAgentRestartPending(name)
+// (WebinarMagus, 2026-09-06) removed the guard-side markAgentRestartPending(name)
 // call and all four behavioural tests above still passed -- they exercise the
 // predicate, and the bug was in the CALL SITE. This asserts the wiring the same
 // way the copy-gate coverage test does: read the guard source and require that,

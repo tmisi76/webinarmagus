@@ -2,7 +2,7 @@
 //
 // DELIVLOCK805: two writers streaming a chunked `send-keys -l` message into the
 // SAME tmux pane interleave their chunks (proven reproduction: writer B's text
-// landed inside writer A's `[Uzenet @marveen-tol]:` frame, and the two messages
+// landed inside writer A's `[Uzenet @webinarMagus-tol]:` frame, and the two messages
 // coalesced into one submitted line). Foreign text inside a trusted-sender
 // frame is a prompt-injection surface, so the delivery path must be mutually
 // exclusive per pane.

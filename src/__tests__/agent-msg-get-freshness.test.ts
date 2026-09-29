@@ -28,7 +28,7 @@ function render(response: unknown): string {
 }
 
 const base = {
-  id: 4242, from_agent: 'marveen', to_agent: 'olvaso', status: 'pending',
+  id: 4242, from_agent: 'webinarMagus', to_agent: 'olvaso', status: 'pending',
   content: 'Az utasitas torzse.', result: null,
 }
 
@@ -53,6 +53,6 @@ describe('agent-msg-get.sh shows the freshness note it is now served', () => {
   it('still renders when the field is absent -- an older server, or a 404-shaped body', () => {
     const out = render(base)
     expect(out).toContain('Az utasitas torzse.')
-    expect(out).toContain('# msg 4242  marveen -> olvaso  status=pending')
+    expect(out).toContain('# msg 4242  webinarMagus -> olvaso  status=pending')
   })
 })

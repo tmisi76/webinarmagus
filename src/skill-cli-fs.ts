@@ -1,5 +1,5 @@
 /**
- * MIOCLISKILL831 -- a `marveen skill` parancs MELLEKHATASAI: hol lakik a
+ * MIOCLISKILL831 -- a `webinarMagus skill` parancs MELLEKHATASAI: hol lakik a
  * konfig, hogyan tarolodik a titok, hova kerulnek a letoltott skillek.
  *
  * TAROLASI DONTES (spec, msg 16930/a): a FAJL az alapeset, 0600-zal, a
@@ -29,7 +29,7 @@ export interface SkillCredentials {
 
 /** A konfig gyokere. A kornyezeti valtozo a TESZTELHETOSEG miatt van, nem opciokent. */
 export function skillHome(): string {
-  return process.env.MARVEEN_SKILL_HOME || join(homedir(), '.marveen', 'skill')
+  return process.env.WEBINAR_MAGUS_SKILL_HOME || join(homedir(), '.webinarMagus', 'skill')
 }
 
 export function credentialsPath(): string {
@@ -95,7 +95,7 @@ export function skillTargetDir(scope: 'project' | 'user', cwd = process.cwd()): 
 }
 
 export interface SkillFile {
-  /** Relativ ut a cel-konyvtaron belul, pl. `marveen-upload/SKILL.md`. */
+  /** Relativ ut a cel-konyvtaron belul, pl. `webinarMagus-upload/SKILL.md`. */
   relPath: string
   content: string
 }

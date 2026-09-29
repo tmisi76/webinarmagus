@@ -12,7 +12,7 @@ import { shouldDeferForRecentRespawn, confirmsWedgeProfile } from '../web/stuck-
 
 // Thresholds matching the production defaults in stuck-tool-call-watcher.ts.
 // Repeated here so the tests pin the contract independently of the wrapper
-// module (Marveen 2026-06-02 review: every threshold change should require
+// module (WebinarMagus 2026-06-02 review: every threshold change should require
 // an intentional test edit, not silently relax).
 const THRESHOLDS: StuckToolCallThresholds = {
   freezeSeconds: 180,
@@ -348,15 +348,15 @@ describe('stuck-tool-call-watcher wiring contract', () => {
     expect(v).toBeLessThan(31)
   })
 
-  it('recovers via the respawn-pane path (resumeMarveenSession), NOT the launchctl hard-restart (#248)', () => {
+  it('recovers via the respawn-pane path (resumeWebinarMagusSession), NOT the launchctl hard-restart (#248)', () => {
     // #248: the launchctl hard-restart -> channels.sh -> `tmux kill-session`
     // kicked the attached client ([exited]). Recovery now delegates to
-    // resumeMarveenSession (respawn-pane -k + pane-attribution reap), which
+    // resumeWebinarMagusSession (respawn-pane -k + pane-attribution reap), which
     // replaces only the pane's claude and never kills the session.
-    expect(watcherSrc).toMatch(/resumeMarveenSession\(\)/)
+    expect(watcherSrc).toMatch(/resumeWebinarMagusSession\(\)/)
     // Import-level (comment-proof): the launchctl hard-restart is no longer
     // wired into the watcher, so it cannot kick an attached client.
-    expect(watcherSrc).not.toMatch(/import[^\n]*hardRestartMarveenChannels/)
+    expect(watcherSrc).not.toMatch(/import[^\n]*hardRestartWebinarMagusChannels/)
   })
 
   it('confirms the idle wedge profile before recovering (CPU-load false-positive guard, #248)', () => {
@@ -387,7 +387,7 @@ describe('stuck-tool-call-watcher wiring contract', () => {
     // The 2026-08-15 guard above was written for `<channel source="plugin:`
     // blocks and matched nothing else, which left the far more frequent park
     // uncovered: a scheduled-task tick (heartbeat, kanban audit, dream engine).
-    // Measured on the Marveen install 2026-08-18: 14:11:08 the idle-prompt
+    // Measured on the WebinarMagus install 2026-08-18: 14:11:08 the idle-prompt
     // guard correctly skipped the residual footer, 14:15:08 this watcher
     // respawned a session that was merely IDLE, and the first input after the
     // respawn arrived truncated and fused with the next command.
@@ -467,7 +467,7 @@ describe('shouldDeferForRecentRespawn', () => {
     expect(shouldDeferForRecentRespawn(now - 10 * 60_000, now)).toBe(false)
   })
 
-  it('default grace matches the shared MARVEEN_POST_RESPAWN_GRACE_MS (360s)', () => {
+  it('default grace matches the shared WEBINAR_MAGUS_POST_RESPAWN_GRACE_MS (360s)', () => {
     // 359s defers, 361s does not, with the default arg.
     expect(shouldDeferForRecentRespawn(now - 359_000, now)).toBe(true)
     expect(shouldDeferForRecentRespawn(now - 361_000, now)).toBe(false)
@@ -555,7 +555,7 @@ describe('negative control: a stopped process writes nothing, so the mtime signa
 describe('wiring: the stale-verdict gate sits at the KILL boundary, not in verdict formation', () => {
   const SRC = rfs(pjoin(__dirname, '..', 'web', 'stuck-tool-call-watcher.ts'), 'utf-8')
 
-  it('checkSession calls the gate after the CPU guard and before resumeMarveenSession', () => {
+  it('checkSession calls the gate after the CPU guard and before resumeWebinarMagusSession', () => {
     // Window: the checkSession function's own structural bounds.
     const start = SRC.indexOf('async function checkSession')
     expect(start).toBeGreaterThanOrEqual(0)
@@ -567,7 +567,7 @@ describe('wiring: the stale-verdict gate sits at the KILL boundary, not in verdi
     const code = body.split('\n').filter(l => !l.trim().startsWith('//')).join('\n')
     const cpuIdx = code.indexOf('confirmsWedgeProfile(')
     const gateIdx = code.indexOf('if (verdictStaleByTranscript(transcriptMtime, Date.now())) {')
-    const killIdx = code.indexOf('resumeMarveenSession()')
+    const killIdx = code.indexOf('resumeWebinarMagusSession()')
     expect(cpuIdx).toBeGreaterThanOrEqual(0)
     expect(gateIdx).toBeGreaterThan(cpuIdx)
     expect(killIdx).toBeGreaterThan(gateIdx)

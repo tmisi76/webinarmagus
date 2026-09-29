@@ -10,7 +10,7 @@ import { scanResult } from '../skill-scan.js'
  * MIOCLISKILL831 -- a CLI szkennerenek PARITASA az EREDETI Python mio-scan-nel.
  *
  * MIERT ARANYFAJL, ES NEM ELO OSSZEHASONLITAS: a Python eredeti egy MASIK
- * repoban el (marveen-io), tehat itt nem futtathato. Az aranyfajlokat az
+ * repoban el (webinarMagus-io), tehat itt nem futtathato. Az aranyfajlokat az
  * EREDETI szkenner generalta, es adatkent utaznak a fixture-ok mellett -- egy
  * eltéres igy aranyfajl-elteresként bukik ki, nem eszrevetlenul.
  *

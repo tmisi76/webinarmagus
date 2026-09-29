@@ -12,7 +12,7 @@
 # Takes effect on the next poll (~2s); no restart needed.
 set -uo pipefail
 
-CONFIG=/home/ubuntu/marveen/store/progress-config.json
+CONFIG=/home/ubuntu/webinarMagus/store/progress-config.json
 MODE="${1:-}"
 AGENT="${2:-turing}"
 

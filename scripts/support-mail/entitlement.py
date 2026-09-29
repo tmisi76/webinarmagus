@@ -51,7 +51,7 @@ def _env(key: str, default: str = "") -> str:
 
 AIAM_REF = _env("SUPPORT_ENTITLEMENT_AIAM_REF", "ymljpjpjrwbmkfvtahtn")
 MIO_REF = _env("SUPPORT_ENTITLEMENT_MIO_REF", "fpxycpxdxgifimbmwgzj")
-PAT_VAULT_KEY = _env("SUPPORT_ENTITLEMENT_PAT_KEY", "MARVEEN-CONNECTORS-PAT")
+PAT_VAULT_KEY = _env("SUPPORT_ENTITLEMENT_PAT_KEY", "WEBINAR_MAGUS-CONNECTORS-PAT")
 WEB_PORT = _env("WEB_PORT", "3420")
 
 # Strict address shape: anything outside this is rejected (-> UNDECIDED/review),
@@ -109,7 +109,7 @@ def check(email: str) -> dict:
         aiam = _query(pat, AIAM_REF, f"""SELECT
           EXISTS(SELECT 1 FROM customers c WHERE lower(c.email)='{e}' AND (
             c.support_valid_until > now()
-            OR EXISTS(SELECT 1 FROM marveen_purchases p WHERE p.customer_id=c.id
+            OR EXISTS(SELECT 1 FROM webinarMagus_purchases p WHERE p.customer_id=c.id
                       AND (p.standard_support_until > now()
                            OR p.stripe_subscription_id IS NOT NULL))
           )) AS valid,

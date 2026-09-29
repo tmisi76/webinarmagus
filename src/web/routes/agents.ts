@@ -67,7 +67,7 @@ import {
   readAgentSlackConfig,
   readAgentGooglechatConfig,
   readAgentTeamsConfig,
-  readMarveenTelegramConfig,
+  readWebinarMagusTelegramConfig,
   sendAvatarChangeMessage,
   sendWelcomeMessage,
   validateTelegramToken,
@@ -79,7 +79,7 @@ import {
   revokeInvite,
   agentChannelDir,
 } from '../channel-invites.js'
-import { hardRestartMarveenChannels } from '../channel-monitor.js'
+import { hardRestartWebinarMagusChannels } from '../channel-monitor.js'
 import { isMainChannelsAgent, MAIN_CHANNELS_SESSION, withoutMainAgent } from '../main-agent.js'
 import {
   getProvider,
@@ -237,7 +237,7 @@ function agentRunStateCached(name: string, isRemote: boolean): AgentRunState {
 // long in practice (current Discord scheme is 64-bit, with the leading bit
 // always 0). Rejects empty, whitespace-only, non-numeric, or wrong-length
 // values before any state write so a typo in the dashboard cannot bounce the
-// live Marveen session through hardRestartMarveenChannels().
+// live WebinarMagus session through hardRestartWebinarMagusChannels().
 export function validateDiscordChannelId(cid: string | undefined): { ok: boolean; error?: string } {
   const trimmed = cid?.trim()
   if (!trimmed || !/^[0-9]{17,20}$/.test(trimmed)) {
@@ -461,7 +461,7 @@ interface AgentDetail extends AgentSummary {
 // pointed at a different working directory than the one being written.
 //
 // Measured on the live install, 2026-09-09, same moment, same process:
-//   agents/<main>  -> projects/-Users-marvin-ClaudeClaw-agents-marveen  (exists) -> null
+//   agents/<main>  -> projects/-Users-marvin-ClaudeClaw-agents-webinarMagus  (exists) -> null
 //   PROJECT_ROOT   -> projects/-Users-marvin-ClaudeClaw                 (exists) -> claude-opus-5
 // The old directory is not missing, which is why this never surfaced as an
 // error: it is a real directory holding another session's history, and it
@@ -515,7 +515,7 @@ function getAgentSummary(name: string): AgentSummary {
   //
   // MSGWARN908: the MAIN agent lives in `${MAIN_AGENT_ID}-channels` (launchd /
   // channels.sh), not `agent-<name>` -- agentRunState() on its id always said
-  // 'stopped', so this roster reported a running Marveen as down, and on
+  // 'stopped', so this roster reported a running WebinarMagus as down, and on
   // 2026-09-08 that false state was relayed to the owner as a system-down
   // report. Probe the channels session instead (same source the activity
   // endpoint already uses).
@@ -671,7 +671,7 @@ export async function tryHandleAgents(ctx: RouteContext, webDir: string): Promis
       deepseekConfigured: hasDeepseek,
       // Direct MiniMax API -- native Anthropic-compatible endpoint (no OpenRouter markup).
       // Model id verified live against the real endpoint before this list is trusted;
-      // see agent-provider-env.test.ts + the marveen kanban card 964a9567.
+      // see agent-provider-env.test.ts + the webinarMagus kanban card 964a9567.
       minimax: hasMinimax ? [{ id: 'minimax-m3', label: 'MiniMax M3 (közvetlen API)' }] : [],
       minimaxConfigured: hasMinimax,
       // OpenRouter tiers for the model picker. `auto` per tier feeds the "Auto"
@@ -1131,7 +1131,7 @@ export async function tryHandleAgents(ctx: RouteContext, webDir: string): Promis
   if (avatarUploadMatch && method === 'GET') {
     const name = decodeURIComponent(avatarUploadMatch[1])
     const avatarPath = findAvatarForAgent(name)
-    // 1h client cache: see /api/marveen/avatar for the staleness trade-off.
+    // 1h client cache: see /api/webinarMagus/avatar for the staleness trade-off.
     if (avatarPath) { serveFile(req, res, avatarPath, { cacheSeconds: 3600 }); return true }
     res.writeHead(404); res.end()
     return true
@@ -1227,7 +1227,7 @@ export async function tryHandleAgents(ctx: RouteContext, webDir: string): Promis
   if (setupMatch && method === 'POST') {
     const [name, provider] = setupMatch
     const isMain = name === MAIN_AGENT_ID
-    // Marveen lives at PROJECT_ROOT, not under agents/marveen/ -- skip the
+    // WebinarMagus lives at PROJECT_ROOT, not under agents/webinarMagus/ -- skip the
     // dir check for the main agent and route writes to ~/.claude/channels/.
     if (!isMain && !existsSync(agentDir(name))) { json(res, { error: 'Agent not found' }, 404); return true }
 
@@ -1261,7 +1261,7 @@ export async function tryHandleAgents(ctx: RouteContext, webDir: string): Promis
       let gcRestarted = false
       let gcWasRunning = false
       if (isMain) {
-        const r = hardRestartMarveenChannels()
+        const r = hardRestartWebinarMagusChannels()
         gcRestarted = r.ok
         gcWasRunning = true
       } else {
@@ -1303,8 +1303,8 @@ export async function tryHandleAgents(ctx: RouteContext, webDir: string): Promis
 
     // Discord-specific channelId guard: the dashboard ships the channel where
     // the bot will post by default; without it the plugin spins up but cannot
-    // resolve a default channel, and on the main Marveen agent the missing
-    // value would still trigger hardRestartMarveenChannels and bounce the
+    // resolve a default channel, and on the main WebinarMagus agent the missing
+    // value would still trigger hardRestartWebinarMagusChannels and bounce the
     // live session for no useful reason. Reject before any state write.
     if (provider === 'discord') {
       const cidCheck = validateDiscordChannelId(channelId)
@@ -1371,11 +1371,11 @@ export async function tryHandleAgents(ctx: RouteContext, webDir: string): Promis
     // Main agent doesn't have an agent-config.json or enabled-plugins entry
     // (the channels session reuses the system claude install), so skip the
     // sub-agent-specific bookkeeping. Restart goes through the dedicated
-    // marveen-channels helper instead of the agent process lifecycle.
+    // webinarMagus-channels helper instead of the agent process lifecycle.
     let restarted = false
     let wasRunning = false
     if (isMain) {
-      const r = hardRestartMarveenChannels()
+      const r = hardRestartWebinarMagusChannels()
       restarted = r.ok
       wasRunning = true
     } else {
@@ -1738,7 +1738,7 @@ export async function tryHandleAgents(ctx: RouteContext, webDir: string): Promis
     let botName: string | undefined
     if (provider === 'telegram') {
       botName = name === MAIN_AGENT_ID
-        ? readMarveenTelegramConfig().botUsername
+        ? readWebinarMagusTelegramConfig().botUsername
         : readAgentTelegramConfig(name).botUsername
       if (!botName) {
         const stateDir = name === MAIN_AGENT_ID ? channelStateDir(provider) : channelStateDir(provider, agentDir(name))
@@ -1771,7 +1771,7 @@ export async function tryHandleAgents(ctx: RouteContext, webDir: string): Promis
     let botName: string | undefined
     if (provider === 'telegram') {
       botName = name === MAIN_AGENT_ID
-        ? readMarveenTelegramConfig().botUsername
+        ? readWebinarMagusTelegramConfig().botUsername
         : readAgentTelegramConfig(name).botUsername
     }
     const cleanBotName = botName?.replace(/^@/, '')
@@ -1960,7 +1960,7 @@ export async function tryHandleAgents(ctx: RouteContext, webDir: string): Promis
   if (startMatch && method === 'POST') {
     const name = decodeURIComponent(startMatch[1])
     if (isMainChannelsAgent(name)) {
-      json(res, { error: 'Main agent lifecycle is service-managed; use /api/marveen/restart for recovery' }, 400)
+      json(res, { error: 'Main agent lifecycle is service-managed; use /api/webinarMagus/restart for recovery' }, 400)
       return true
     }
     if (!existsSync(agentDir(name))) { json(res, { error: 'Agent not found' }, 404); return true }
@@ -1982,7 +1982,7 @@ export async function tryHandleAgents(ctx: RouteContext, webDir: string): Promis
   if (stopMatch && method === 'POST') {
     const name = decodeURIComponent(stopMatch[1])
     if (isMainChannelsAgent(name)) {
-      json(res, { error: 'Main agent lifecycle is service-managed; use /api/marveen/restart for recovery' }, 400)
+      json(res, { error: 'Main agent lifecycle is service-managed; use /api/webinarMagus/restart for recovery' }, 400)
       return true
     }
     // Explicit stop clears intent so the monitor will not resurrect it -- and
@@ -2054,7 +2054,7 @@ export async function tryHandleAgents(ctx: RouteContext, webDir: string): Promis
     // `/remote-control` (needs a full-scope login token the agent lacks). Mirror
     // the precedent in the channels-config handler above. Sub-agents unchanged.
     if (isMainChannelsAgent(name)) {
-      const r = hardRestartMarveenChannels()
+      const r = hardRestartWebinarMagusChannels()
       if (r.ok) { json(res, { ok: true }); return true }
       json(res, { error: r.error || 'Restart failed' }, 500)
       return true
@@ -2095,7 +2095,7 @@ export async function tryHandleAgents(ctx: RouteContext, webDir: string): Promis
     const names = listAgentNames().filter((n) => n !== MAIN_AGENT_ID)
     if (names.length === 0) { json(res, { error: 'No agents to export' }, 404); return true }
     const includeSecrets = /[?&]secrets=(1|true)\b/.test(req.url || '')
-    const work = mkdtempSync(join(tmpdir(), 'marveen-fleet-dl-'))
+    const work = mkdtempSync(join(tmpdir(), 'webinarMagus-fleet-dl-'))
     const outPath = join(work, fleetBundleFilename())
     try {
       exportAllAgentsBundle(outPath, names, {
@@ -2129,7 +2129,7 @@ export async function tryHandleAgents(ctx: RouteContext, webDir: string): Promis
     }
     if (!existsSync(agentDir(name))) { json(res, { error: 'Agent not found' }, 404); return true }
     const includeSecrets = /[?&]secrets=(1|true)\b/.test(req.url || '')
-    const work = mkdtempSync(join(tmpdir(), 'marveen-agent-dl-'))
+    const work = mkdtempSync(join(tmpdir(), 'webinarMagus-agent-dl-'))
     const outPath = join(work, bundleFilename(name))
     try {
       exportAgentBundle(name, outPath, {

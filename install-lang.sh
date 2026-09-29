@@ -1,10 +1,10 @@
 #!/bin/bash
 # Install script i18n helper — sourced by install-macos.sh and install-linux.sh
-# MARVEEN_LANG=hu (default) or MARVEEN_LANG=en
+# WEBINAR_MAGUS_LANG=hu (default) or WEBINAR_MAGUS_LANG=en
 
 _t() {
   local key="$1"
-  local lang="${MARVEEN_LANG:-hu}"
+  local lang="${WEBINAR_MAGUS_LANG:-hu}"
   case "${lang}:${key}" in
     # ── Sections ──────────────────────────────────────────────────────
     en:section_1) echo "[1/7] Checking prerequisites..." ;;
@@ -326,8 +326,8 @@ _t() {
     hu:migrate.prompt_choose) echo "  Válassz (1/2/3): " ;;
     en:migrate.prompt_path) echo "  Workspace / directory path: " ;;
     hu:migrate.prompt_path) echo "  Workspace / mappa útvonala: " ;;
-    en:migrate.prompt_agent) echo "  Import to which agent? [marveen]: " ;;
-    hu:migrate.prompt_agent) echo "  Melyik ágenshez importáljak? [marveen]: " ;;
+    en:migrate.prompt_agent) echo "  Import to which agent? [webinarMagus]: " ;;
+    hu:migrate.prompt_agent) echo "  Melyik ágenshez importáljak? [webinarMagus]: " ;;
     en:migrate.section_2) echo "[2/4] Scanning source..." ;;
     hu:migrate.section_2) echo "[2/4] Rendszer feltérképezése..." ;;
     en:migrate.found_memory) echo "(cold memory)" ;;

@@ -14,7 +14,7 @@ const USER_FACING_FILES = [
 describe('Webinár Mágus user-facing brand hygiene', () => {
   it.each(USER_FACING_FILES)('%s does not expose the legacy display brand', (path) => {
     const text = readFileSync(join(ROOT, path), 'utf8')
-    expect(text).not.toContain('Marveen')
+    expect(text).not.toContain('WebinarMagus')
   })
 
   it('keeps the canonical display brand in the public README', () => {

@@ -16,7 +16,7 @@ const TRUST_PANE = [
   '╭──────────────────────────────────────────────────╮',
   '│ Do you trust the files in this folder?           │',
   '│                                                  │',
-  '│ /home/gabor/marveen/agents/nova                  │',
+  '│ /home/gabor/webinarMagus/agents/nova                  │',
   '│                                                  │',
   '│ Claude Code may read, analyze and edit files in  │',
   '│ this folder.                                     │',
@@ -73,7 +73,7 @@ const WELCOME_TOUR_PANE = [
 const FRESH_SESSION_PROMPT_PANE = [
   ' Welcome to Claude Code',
   '',
-  ' model: claude-opus-4-8   cwd: /home/gabor/marveen/agents/nova',
+  ' model: claude-opus-4-8   cwd: /home/gabor/webinarMagus/agents/nova',
   '',
   '──────────────────────────────────────────────────',
   ' ❯ ',
@@ -111,7 +111,7 @@ const TRUST_PANE_2_1_246 = [
   '────────────────────────────────────────────────────────────────',
   ' Accessing workspace:',
   '',
-  ' /home/gabor/marveen/agents/nova',
+  ' /home/gabor/webinarMagus/agents/nova',
   '',
   " Quick safety check: Is this a project you created or one you trust? (Like your own code, a well-known open source project, or work from your team). If not, take a moment to review what's in this",
   ' folder first.',
@@ -139,7 +139,7 @@ const IDLE_WITH_NEW_QUOTE_PANE = [
   '  ⏵⏵ bypass permissions on (shift+tab to cycle)',
 ].join('\n')
 
-// Negative control Marveen asked for: an ordinary working pane, no dialog of
+// Negative control WebinarMagus asked for: an ordinary working pane, no dialog of
 // any kind. If this ever classifies as a gate, the detector is matching noise.
 const ORDINARY_PANE = [
   ' $ npm test',
@@ -165,7 +165,7 @@ const TRUST_PANE_2_1_252 = [
   '────────────────────────────────────────────────────────────────',
   ' Accessing workspace:',
   '',
-  ' /home/gabor/marveen/agents/nova',
+  ' /home/gabor/webinarMagus/agents/nova',
   '',
   " Quick safety check: Is this a project you created or one you trust? (Like your own code, a well-known open source project, or work from your team). If not, take a moment to review what's in this",
   ' folder first.',

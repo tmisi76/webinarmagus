@@ -8,7 +8,7 @@ body) from a send invocation, used by BOTH gates:
     to + cc + subject + body -- the approval record pins the EXACT letter, and
     a send is allowed only on an exact match.
 
-The extraction boundary (Marveen, msg 17900) is deterministic-or-deny:
+The extraction boundary (WebinarMagus, msg 17900) is deterministic-or-deny:
   - readable literal (--body "...", < /abs/path, heredoc, MCP fields) -> text
   - anything shell-expanded at run time ($(cat), `...`, $VAR, unresolvable
     path, pipe) -> unreadable_reason, and the CALLER must fail closed.

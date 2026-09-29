@@ -19,7 +19,7 @@ sys.path.insert(0, HOOKS)
 
 INSTALL = os.path.dirname(os.path.dirname(HERE))
 os.environ.setdefault("MAIN_AGENT_ID", "mainagent")
-os.environ.pop("MARVEEN_AGENT_ID", None)
+os.environ.pop("WEBINAR_MAGUS_AGENT_ID", None)
 
 import ledger_lib  # noqa: E402
 
@@ -32,7 +32,7 @@ CASES = [
     ("trailing slash tolerated", INSTALL + "/", MAIN),
     ("agent dir maps to that agent", os.path.join(INSTALL, "agents", "dia"), "dia"),
     ("agent subdir maps to that agent", os.path.join(INSTALL, "agents", "dia", "x", "y"), "dia"),
-    ("outside the install attributes to the main agent (never invents an id)", "/tmp/someone/marveen", MAIN),
+    ("outside the install attributes to the main agent (never invents an id)", "/tmp/someone/webinarMagus", MAIN),
     ("empty cwd falls back to main", "", MAIN),
     ("None cwd falls back to main", None, MAIN),
 ]
@@ -45,15 +45,15 @@ for name, cwd, want in CASES:
         failed.append(name)
     print(f"  [{'PASS' if ok else 'FAIL'}] {name}: got={got!r} want={want!r}")
 
-# MARVEEN_AGENT_ID lets a launcher name an out-of-tree session explicitly.
-os.environ["MARVEEN_AGENT_ID"] = "explicit-agent"
-got = ledger_lib.agent_id_from_cwd("/tmp/someone/marveen")
+# WEBINAR_MAGUS_AGENT_ID lets a launcher name an out-of-tree session explicitly.
+os.environ["WEBINAR_MAGUS_AGENT_ID"] = "explicit-agent"
+got = ledger_lib.agent_id_from_cwd("/tmp/someone/webinarMagus")
 ok = got == "explicit-agent"
 if not ok:
-    failed.append("MARVEEN_AGENT_ID override for out-of-tree cwd")
-print(f"  [{'PASS' if ok else 'FAIL'}] MARVEEN_AGENT_ID override for out-of-tree cwd: "
+    failed.append("WEBINAR_MAGUS_AGENT_ID override for out-of-tree cwd")
+print(f"  [{'PASS' if ok else 'FAIL'}] WEBINAR_MAGUS_AGENT_ID override for out-of-tree cwd: "
       f"got={got!r} want='explicit-agent'")
-os.environ.pop("MARVEEN_AGENT_ID", None)
+os.environ.pop("WEBINAR_MAGUS_AGENT_ID", None)
 
 # ---------------------------------------------------------------------------
 # agent_id_from_payload (LEDGERCWD828): the cwd is MUTABLE within a session --
@@ -116,7 +116,7 @@ for name, payload, want in PAYLOAD_CASES:
 
 # Env override sits BETWEEN transcript and cwd: it wins when the transcript is
 # silent, and loses when the transcript speaks.
-os.environ["MARVEEN_AGENT_ID"] = "explicit-agent"
+os.environ["WEBINAR_MAGUS_AGENT_ID"] = "explicit-agent"
 got = ledger_lib.agent_id_from_payload({"transcript_path": "/tmp/none/t.jsonl", "cwd": "/tmp/none"})
 if got != "explicit-agent":
     failed.append("env override when transcript silent")
@@ -125,7 +125,7 @@ got = ledger_lib.agent_id_from_payload({"transcript_path": SUB_TRANSCRIPT})
 if got != "iris":
     failed.append("transcript beats env override")
 print(f"  [{'PASS' if got == 'iris' else 'FAIL'}] transcript beats env override: got={got!r}")
-os.environ.pop("MARVEEN_AGENT_ID", None)
+os.environ.pop("WEBINAR_MAGUS_AGENT_ID", None)
 
 # ---------------------------------------------------------------------------
 # End-to-end through the REAL outbound hook: same incident shape, but the row
@@ -141,7 +141,7 @@ HOOK = os.path.join(HOOKS, "ledger-outbound.py")
 with tempfile.TemporaryDirectory() as tmp:
     db = os.path.join(tmp, "ledger.db")
     env = dict(os.environ, LEDGER_DB_PATH=db, MAIN_AGENT_ID="mainagent")
-    env.pop("MARVEEN_AGENT_ID", None)
+    env.pop("WEBINAR_MAGUS_AGENT_ID", None)
 
     def run_hook(transcript, cwd):
         payload = {

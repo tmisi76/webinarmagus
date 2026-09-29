@@ -39,8 +39,8 @@ const PARKED_BARE_SCHEDULED_TAG = [
 const PARKED_INTERAGENT = [
   '',
   SEP,
-  '❯ [Uzenet @marveen-tol -- trusted team member, msg_id:42]: <trusted-peer',
-  '  source="agent:marveen"> Kérlek nézd át a PR-t. </trusted-peer>',
+  '❯ [Uzenet @webinarMagus-tol -- trusted team member, msg_id:42]: <trusted-peer',
+  '  source="agent:webinarMagus"> Kérlek nézd át a PR-t. </trusted-peer>',
   SEP,
   FOOTER,
 ].join('\n')
@@ -58,7 +58,7 @@ const PARKED_CHANNEL_COMPLETE = [
 const PARKED_HUMAN_DRAFT = [
   '',
   SEP,
-  '❯ Szia Marveen, ezt még átgondolom: a holnapi meetingen szerintem',
+  '❯ Szia WebinarMagus, ezt még átgondolom: a holnapi meetingen szerintem',
   '  SCHEDULED TASK NOTICE témát is hozzuk fel, meg a soak-ot',
   SEP,
   FOOTER,

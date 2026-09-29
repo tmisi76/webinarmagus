@@ -16,10 +16,10 @@ function substitute(str: string, tokens: Record<string, string>): string {
   return str.replace(/\{(\w+)\}/g, (_, k) => (tokens[k] != null ? tokens[k] : `{${k}}`))
 }
 
-// Stock defaults (BRAND_NAME == BOT_NAME == 'Marveen', slug 'marveen') and a
+// Stock defaults (BRAND_NAME == BOT_NAME == 'WebinarMagus', slug 'webinarMagus') and a
 // distinct brand/agent split, to prove both that a default install is unchanged
 // and that a renamed install carries its own names on every touched string.
-const DEFAULT_TOKENS = { brand: 'Marveen', bot: 'Marveen', agentId: 'marveen' }
+const DEFAULT_TOKENS = { brand: 'WebinarMagus', bot: 'WebinarMagus', agentId: 'webinarMagus' }
 const BRANDED_TOKENS = { brand: 'Acme', bot: 'Nova', agentId: 'nova' }
 
 // Load a real dashboard lang file. The files assign to a `window` global with
@@ -47,7 +47,7 @@ describe('buildManifest brands the PWA manifest, default unchanged', () => {
   })
 
   it('preserves every non-brand field', () => {
-    const m = JSON.parse(buildManifest(raw, 'Marveen'))
+    const m = JSON.parse(buildManifest(raw, 'WebinarMagus'))
     expect(m.description).toBe('AI marketingcsapat webináriumhoz, ügyfélszerzéshez és értékesítéshez')
     expect(m.start_url).toBe('/')
     expect(m.icons).toHaveLength(1)
@@ -67,10 +67,10 @@ describe('buildManifest brands the PWA manifest, default unchanged', () => {
 
 describe('buildGateMsg brands the email-gate deny message', () => {
   it('renders the governance message with the stock defaults', () => {
-    expect(buildGateMsg('Marveen', 'Szabolcs')).toBe(
+    expect(buildGateMsg('WebinarMagus', 'Szabolcs')).toBe(
       'Email-kuldes sub-agentkent tiltott (governance hard-gate). ' +
-        'Kuldd a tervezett emailt (CIMZETT + TARGY + TELJES SZOVEG) Marveennek inter-agent uzenetben ' +
-        'jovahagyasra; a kimeno emailt Marveen kuldi. Csak VERIFIKALT cimre (soha nem nevbol talalt cim). ' +
+        'Kuldd a tervezett emailt (CIMZETT + TARGY + TELJES SZOVEG) WebinarMagusnek inter-agent uzenetben ' +
+        'jovahagyasra; a kimeno emailt WebinarMagus kuldi. Csak VERIFIKALT cimre (soha nem nevbol talalt cim). ' +
         'Soha ne irj ala Szabolcs nevevel, es soha ne kerj penzt senki neveben.',
     )
   })
@@ -80,7 +80,7 @@ describe('buildGateMsg brands the email-gate deny message', () => {
     expect(msg).toContain('Novanek inter-agent')
     expect(msg).toContain('a kimeno emailt Nova kuldi')
     expect(msg).toContain('Soha ne irj ala John nevevel')
-    expect(msg).not.toContain('Marveen')
+    expect(msg).not.toContain('WebinarMagus')
     expect(msg).not.toMatch(/Szab(olcs|i)/)
   })
 })
@@ -99,7 +99,7 @@ describe('readBrandEnv reads the install brand from .env', () => {
   })
 
   it('falls back to the stock defaults for missing keys', () => {
-    expect(readBrandEnv(() => 'WEB_PORT=3420\n')).toEqual({ botName: 'Marveen', ownerName: 'Szabolcs' })
+    expect(readBrandEnv(() => 'WEB_PORT=3420\n')).toEqual({ botName: 'WebinarMagus', ownerName: 'Szabolcs' })
   })
 
   it('falls back to the stock defaults when the file cannot be read', () => {
@@ -107,33 +107,33 @@ describe('readBrandEnv reads the install brand from .env', () => {
       readBrandEnv(() => {
         throw new Error('ENOENT')
       }),
-    ).toEqual({ botName: 'Marveen', ownerName: 'Szabolcs' })
+    ).toEqual({ botName: 'WebinarMagus', ownerName: 'Szabolcs' })
   })
 })
 
 describe('i18n brand tokens keep a stock install byte-identical (en)', () => {
   it('renders the original English strings with default tokens', async () => {
     const en = await loadLang('en')
-    expect(substitute(en['updates.brand_subtitle'], DEFAULT_TOKENS)).toBe('Marveen version check')
-    expect(substitute(en['agents.marveen_boss'], DEFAULT_TOKENS)).toBe('Marveen Boss')
-    expect(substitute(en['agents.toast.marveen_restarted'], DEFAULT_TOKENS)).toBe('Marveen channels restarted')
+    expect(substitute(en['updates.brand_subtitle'], DEFAULT_TOKENS)).toBe('WebinarMagus version check')
+    expect(substitute(en['agents.webinarMagus_boss'], DEFAULT_TOKENS)).toBe('WebinarMagus Boss')
+    expect(substitute(en['agents.toast.webinarMagus_restarted'], DEFAULT_TOKENS)).toBe('WebinarMagus channels restarted')
     expect(substitute(en['agents.confirm.hard_restart'], DEFAULT_TOKENS)).toBe(
-      'Hard restart the marveen-channels session. The ongoing Marveen conversation will be lost (memory is preserved). Continue?',
+      'Hard restart the webinarMagus-channels session. The ongoing WebinarMagus conversation will be lost (memory is preserved). Continue?',
     )
-    expect(substitute(en['settings.desc.DASHBOARD_PUBLIC_URL'], DEFAULT_TOKENS)).toContain('https://marveen.example.com')
-    expect(substitute(en['connectors.builtin.computer_use_html'], DEFAULT_TOKENS)).toContain('not by Marveen.')
-    expect(substitute(en['connectors.builtin.chrome_html'], DEFAULT_TOKENS)).toContain('Marveen sub-agent launches')
+    expect(substitute(en['settings.desc.DASHBOARD_PUBLIC_URL'], DEFAULT_TOKENS)).toContain('https://webinarMagus.example.com')
+    expect(substitute(en['connectors.builtin.computer_use_html'], DEFAULT_TOKENS)).toContain('not by WebinarMagus.')
+    expect(substitute(en['connectors.builtin.chrome_html'], DEFAULT_TOKENS)).toContain('WebinarMagus sub-agent launches')
   })
 
-  it('carries the brand/agent names with non-default tokens and drops Marveen', async () => {
+  it('carries the brand/agent names with non-default tokens and drops WebinarMagus', async () => {
     const en = await loadLang('en')
-    expect(substitute(en['agents.marveen_boss'], BRANDED_TOKENS)).toBe('Nova Boss')
+    expect(substitute(en['agents.webinarMagus_boss'], BRANDED_TOKENS)).toBe('Nova Boss')
     expect(substitute(en['updates.brand_subtitle'], BRANDED_TOKENS)).toBe('Acme version check')
     const restart = substitute(en['agents.confirm.hard_restart'], BRANDED_TOKENS)
     expect(restart).toContain('nova-channels')
     expect(restart).toContain('Nova conversation')
-    expect(restart).not.toMatch(/marveen/i)
-    expect(substitute(en['connectors.builtin.computer_use_html'], BRANDED_TOKENS)).not.toMatch(/marveen/i)
+    expect(restart).not.toMatch(/webinarMagus/i)
+    expect(substitute(en['connectors.builtin.computer_use_html'], BRANDED_TOKENS)).not.toMatch(/webinarMagus/i)
     expect(substitute(en['settings.desc.DASHBOARD_PUBLIC_URL'], BRANDED_TOKENS)).toContain('https://nova.example.com')
   })
 })
@@ -141,18 +141,18 @@ describe('i18n brand tokens keep a stock install byte-identical (en)', () => {
 describe('i18n brand tokens keep a stock install byte-identical (hu)', () => {
   it('renders the original Hungarian strings with default tokens', async () => {
     const hu = await loadLang('hu')
-    expect(substitute(hu['updates.brand_subtitle'], DEFAULT_TOKENS)).toBe('Marveen verzió ellenőrzés')
-    expect(substitute(hu['agents.marveen_boss'], DEFAULT_TOKENS)).toBe('Marveen Főnök')
-    expect(substitute(hu['agents.toast.marveen_restarted'], DEFAULT_TOKENS)).toBe('Marveen channels újraindítva')
+    expect(substitute(hu['updates.brand_subtitle'], DEFAULT_TOKENS)).toBe('WebinarMagus verzió ellenőrzés')
+    expect(substitute(hu['agents.webinarMagus_boss'], DEFAULT_TOKENS)).toBe('WebinarMagus Főnök')
+    expect(substitute(hu['agents.toast.webinarMagus_restarted'], DEFAULT_TOKENS)).toBe('WebinarMagus channels újraindítva')
     expect(substitute(hu['agents.confirm.hard_restart'], DEFAULT_TOKENS)).toBe(
-      'Hard restart a marveen-channels session-ön. A folyamatban lévő Marveen beszélgetés elveszik (memória megmarad). Folytatod?',
+      'Hard restart a webinarMagus-channels session-ön. A folyamatban lévő WebinarMagus beszélgetés elveszik (memória megmarad). Folytatod?',
     )
   })
 
-  it('carries the brand/agent names with non-default tokens and drops Marveen', async () => {
+  it('carries the brand/agent names with non-default tokens and drops WebinarMagus', async () => {
     const hu = await loadLang('hu')
-    expect(substitute(hu['agents.marveen_boss'], BRANDED_TOKENS)).toBe('Nova Főnök')
+    expect(substitute(hu['agents.webinarMagus_boss'], BRANDED_TOKENS)).toBe('Nova Főnök')
     expect(substitute(hu['updates.brand_subtitle'], BRANDED_TOKENS)).toBe('Acme verzió ellenőrzés')
-    expect(substitute(hu['agents.confirm.hard_restart'], BRANDED_TOKENS)).not.toMatch(/marveen/i)
+    expect(substitute(hu['agents.confirm.hard_restart'], BRANDED_TOKENS)).not.toMatch(/webinarMagus/i)
   })
 })

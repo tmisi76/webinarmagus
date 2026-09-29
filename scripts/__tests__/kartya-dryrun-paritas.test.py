@@ -81,7 +81,7 @@ def run(card_id, extra=(), root=TOKEN_ROOT):
     env['CLAUDECLAW_ROOT'] = root
     return subprocess.run(
         # A --author KIMONDVA megy, holott a LETREHOZO agon nem kotelezo: enelkul a felado
-        # csendben 'marveen' lenne, es a teszt sorai MAS agens neveben mennenek ki. (A teszt
+        # csendben 'webinarMagus' lenne, es a teszt sorai MAS agens neveben mennenek ki. (A teszt
         # egy korabbi valtozata azt allitotta, hogy az --author a letrehozo agon KOTELEZO --
         # 2026-09-08-an visszamerve ez NEM igaz: a kotelezoseg CSAK a komment-modra all, es a
         # letrehozo ag alapertelmezeset a kartya-ertesites-felado teszt 3. ellenorzese
@@ -143,8 +143,8 @@ check('10 token nelkul, de --no-msg mellett zold (az or az UZENET-utra szol)',
 # gondolkodas nelkul nekifutott. A paritas itt nem elmeleti: a negyedik utkozest pont az
 # elozetes ellenorzes elozne meg.
 seed('ELOZM1')
-# elso mozgatas MARVEEN neveben (eles), hogy legyen elozmeny-nyom
-run('ELOZM1', ('--comment-file', msgfile('ELOZM1'), '--author', 'Marveen', '--status', 'in_progress'))
+# elso mozgatas WEBINAR_MAGUS neveben (eles), hogy legyen elozmeny-nyom
+run('ELOZM1', ('--comment-file', msgfile('ELOZM1'), '--author', 'WebinarMagus', '--status', 'in_progress'))
 # majd MIRA neveben dry-run: MAS szerzo, 30 percen belul -> HANGOS figyelmeztetes kell
 d = run('ELOZM1', ('--comment-file', msgfile('ELOZM1'), '--author', 'Mira', '--status', 'planned', '--dry-run'))
 out_d = d.stdout + d.stderr
@@ -153,7 +153,7 @@ check('11 a dry-run ag is kiirja az elozmeny-figyelmeztetest',
 check('12 es a dry-run NEM allitja, hogy vegrehajtja',
       'most semmi nem irodik' in out_d and 'A mozgatast VEGREHAJTOM' not in out_d, f'{out_d!r}')
 # NEGATIV KONTROLL: ugyanaz a szerzo -> csak a halk sor, hangos NEM
-d2 = run('ELOZM1', ('--comment-file', msgfile('ELOZM1'), '--author', 'Marveen', '--status', 'planned', '--dry-run'))
+d2 = run('ELOZM1', ('--comment-file', msgfile('ELOZM1'), '--author', 'WebinarMagus', '--status', 'planned', '--dry-run'))
 out_d2 = d2.stdout + d2.stderr
 check('13 NEGATIV KONTROLL: sajat elozmenynel nincs hangos figyelmeztetes',
       'AZ ELOZO MEZOMOZGATAS' not in out_d2 and 'elozo mezomozgatas:' in out_d2, f'{out_d2!r}')
@@ -170,7 +170,7 @@ seed('TELJES1')
 _db = sqlite3.connect(DB_PATH)
 _db.execute('UPDATE kanban_cards SET title=?, assignee=NULL WHERE id=?', (HOSSZU, 'TELJES1'))
 _db.commit(); _db.close()
-run('TELJES1', ('--comment-file', msgfile('TELJES1'), '--author', 'Marveen',
+run('TELJES1', ('--comment-file', msgfile('TELJES1'), '--author', 'WebinarMagus',
                 '--title', 'TELJES1 uj rovid cim', '--assignee', 'samu'))
 _db = sqlite3.connect(DB_PATH)
 _nyom = _db.execute("SELECT content FROM kanban_comments WHERE card_id='TELJES1' AND "

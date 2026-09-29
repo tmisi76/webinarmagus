@@ -31,7 +31,7 @@ done
 if [ -n "$REFS" ]; then
   # VAULTNEMA912: vault-resolve now fails LOUD (exit 2 = malformed ref line,
   # exit 3 = missing secret) instead of silent success. DELIBERATE CHOICE
-  # (option a, measured with Marveen): the MCP server still starts. This
+  # (option a, measured with WebinarMagus): the MCP server still starts. This
   # wrapper's job is launching; a stale vault: reference must not become a
   # fleet-wide startup failure. The truth goes to stderr (vault-resolve has
   # already named the offending label/line there), and the RESOLVED SUBSET is

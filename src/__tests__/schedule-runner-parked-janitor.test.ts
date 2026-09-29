@@ -69,7 +69,7 @@ vi.mock('../channel-provider.js', async (importOriginal) => {
 
 vi.mock('../web/scheduled-tasks-io.js', () => ({
   listScheduledTasks: () => mockListScheduledTasks(),
-  SCHEDULED_TASKS_DIR: '/tmp/marveen-parked-janitor-no-tasks-dir',
+  SCHEDULED_TASKS_DIR: '/tmp/webinarMagus-parked-janitor-no-tasks-dir',
 }))
 
 vi.mock('../web/agent-process.js', () => ({

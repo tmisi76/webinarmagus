@@ -35,7 +35,7 @@ between settings files will not do it, because the main agent's settings file
 IS the global one.
 
 Identity comes from ledger_lib.agent_id_from_payload (LEDGERCWD828 / #1100):
-the session transcript path first, then MARVEEN_AGENT_ID, then cwd. The
+the session transcript path first, then WEBINAR_MAGUS_AGENT_ID, then cwd. The
 transcript path is fixed when the session starts, so an agent that later cds
 into another repo (devy working in molyo) still logs under its own name --
 measured 2026-08-29, both branches.

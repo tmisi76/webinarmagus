@@ -7,7 +7,7 @@ import { tmpdir } from 'node:os'
 // envelope's msg_id from provenance into protection, so its presence and
 // idempotency get the same pin as the other generated sections.
 
-const tmpRoot = mkdtempSync(join(tmpdir(), 'marveen-sysdir-test-'))
+const tmpRoot = mkdtempSync(join(tmpdir(), 'webinarMagus-sysdir-test-'))
 
 vi.mock('../config.js', () => ({
   PROJECT_ROOT: tmpRoot,

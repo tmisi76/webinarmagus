@@ -8,7 +8,7 @@ import { mkdtempSync, writeFileSync, readFileSync, mkdirSync } from 'node:fs'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 
-const tmpRoot = mkdtempSync(join(tmpdir(), 'marveen-skilltrap-test-'))
+const tmpRoot = mkdtempSync(join(tmpdir(), 'webinarMagus-skilltrap-test-'))
 
 vi.mock('../config.js', () => ({
   PROJECT_ROOT: tmpRoot,

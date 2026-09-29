@@ -19,7 +19,7 @@ vi.mock('../config.js', () => ({
   get CHANNEL_TOKEN() { return cfg.token },
   get CHANNEL_CHAT_ID() { return cfg.chatId },
   get ALLOWED_CHAT_ID() { return cfg.chatId },
-  MAIN_AGENT_ID: 'marveen',
+  MAIN_AGENT_ID: 'webinarMagus',
   PROJECT_ROOT: '/tmp/notify-placeholder-test',
 }))
 

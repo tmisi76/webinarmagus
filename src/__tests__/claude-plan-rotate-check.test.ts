@@ -43,7 +43,7 @@ const EMPTY_STATE: ClaudePlansState = { activePlanByAgent: {}, plans: {} }
 describe('decideAndRecord: preconditions (design 6.2)', () => {
   it('no-ops with fewer than 2 registered plans', () => {
     const result = decideAndRecord({
-      agentId: 'marveen',
+      agentId: 'webinarMagus',
       plans: [plan()],
       state: EMPTY_STATE,
       usageCollectRaw: usageCollect(),
@@ -54,7 +54,7 @@ describe('decideAndRecord: preconditions (design 6.2)', () => {
 
   it('no-ops when the agent has no active plan recorded yet (bootstrap gap)', () => {
     const result = decideAndRecord({
-      agentId: 'marveen',
+      agentId: 'webinarMagus',
       plans: [plan({ id: 'pro' }), plan({ id: 'team', label: 'Team' })],
       state: EMPTY_STATE,
       usageCollectRaw: usageCollect(),
@@ -64,9 +64,9 @@ describe('decideAndRecord: preconditions (design 6.2)', () => {
   })
 
   it('no-ops when the recorded active plan id no longer resolves (deleted/renamed)', () => {
-    const state: ClaudePlansState = { activePlanByAgent: { marveen: 'gone' }, plans: {} }
+    const state: ClaudePlansState = { activePlanByAgent: { webinarMagus: 'gone' }, plans: {} }
     const result = decideAndRecord({
-      agentId: 'marveen',
+      agentId: 'webinarMagus',
       plans: [plan({ id: 'pro' }), plan({ id: 'team', label: 'Team' })],
       state,
       usageCollectRaw: usageCollect(),
@@ -77,12 +77,12 @@ describe('decideAndRecord: preconditions (design 6.2)', () => {
 })
 
 describe('decideAndRecord: snapshot trust (fail open, mirrors quota-gate.ts)', () => {
-  const twoPlansState: ClaudePlansState = { activePlanByAgent: { marveen: 'pro' }, plans: {} }
+  const twoPlansState: ClaudePlansState = { activePlanByAgent: { webinarMagus: 'pro' }, plans: {} }
   const plans = [plan({ id: 'pro' }), plan({ id: 'team', label: 'Team' })]
 
   it('no-ops on an untrusted source (estimate)', () => {
     const result = decideAndRecord({
-      agentId: 'marveen', plans, state: twoPlansState,
+      agentId: 'webinarMagus', plans, state: twoPlansState,
       usageCollectRaw: usageCollect({ source: 'estimate', usedPercent: 99 }),
       nowMs: NOW,
     })
@@ -91,7 +91,7 @@ describe('decideAndRecord: snapshot trust (fail open, mirrors quota-gate.ts)', (
 
   it('no-ops on a snapshot with no claude section at all', () => {
     const result = decideAndRecord({
-      agentId: 'marveen', plans, state: twoPlansState,
+      agentId: 'webinarMagus', plans, state: twoPlansState,
       usageCollectRaw: { generated_at: new Date(NOW).toISOString() },
       nowMs: NOW,
     })
@@ -101,25 +101,25 @@ describe('decideAndRecord: snapshot trust (fail open, mirrors quota-gate.ts)', (
 
 describe('decideAndRecord: quiet ticks still record telemetry', () => {
   it('records the observation but prints nothing when under pressure', () => {
-    const state: ClaudePlansState = { activePlanByAgent: { marveen: 'pro' }, plans: {} }
+    const state: ClaudePlansState = { activePlanByAgent: { webinarMagus: 'pro' }, plans: {} }
     const plans = [plan({ id: 'pro' }), plan({ id: 'team', label: 'Team' })]
     const result = decideAndRecord({
-      agentId: 'marveen', plans, state,
+      agentId: 'webinarMagus', plans, state,
       usageCollectRaw: usageCollect({ usedPercent: 42 }),
       nowMs: NOW,
     })
     expect(result.printLine).toBeNull()
     expect(result.nextState).not.toBeNull()
-    expect(result.nextState?.activePlanByAgent.marveen).toBe('pro')
+    expect(result.nextState?.activePlanByAgent.webinarMagus).toBe('pro')
     expect(result.nextState?.plans.pro.windows.five_hour.usedPercent).toBe(42)
     expect(result.nextState?.plans.pro.windows.seven_day?.usedPercent).toBe(20)
   })
 
   it('records telemetry but prints nothing when near reset', () => {
-    const state: ClaudePlansState = { activePlanByAgent: { marveen: 'pro' }, plans: {} }
+    const state: ClaudePlansState = { activePlanByAgent: { webinarMagus: 'pro' }, plans: {} }
     const plans = [plan({ id: 'pro' }), plan({ id: 'team', label: 'Team' })]
     const result = decideAndRecord({
-      agentId: 'marveen', plans, state,
+      agentId: 'webinarMagus', plans, state,
       usageCollectRaw: usageCollect({ usedPercent: 95, resetsAt: NOW_S + 10 * 60 }),
       nowMs: NOW,
     })
@@ -130,24 +130,24 @@ describe('decideAndRecord: quiet ticks still record telemetry', () => {
 
 describe('decideAndRecord: rotate and no-alternative print exactly one structured line', () => {
   it('prints a ROTATE line naming the target and current labels/pct', () => {
-    const state: ClaudePlansState = { activePlanByAgent: { marveen: 'pro' }, plans: {} }
+    const state: ClaudePlansState = { activePlanByAgent: { webinarMagus: 'pro' }, plans: {} }
     const plans = [plan({ id: 'pro', label: 'Personal PRO' }), plan({ id: 'team', label: 'Team Seat' })]
     const result = decideAndRecord({
-      agentId: 'marveen', plans, state,
+      agentId: 'webinarMagus', plans, state,
       usageCollectRaw: usageCollect({ usedPercent: 95, resetsAt: NOW_S + 3600 }),
       nowMs: NOW,
     })
     expect(result.printLine).toBe(
-      'ROTATE agent=marveen target=team targetLabel=Team Seat currentLabel=Personal PRO currentPct=95 resetsInMin=60',
+      'ROTATE agent=webinarMagus target=team targetLabel=Team Seat currentLabel=Personal PRO currentPct=95 resetsInMin=60',
     )
-    expect(result.nextState?.activePlanByAgent.marveen).toBe('pro') // rotation itself is applied by the caller, not here
+    expect(result.nextState?.activePlanByAgent.webinarMagus).toBe('pro') // rotation itself is applied by the caller, not here
   })
 
   it('excludes a plan with channelsAllowed=false from candidacy', () => {
-    const state: ClaudePlansState = { activePlanByAgent: { marveen: 'pro' }, plans: {} }
+    const state: ClaudePlansState = { activePlanByAgent: { webinarMagus: 'pro' }, plans: {} }
     const plans = [plan({ id: 'pro' }), plan({ id: 'team', label: 'Team', channelsAllowed: false })]
     const result = decideAndRecord({
-      agentId: 'marveen', plans, state,
+      agentId: 'webinarMagus', plans, state,
       usageCollectRaw: usageCollect({ usedPercent: 95, resetsAt: NOW_S + 3600 }),
       nowMs: NOW,
     })
@@ -156,21 +156,21 @@ describe('decideAndRecord: rotate and no-alternative print exactly one structure
 
   it('prints a NO_ALTERNATIVE line when the only other plan is not channels-eligible', () => {
     const state: ClaudePlansState = {
-      activePlanByAgent: { marveen: 'pro' },
+      activePlanByAgent: { webinarMagus: 'pro' },
       plans: { team: { observedAt: NOW - 1000, source: 'authoritative', windows: { five_hour: { usedPercent: 96, resetsAt: NOW_S + 100 } } } },
     }
     const plans = [plan({ id: 'pro', label: 'Personal PRO' }), plan({ id: 'team', label: 'Team Seat', channelsAllowed: false })]
     const result = decideAndRecord({
-      agentId: 'marveen', plans, state,
+      agentId: 'webinarMagus', plans, state,
       usageCollectRaw: usageCollect({ usedPercent: 95, resetsAt: NOW_S + 3600 }),
       nowMs: NOW,
     })
-    expect(result.printLine).toBe('NO_ALTERNATIVE agent=marveen currentLabel=Personal PRO currentPct=95 resetsInMin=60')
+    expect(result.printLine).toBe('NO_ALTERNATIVE agent=webinarMagus currentLabel=Personal PRO currentPct=95 resetsInMin=60')
   })
 
   it('picks the plan with the most estimated free headroom among several candidates', () => {
     const state: ClaudePlansState = {
-      activePlanByAgent: { marveen: 'pro' },
+      activePlanByAgent: { webinarMagus: 'pro' },
       plans: {
         team: { observedAt: NOW - 1000, source: 'authoritative', windows: { five_hour: { usedPercent: 80, resetsAt: NOW_S + 100 } } },
         third: { observedAt: NOW - 1000, source: 'authoritative', windows: { five_hour: { usedPercent: 10, resetsAt: NOW_S + 100 } } },
@@ -178,7 +178,7 @@ describe('decideAndRecord: rotate and no-alternative print exactly one structure
     }
     const plans = [plan({ id: 'pro' }), plan({ id: 'team', label: 'Team' }), plan({ id: 'third', label: 'Third' })]
     const result = decideAndRecord({
-      agentId: 'marveen', plans, state,
+      agentId: 'webinarMagus', plans, state,
       usageCollectRaw: usageCollect({ usedPercent: 95, resetsAt: NOW_S + 3600 }),
       nowMs: NOW,
     })

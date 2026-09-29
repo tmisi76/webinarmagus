@@ -78,7 +78,7 @@ async function openPairingPanel(page: import('@playwright/test').Page, lang: 'hu
     r.fulfill({ status: 400, contentType: 'application/json', body: JSON.stringify(realErrorBody(BAD_LINE)) }))
 
   await page.addInitScript((l) => {
-    try { localStorage.setItem('marveen.lang', l) } catch { /* ignore */ }
+    try { localStorage.setItem('webinarMagus.lang', l) } catch { /* ignore */ }
   }, lang)
   await page.goto('/index.html')
   await page.evaluate((l) => {
@@ -102,7 +102,7 @@ test.describe('BRIDGEHU813 -- the pairing error in a real browser', () => {
     const text = (await msg.innerText()).trim()
     // The card's point: the English sentence must not be what the user reads.
     expect(text).not.toContain('comment must')
-    expect(text).not.toContain('marveen-remote:<uuid v4>')
+    expect(text).not.toContain('webinarMagus-remote:<uuid v4>')
     // Hungarian, with its accents intact (a mojibake render would fail here).
     expect(text).toContain('Másold ki újra a teljes sort a Bridge alkalmazásból')
     expect(text).not.toContain('auth.bridge.err.')

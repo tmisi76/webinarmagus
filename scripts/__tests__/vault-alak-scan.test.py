@@ -79,7 +79,7 @@ class KimenetSzerzodes(unittest.TestCase):
 class MintaSzukseg(unittest.TestCase):
     def test_a_harom_recept_alakot_megtalalja(self):
         proc, data = futtat({
-            'skills/a/SKILL.md': 'export X="<vault: MARVEEN-PAT>"\n',
+            'skills/a/SKILL.md': 'export X="<vault: WEBINAR_MAGUS-PAT>"\n',
             'skills/b/SKILL.md': "echo 'X=CIMKE' | node vault-resolve.mjs | cut -d= -f2-\n",
             'skills/c/SKILL.md': 'curl -o /tmp/ki.json https://x/api/vault/PAT\n',
         })
@@ -179,7 +179,7 @@ class BeegetettKulcsnev(unittest.TestCase):
 
     def test_PLACEHOLDER_nem_talalat(self):
         proc, data = futtat({
-            'skills/a/SKILL.md': 'export TOKEN="<vault: MARVEEN-PAT-CIMKE>"\n',
+            'skills/a/SKILL.md': 'export TOKEN="<vault: WEBINAR_MAGUS-PAT-CIMKE>"\n',
             'skills/b/SKILL.md': 'api_key = "your-api-key-here-xxxx"\n',
             'skills/c/SKILL.md': 'secret = "example-secret-value-1"\n',
         })

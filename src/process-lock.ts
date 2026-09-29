@@ -29,7 +29,7 @@ export interface ProcessLockContext {
   uid: number | null
   /**
    * This process's own resolved project-root directory (e.g. `/home/user/
-   * marveen`, NOT `/home/user/marveen-worktrees/some-branch`), used to scope
+   * webinarMagus`, NOT `/home/user/webinarMagus-worktrees/some-branch`), used to scope
    * `findOwnBinaryMatches` to genuine predecessors of THIS checkout. Null on
    * platforms/setups where it cannot be resolved -- binary-pattern matching
    * then falls back to the old unscoped behavior (see `getProcessCwd`).
@@ -108,7 +108,7 @@ export function findOwnNodeHolders(port: number, ctx: ProcessLockContext): numbe
  * -- and SIGTERM -- every OTHER worktree's (including the live production
  * instance's) same-named process, since a worktree checkout deliberately
  * shares the exact same file layout. Confirmed live 2026-07-15: a merge
- * worktree's test boot killed the live `marveen-dashboard` systemd service
+ * worktree's test boot killed the live `webinarMagus-dashboard` systemd service
  * this way, on a completely different port. See
  * cross-worktree-dashboard-binary-pattern-kill-bug memory for the incident.
  */

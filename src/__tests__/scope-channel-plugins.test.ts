@@ -66,7 +66,7 @@ describe('scopeChannelPlugins', () => {
 
 // CATASTROPHE-BRANCH regression guard: the spawn-time plugin scoping must NEVER
 // run for the MAIN agent, or scopeChannelPlugins(null) would disable the owner's
-// telegram channel (Szabi's primary line). marveen is structurally outside this
+// telegram channel (Szabi's primary line). webinarMagus is structurally outside this
 // path (not in agents/, launched via channels.sh), but this locks the explicit
 // guard so a future refactor cannot regress it.
 describe('main-agent telegram channel is protected from spawn-time scoping', () => {

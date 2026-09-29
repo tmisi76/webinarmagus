@@ -161,7 +161,7 @@ def main():
     env['KARTYA_DB'] = DB_PATH
     env['CLAUDECLAW_ROOT'] = SANDBOX_ROOT
     env['KARTYA_API'] = 'http://127.0.0.1:1/api/messages'
-    p = subprocess.run([sys.executable, SCRIPT, '--id', 'UJKARTYA906', '--assignee', 'marveen', '--author', 'Boni',
+    p = subprocess.run([sys.executable, SCRIPT, '--id', 'UJKARTYA906', '--assignee', 'webinarMagus', '--author', 'Boni',
                         '--title', 'UJKARTYA906 uj kartya teszt', '--no-msg'],
                        capture_output=True, text=True, env=env, timeout=30)
     check('7 letrehozo ag lefutott', p.returncode == 0, p.stdout + p.stderr)
@@ -172,7 +172,7 @@ def main():
     d = tempfile.mkdtemp(prefix='kartya-m3-')
     mf = os.path.join(d, 'm.txt')
     open(mf, 'w', encoding='utf-8').write('Kartya ELLENT906: ellentmondo kapcsolok.')
-    p = subprocess.run([sys.executable, SCRIPT, '--id', 'ELLENT906', '--assignee', 'marveen', '--author', 'Boni',
+    p = subprocess.run([sys.executable, SCRIPT, '--id', 'ELLENT906', '--assignee', 'webinarMagus', '--author', 'Boni',
                         '--title', 'ellentmondas teszt', '--msg-file', mf, '--no-msg'],
                        capture_output=True, text=True, env=env, timeout=30)
     # A puszta nem-nulla exit itt NEM eleg: a kapu nelkul is elbukna az uzenetkuldesen (a
@@ -248,7 +248,7 @@ def main():
               for c in comments('FELELOSA906')), f'kapott: {comments("FELELOSA906")}')
 
     # 15. A KEVERES-KAPU HATARA. Ki kellett engedni az --assignee-hoz (ha visszazarul, a 14.
-    #     teszt bukik), 2026-09-19 ota pedig a --desc-file-hoz is (EKEZETKAPU919, Marveen
+    #     teszt bukik), 2026-09-19 ota pedig a --desc-file-hoz is (EKEZETKAPU919, WebinarMagus
     #     dontese): a leiras volt az egyetlen mezo, amit letrehozas utan senki nem tudott
     #     javitani. EZ A SOR KORABBAN A TILTAST ROGZITETTE, es SZANDEKOSAN, a viselkedes-
     #     valtassal EGY PR-ben irodott at -- egy kiadott regresszio-kontrollt nem hagyunk
@@ -328,7 +328,7 @@ def main():
     env = dict(os.environ)
     env['KARTYA_DB'] = DB_PATH; env['CLAUDECLAW_ROOT'] = SANDBOX_ROOT
     env['KARTYA_API'] = 'http://127.0.0.1:1/api/messages'
-    p = subprocess.run([sys.executable, SCRIPT, '--id', 'HORGONYUJ906', '--assignee', 'marveen', '--author', 'Boni',
+    p = subprocess.run([sys.executable, SCRIPT, '--id', 'HORGONYUJ906', '--assignee', 'webinarMagus', '--author', 'Boni',
                         '--title', 'cim azonosito nelkul', '--no-msg'],
                        capture_output=True, text=True, env=env, timeout=30)
     check('22 a letrehozo ag is megtagadja a horgony nelkuli cimet',
@@ -356,7 +356,7 @@ def main():
 
     # 24. Az --assignee-uj a LETREHOZO agon ertelmetlen -- egy nem hato kapcsolo pont az a
     #     hibaosztaly, amit ez az eszkoz ket kore zar (a --status csendes elvesztese).
-    p = subprocess.run([sys.executable, SCRIPT, '--id', 'UJFLAG906', '--assignee', 'marveen', '--author', 'Boni',
+    p = subprocess.run([sys.executable, SCRIPT, '--id', 'UJFLAG906', '--assignee', 'webinarMagus', '--author', 'Boni',
                         '--title', 'UJFLAG906 teszt', '--no-msg', '--assignee-uj'],
                        capture_output=True, text=True, env=env, timeout=30)
     check('24 megtagadva az --assignee-uj a letrehozo agon',
@@ -430,7 +430,7 @@ def main():
           p.stdout + p.stderr)
 
     # 32. A SZERZO KIMONDOTT (KARTYADRYRUN907, 2026-09-08). Komment-modban az --author korabban
-    #     CSENDBEN 'Marveen'-re esett: a kimenet OK-t mondott, a kartyan pedig MAS neve allt.
+    #     CSENDBEN 'WebinarMagus'-re esett: a kimenet OK-t mondott, a kartyan pedig MAS neve allt.
     #     A javitas 2026-09-07-en egy VERZIOKOVETETLEN peldanyba ment, es a v1.37.0 kiadas
     #     nemán visszaallitotta -- ezert all ITT, a repoban, egy teszt: enelkul a kovetkezo
     #     kiadas ugyanugy vissza tudja hozni, es semmi nem szol rola.
@@ -456,9 +456,9 @@ def main():
     p = comment('SZERZO907', 'Kartya SZERZO907: kimondott szerzovel.')
     check('33 kimondott --author-ral zold', p.returncode == 0, p.stdout + p.stderr)
     c = comments('SZERZO907')
-    check('33 a fejlec Boni-t nevezi, nem Marveent',
+    check('33 a fejlec Boni-t nevezi, nem WebinarMagust',
           c and c[-1].startswith('[Boni '), f'kapott: {c[-1][:40] if c else None!r}')
-    # A FEJLEC ES AZ OSZLOP KET KULON HELY: 2026-09-07-en MINDKETTO 'Marveen'-re esett, tehat
+    # A FEJLEC ES AZ OSZLOP KET KULON HELY: 2026-09-07-en MINDKETTO 'WebinarMagus'-re esett, tehat
     # egy fejlec-only ellenorzes zold maradna, ha csak az oszlop romlana el.
     _db = sqlite3.connect(DB_PATH)
     _szerzo = _db.execute("SELECT author FROM kanban_comments WHERE card_id='SZERZO907'"

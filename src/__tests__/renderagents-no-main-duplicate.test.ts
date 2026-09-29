@@ -8,7 +8,7 @@ const appSource = readFileSync(join(__dirname, '..', '..', 'web', 'app.js'), 'ut
 
 // Structural guard: renderAgents() must skip the main agent entry from the
 // /api/agents list, because the main agent is already rendered as the dedicated
-// Marveen card. Without the guard a second card appears once the agents/<id>/
+// WebinarMagus card. Without the guard a second card appears once the agents/<id>/
 // config directory is created (regression introduced after #40).
 describe('renderAgents: main agent must not appear as a second card', () => {
   it('the agents for-loop contains a mainAgentId() skip guard', () => {

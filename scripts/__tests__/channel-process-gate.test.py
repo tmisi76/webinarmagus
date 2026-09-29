@@ -289,9 +289,9 @@ class DefaultStatePathTest(unittest.TestCase):
     """The default state path must come from the INSTALL ROOT, not from $HOME.
 
     Why this class exists (upstream review, 2026-09-15): the old default was
-    `~/marveen/store/...`, which assumes the checkout sits at a fixed path under
+    `~/webinarMagus/store/...`, which assumes the checkout sits at a fixed path under
     the home directory. On an install rooted elsewhere the gate CREATED an orphan
-    `~/marveen/store` -- os.makedirs is permissive -- and parked its state where
+    `~/webinarMagus/store` -- os.makedirs is permissive -- and parked its state where
     nobody looks.
 
     It is a separate class because every other test in this file passes
@@ -322,8 +322,8 @@ class DefaultStatePathTest(unittest.TestCase):
             self.assertTrue(
                 os.path.exists(os.path.join(root, "store", ".channel-process-gate-state.json")),
                 "the state did not land under the install root: " + r.stdout + r.stderr)
-            self.assertFalse(os.path.exists(os.path.join(home, "marveen")),
-                             "the gate conjured an orphan ~/marveen")
+            self.assertFalse(os.path.exists(os.path.join(home, "webinarMagus")),
+                             "the gate conjured an orphan ~/webinarMagus")
 
     def test_missing_store_is_a_measurement_error_and_creates_nothing(self):
         with tempfile.TemporaryDirectory() as root, tempfile.TemporaryDirectory() as home:
@@ -331,8 +331,8 @@ class DefaultStatePathTest(unittest.TestCase):
             self.assertEqual(r.returncode, 2, r.stdout + r.stderr)
             self.assertFalse(os.path.exists(os.path.join(root, "store")),
                              "the gate created store/ in a tree it does not own")
-            self.assertFalse(os.path.exists(os.path.join(home, "marveen")),
-                             "the gate conjured an orphan ~/marveen")
+            self.assertFalse(os.path.exists(os.path.join(home, "webinarMagus")),
+                             "the gate conjured an orphan ~/webinarMagus")
 
 
 if __name__ == "__main__":

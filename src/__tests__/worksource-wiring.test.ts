@@ -49,9 +49,9 @@ describe('enqueueWorksourceItemAt', () => {
   })
 
   it('carries meta through, so the agent can see who sent it', () => {
-    enqueueWorksourceItemAt(root, 'msg-2', 'x', { from: 'marveen-is', message_id: 2 })
+    enqueueWorksourceItemAt(root, 'msg-2', 'x', { from: 'webinarMagus-is', message_id: 2 })
     const item = JSON.parse(readFileSync(join(root, 'pending', 'msg-2.json'), 'utf8'))
-    expect(item.meta.from).toBe('marveen-is')
+    expect(item.meta.from).toBe('webinarMagus-is')
     expect(item.meta.message_id).toBe(2)
   })
 

@@ -100,14 +100,14 @@ trap 'on_error $LINENO' ERR
 clear
 echo ""
 echo -e "${BOLD}  ▐▛███▜▌   Webinár Mágus${NC}"
-if [[ "${MARVEEN_LANG:-hu}" == "en" ]]; then
+if [[ "${WEBINAR_MAGUS_LANG:-hu}" == "en" ]]; then
   echo -e "${BOLD} ▝▜█████▛▘  Your AI team, running while you sleep.${NC}"
 else
   echo -e "${BOLD} ▝▜█████▛▘  $(_t tagline)${NC}"
 fi
 echo -e "${DIM}   ▘▘ ▝▝${NC}"
 echo ""
-if [[ "${MARVEEN_LANG:-hu}" == "en" ]]; then
+if [[ "${WEBINAR_MAGUS_LANG:-hu}" == "en" ]]; then
   echo -e "${DIM}  Setup wizard - macOS${NC}"
 else
   echo -e "${DIM}$(_t macos.wizard_title)${NC}"
@@ -704,14 +704,14 @@ if [ -f "$INSTALL_DIR/scripts/ensure-managed-channels-enabled.sh" ]; then
   echo -e "  Managed-settings channel-kapu ellenorzese..."
   # ORGGATESILENT806: the gate script must never fail the install (exit 0 on
   # every path -- a personal org is a legitimate no-op), but its OUTCOME must
-  # not vanish either: it prints a MARVEEN_CHANNELS_GATE=ok|manual verdict
+  # not vanish either: it prints a WEBINAR_MAGUS_CHANNELS_GATE=ok|manual verdict
   # line, and the final summary below repeats it -- with the exact root
   # command when manual. Silent skipping was the bug, not skipping.
   CHANNELS_GATE_OUT="$(bash "$INSTALL_DIR/scripts/ensure-managed-channels-enabled.sh" 2>&1 || true)"
   # The verdict line is machine-facing; the customer sees only the human lines.
-  echo "$CHANNELS_GATE_OUT" | grep -v "MARVEEN_CHANNELS_GATE=" || true
+  echo "$CHANNELS_GATE_OUT" | grep -v "WEBINAR_MAGUS_CHANNELS_GATE=" || true
   case "$CHANNELS_GATE_OUT" in
-    *MARVEEN_CHANNELS_GATE=ok*) CHANNELS_GATE_STATE="ok" ;;
+    *WEBINAR_MAGUS_CHANNELS_GATE=ok*) CHANNELS_GATE_STATE="ok" ;;
     *) CHANNELS_GATE_STATE="manual" ;;
   esac
 fi
@@ -721,16 +721,16 @@ BOT_NAME=${BOT_NAME:-"Webinár Mágus"}
 
 # Derive the ASCII slug the backend uses everywhere (tmux sessions, plist
 # labels, DB agent_id, API routing). NFKD + ASCII + lowercase dashes, empty
-# fallback to "marveen" so we never end up with a blank identifier.
+# fallback to "webinarMagus" so we never end up with a blank identifier.
 MAIN_AGENT_ID=$(python3 - "$BOT_NAME" <<'PYEOF'
 import sys, unicodedata, re
 s = sys.argv[1].strip()
 s = unicodedata.normalize('NFKD', s).encode('ASCII', 'ignore').decode()
 s = re.sub(r'[^a-zA-Z0-9]+', '-', s).strip('-').lower()
-print(s or 'marveen')
+print(s or 'webinarMagus')
 PYEOF
 )
-if [ "$MAIN_AGENT_ID" != "marveen" ]; then
+if [ "$MAIN_AGENT_ID" != "webinarMagus" ]; then
   echo -e "  ${DIM}$(_t macos.agent_id_info)${MAIN_AGENT_ID}${NC}"
 fi
 
@@ -919,7 +919,7 @@ if [ -n "${MACOS_OAUTH_TOKEN_INPUT:-}" ]; then
     # Keychain OAuth session -- which periodically expires and 401s the bot
     # into a parked TUI that the router reads as busy, so the channel goes
     # silent with no error (the confirmed root cause of the 2026-07-23
-    # marveen-channels outage). The setting existed but nothing ever turned
+    # webinarMagus-channels outage). The setting existed but nothing ever turned
     # it on, so every default install was wired to that failure mode.
     #
     # Only in THIS branch, i.e. only when the installer just captured the
@@ -1022,7 +1022,7 @@ fi
 
 # Scaffold default scheduled tasks into ~/.claude/scheduled-tasks/. Templates
 # carry {{MAIN_AGENT_ID}} placeholders so tasks target the user's chosen agent
-# slug rather than hardcoded "marveen". Skip task dirs that already exist --
+# slug rather than hardcoded "webinarMagus". Skip task dirs that already exist --
 # never overwrite user customizations.
 SCHED_TPL_DIR="$INSTALL_DIR/templates/scheduled-tasks"
 SCHED_TARGET_DIR="$HOME/.claude/scheduled-tasks"

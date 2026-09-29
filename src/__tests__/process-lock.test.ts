@@ -202,18 +202,18 @@ describe('findOwnBinaryMatches', () => {
   describe('cross-worktree scoping (2026-07-15 fix)', () => {
     it('excludes a same-argv-pattern process running from a DIFFERENT project root', () => {
       const procs: MockProc[] = [
-        { pid: 200, uid: 501, cmd: 'node', args: 'node dist/index.js', alive: true, cwd: '/home/user/marveen-worktrees/other-branch' },
+        { pid: 200, uid: 501, cmd: 'node', args: 'node dist/index.js', alive: true, cwd: '/home/user/webinarMagus-worktrees/other-branch' },
       ]
-      const { ctx, logs } = makeCtx({ selfProjectRoot: '/home/user/marveen', procs })
+      const { ctx, logs } = makeCtx({ selfProjectRoot: '/home/user/webinarMagus', procs })
       expect(findOwnBinaryMatches(/dist\/index\.js/, ctx)).toEqual([])
       expect(logs.some(l => l.level === 'warn' && /different project root/.test(l.msg))).toBe(true)
     })
 
     it('includes a same-argv-pattern process running from the SAME project root', () => {
       const procs: MockProc[] = [
-        { pid: 200, uid: 501, cmd: 'node', args: 'node dist/index.js', alive: true, cwd: '/home/user/marveen' },
+        { pid: 200, uid: 501, cmd: 'node', args: 'node dist/index.js', alive: true, cwd: '/home/user/webinarMagus' },
       ]
-      const { ctx } = makeCtx({ selfProjectRoot: '/home/user/marveen', procs })
+      const { ctx } = makeCtx({ selfProjectRoot: '/home/user/webinarMagus', procs })
       expect(findOwnBinaryMatches(/dist\/index\.js/, ctx)).toEqual([200])
     })
 
@@ -226,7 +226,7 @@ describe('findOwnBinaryMatches', () => {
       const procs: MockProc[] = [
         { pid: 200, uid: 501, cmd: 'node', args: 'node dist/index.js', alive: true, cwd: null },
       ]
-      const { ctx } = makeCtx({ selfProjectRoot: '/home/user/marveen', procs })
+      const { ctx } = makeCtx({ selfProjectRoot: '/home/user/webinarMagus', procs })
       // Pre-fix this returned [] (null -> exclude); the fix keeps it reclaimable.
       expect(findOwnBinaryMatches(/dist\/index\.js/, ctx)).toEqual([200])
     })
@@ -253,15 +253,15 @@ describe('findOwnBinaryMatches', () => {
     // "argv already vouched" path -- it must stay reclaimable.
     it('keeps a legit self-orphan whose cwd differs from PROJECT_ROOT but argv is ours', () => {
       const procs: MockProc[] = [
-        { pid: 200, uid: 501, cmd: 'node', args: 'node /home/user/marveen/dist/index.js', alive: true, cwd: null },
+        { pid: 200, uid: 501, cmd: 'node', args: 'node /home/user/webinarMagus/dist/index.js', alive: true, cwd: null },
       ]
-      const { ctx } = makeCtx({ selfProjectRoot: '/home/user/marveen', procs })
+      const { ctx } = makeCtx({ selfProjectRoot: '/home/user/webinarMagus', procs })
       expect(findOwnBinaryMatches(/dist\/index\.js/, ctx)).toEqual([200])
     })
 
     it('falls back to unscoped (old) behavior when selfProjectRoot itself is unresolvable', () => {
       const procs: MockProc[] = [
-        { pid: 200, uid: 501, cmd: 'node', args: 'node dist/index.js', alive: true, cwd: '/home/user/marveen-worktrees/other-branch' },
+        { pid: 200, uid: 501, cmd: 'node', args: 'node dist/index.js', alive: true, cwd: '/home/user/webinarMagus-worktrees/other-branch' },
       ]
       const { ctx } = makeCtx({ selfProjectRoot: null, procs })
       expect(findOwnBinaryMatches(/dist\/index\.js/, ctx)).toEqual([200])
@@ -274,17 +274,17 @@ describe('findOwnBinaryMatches', () => {
       const procs: MockProc[] = [
         { pid: 200, uid: 501, cmd: 'node', alive: true, cwd: '/some/other/checkout' },
       ]
-      const { ctx } = makeCtx({ selfProjectRoot: '/home/user/marveen', procs, portHolders: { 3420: [200] } })
+      const { ctx } = makeCtx({ selfProjectRoot: '/home/user/webinarMagus', procs, portHolders: { 3420: [200] } })
       expect(findOwnNodeHolders(3420, ctx)).toEqual([200])
     })
 
     it('multiple worktrees: only the same-root instance is matched, siblings are left alone', () => {
       const procs: MockProc[] = [
-        { pid: 200, uid: 501, cmd: 'node', args: 'node dist/index.js', alive: true, cwd: '/home/user/marveen' },
-        { pid: 300, uid: 501, cmd: 'node', args: 'node dist/index.js', alive: true, cwd: '/home/user/marveen-worktrees/branch-a' },
-        { pid: 400, uid: 501, cmd: 'node', args: 'node dist/index-scratch.js', alive: true, cwd: '/home/user/marveen-worktrees/branch-b' },
+        { pid: 200, uid: 501, cmd: 'node', args: 'node dist/index.js', alive: true, cwd: '/home/user/webinarMagus' },
+        { pid: 300, uid: 501, cmd: 'node', args: 'node dist/index.js', alive: true, cwd: '/home/user/webinarMagus-worktrees/branch-a' },
+        { pid: 400, uid: 501, cmd: 'node', args: 'node dist/index-scratch.js', alive: true, cwd: '/home/user/webinarMagus-worktrees/branch-b' },
       ]
-      const { ctx } = makeCtx({ selfProjectRoot: '/home/user/marveen-worktrees/branch-a', procs })
+      const { ctx } = makeCtx({ selfProjectRoot: '/home/user/webinarMagus-worktrees/branch-a', procs })
       expect(findOwnBinaryMatches(/dist\/index\.js/, ctx)).toEqual([300])
     })
   })

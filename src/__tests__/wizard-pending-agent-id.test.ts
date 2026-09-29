@@ -6,8 +6,8 @@ import { join } from 'node:path'
 // pairing" while the agent's Channel view listed the very same request.
 //
 // Cause, traced through the code: the wizard asks mainAgentId(), which falls
-// back to the literal 'marveen' until /api/marveen has populated
-// window._marveen. On a renamed install that literal is NOT the main agent, so
+// back to the literal 'webinarMagus' until /api/webinarMagus has populated
+// window._webinarMagus. On a renamed install that literal is NOT the main agent, so
 // the backend takes its sub-agent branch (agents.ts: name !== MAIN_AGENT_ID &&
 // !existsSync(agentDir(name))) and answers 404 -- which the wizard then parsed
 // as a body and turned into an empty list. The Channel view uses the selected
@@ -50,7 +50,7 @@ describe('PAIRAPPROVE1: the wizard resolves the real agent id before asking', ()
   it('the boot-race guard still exists and is what we reuse', () => {
     expect(APP).toContain('async function ensureMainAgentLoaded()')
     // it must remain a no-op once the id is known, or every poll refetches
-    expect(APP).toMatch(/async function ensureMainAgentLoaded\(\)\s*\{\s*\n\s*if \(window\._marveen\?\.agentId\) return/)
+    expect(APP).toMatch(/async function ensureMainAgentLoaded\(\)\s*\{\s*\n\s*if \(window\._webinarMagus\?\.agentId\) return/)
   })
 
   it('awaits the guard BEFORE fetching pending (order is the whole fix)', () => {
@@ -86,7 +86,7 @@ describe('PAIRAPPROVE1: the wizard resolves the real agent id before asking', ()
   })
 
   it('leaves the mainAgentId fallback alone (other call sites depend on it)', () => {
-    expect(APP).toMatch(/return window\._marveen\?\.agentId \|\| 'marveen'/)
+    expect(APP).toMatch(/return window\._webinarMagus\?\.agentId \|\| 'webinarMagus'/)
   })
 
   it('keeps the expiry filter, which is correct (the plugin writes ms)', () => {

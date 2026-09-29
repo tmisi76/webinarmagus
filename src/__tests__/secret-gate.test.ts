@@ -143,7 +143,7 @@ describe('detector 3: channel material (the one that would have caught 2026-07)'
 
   it('blocks a telegram update dump and a quoted agent transcript', () => {
     expect(runGate([f('a.json', '{"update_id": 8812, "text": "szia"}')]).ok).toBe(false);
-    expect(runGate([f('b.md', '[Uzenet @marveen-tol -- trusted]: allapot')]).ok).toBe(false);
+    expect(runGate([f('b.md', '[Uzenet @webinarMagus-tol -- trusted]: allapot')]).ok).toBe(false);
   });
 
   it('the wrapper tag ALONE is not enough -- this repo implements the framing', () => {

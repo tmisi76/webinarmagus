@@ -2,7 +2,7 @@
 """Test the sender attribution of scripts/kartya-es-ertesites.py (KARTYAKULDO906).
 
 Boni's finding (msg 20254): the tool posted every agent's card notification with
-`from: 'marveen'` hardcoded, so a reader would attribute someone else's measurement
+`from: 'webinarMagus'` hardcoded, so a reader would attribute someone else's measurement
 to the main agent. It also mailed a self-assigned card back to its own author.
 
 Drives the script as a subprocess against an isolated DB (KARTYA_DB) and a local
@@ -105,11 +105,11 @@ def main():
     p = run('KULDOA906', 'samu', 'Kartya: KULDOA906 -- Boni merese, Samunak.', port,
             extra=('--from', 'boni'))
     check('1 lefutott', p.returncode == 0, p.stdout + p.stderr)
-    check('1 felado == boni (nem marveen)', POSTED and POSTED[0]['from'] == 'boni',
+    check('1 felado == boni (nem webinarMagus)', POSTED and POSTED[0]['from'] == 'boni',
           f'kapott: {POSTED[0]["from"] if POSTED else "semmi"}')
     check('1 cimzett == samu', POSTED and POSTED[0]['to'] == 'samu')
 
-    # 2. --from nelkul az --author dont; ez tartja a regi viselkedest (--author nelkul: marveen).
+    # 2. --from nelkul az --author dont; ez tartja a regi viselkedest (--author nelkul: webinarMagus).
     POSTED.clear()
     p = run('KULDOB906', 'samu', 'Kartya: KULDOB906 -- szerzo dont a feladorol.', port,
             extra=('--author', 'Boni'))
@@ -117,10 +117,10 @@ def main():
     check('2 felado az --author-bol == boni', POSTED and POSTED[0]['from'] == 'boni',
           f'kapott: {POSTED[0]["from"] if POSTED else "semmi"}')
 
-    # 3. A CSENDES 'marveen' ALAPERTELMEZES SZANDEKOSAN MEGSZUNT (KARTYAKULDO908, 2026-09-08).
+    # 3. A CSENDES 'webinarMagus' ALAPERTELMEZES SZANDEKOSAN MEGSZUNT (KARTYAKULDO908, 2026-09-08).
     #    EZ AZ ELLENORZES KORABBAN AZ ELLENKEZOJET ALLITOTTA, es a megfordulasa DONTES, nem elirás:
     #    2026-09-07-ig a --author es --from nelkuli futas felado nelkul is kikuldte az ertesitest,
-    #    a koordinator (marveen) neveben. Mira merte (21680), mi ennek az ara: Tomi olyan
+    #    a koordinator (webinarMagus) neveben. Mira merte (21680), mi ennek az ara: Tomi olyan
     #    feladat-kiosztast kapott, ami ugy nezett ki, mintha a FO-AGENS adta volna, holott a
     #    kartya Mirae volt -- es visszakerdezni is a koordinatornak kerdezett volna vissza.
     #    A hiba iranya a rossz: FELFELE attribual, tehat SULYT ad egy kerésnek, amit nem az
@@ -148,7 +148,7 @@ def main():
     p = run('KULDOC2906', 'samu', 'Kartya: KULDOC2906 -- kimondott szerzovel.', port,
             extra=('--author', 'Boni'))
     check('3 kimondott szerzovel ugyanaz a futas zold', p.returncode == 0, p.stdout + p.stderr)
-    check('3 es a felado boni, nem marveen', POSTED and POSTED[0]['from'] == 'boni',
+    check('3 es a felado boni, nem webinarMagus', POSTED and POSTED[0]['from'] == 'boni',
           f'kapott: {POSTED[0]["from"] if POSTED else "semmi"}')
 
     # 4. ONHUROK: felado == felelos -> a koordinatorhoz megy, es ki is mondja.
@@ -158,7 +158,7 @@ def main():
     check('4 lefutott', p.returncode == 0, p.stdout + p.stderr)
     check('4 nem onmagahoz megy', POSTED and POSTED[0]['to'] != 'boni',
           f'kapott: {POSTED[0]["to"] if POSTED else "semmi"}')
-    check('4 a koordinatorhoz megy', POSTED and POSTED[0]['to'] == 'marveen')
+    check('4 a koordinatorhoz megy', POSTED and POSTED[0]['to'] == 'webinarMagus')
     check('4 felado tovabbra is boni', POSTED and POSTED[0]['from'] == 'boni')
     check('4 KIMONDVA a kimeneten', 'ATIRANYITVA' in p.stdout, p.stdout)
     check('4 KIMONDVA az uzenet torzseben', POSTED and 'ATIRANYITVA' in POSTED[0]['content'])

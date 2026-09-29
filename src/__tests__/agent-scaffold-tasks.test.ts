@@ -36,12 +36,12 @@ describe('ensureDefaultScheduledTasks JSON-rewrite (task-config.json)', () => {
     rmSync(tmp, { recursive: true, force: true })
   })
 
-  it('rewrites the agent field to MAIN_AGENT_ID on a hardcoded "marveen" config', () => {
+  it('rewrites the agent field to MAIN_AGENT_ID on a hardcoded "webinarMagus" config', () => {
     const src = join(tmp, 'src.json')
     const dest = join(tmp, 'dest.json')
     writeFileSync(src, JSON.stringify({
       schedule: '0 9 * * *',
-      agent: 'marveen',
+      agent: 'webinarMagus',
       enabled: true,
       type: 'task',
     }))
@@ -90,29 +90,29 @@ describe('ensureDefaultScheduledTasks JSON-rewrite (task-config.json)', () => {
     // look like a different bug entirely.
     const src = join(tmp, 'src.json')
     const dest = join(tmp, 'dest.json')
-    const corrupted = '{\n  "schedule": "0 9 * * *",\n<<<<<<< HEAD\n  "agent": "marveen"\n=======\n'
+    const corrupted = '{\n  "schedule": "0 9 * * *",\n<<<<<<< HEAD\n  "agent": "webinarMagus"\n=======\n'
     writeFileSync(src, corrupted)
     rewriteAgentField(src, dest, 'host-agent')
     expect(existsSync(dest)).toBe(true)
     expect(readFileSync(dest, 'utf-8')).toBe(corrupted)
   })
 
-  it('preserves non-agent string fields containing the literal "marveen"', () => {
+  it('preserves non-agent string fields containing the literal "webinarMagus"', () => {
     // Conservative scope: only the `agent` field is rewritten, even if
-    // another field happens to contain the string "marveen" (e.g. a
-    // task `type` named "marveen-heartbeat" in a hypothetical future
+    // another field happens to contain the string "webinarMagus" (e.g. a
+    // task `type` named "webinarMagus-heartbeat" in a hypothetical future
     // task). A blunt string replace would corrupt unrelated fields.
     const src = join(tmp, 'src.json')
     const dest = join(tmp, 'dest.json')
     writeFileSync(src, JSON.stringify({
-      agent: 'marveen',
-      type: 'marveen-heartbeat',
-      description: 'pings the marveen hub',
+      agent: 'webinarMagus',
+      type: 'webinarMagus-heartbeat',
+      description: 'pings the webinarMagus hub',
     }))
     rewriteAgentField(src, dest, 'host-agent')
     const parsed = JSON.parse(readFileSync(dest, 'utf-8'))
     expect(parsed.agent).toBe('host-agent')
-    expect(parsed.type).toBe('marveen-heartbeat')
-    expect(parsed.description).toBe('pings the marveen hub')
+    expect(parsed.type).toBe('webinarMagus-heartbeat')
+    expect(parsed.description).toBe('pings the webinarMagus hub')
   })
 })

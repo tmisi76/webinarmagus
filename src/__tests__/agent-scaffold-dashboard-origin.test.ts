@@ -36,11 +36,11 @@ describe('resolveDashboardOrigin', () => {
   })
 
   it('uses the supplied public URL when set', () => {
-    expect(resolveDashboardOrigin('https://marveen.example.com', 3420)).toBe('https://marveen.example.com')
+    expect(resolveDashboardOrigin('https://webinarMagus.example.com', 3420)).toBe('https://webinarMagus.example.com')
   })
 
   it('strips a trailing slash from the public URL', () => {
-    expect(resolveDashboardOrigin('https://marveen.example.com/', 3420)).toBe('https://marveen.example.com')
+    expect(resolveDashboardOrigin('https://webinarMagus.example.com/', 3420)).toBe('https://webinarMagus.example.com')
   })
 
   it('strips a trailing slash from a localhost fallback (non-standard port)', () => {
@@ -51,11 +51,11 @@ describe('resolveDashboardOrigin', () => {
 
   it('does not strip a path prefix from the public URL', () => {
     // An operator might host the dashboard under a sub-path.
-    expect(resolveDashboardOrigin('https://example.com/marveen', 3420)).toBe('https://example.com/marveen')
+    expect(resolveDashboardOrigin('https://example.com/webinarMagus', 3420)).toBe('https://example.com/webinarMagus')
   })
 
   it('strips trailing slash even from a sub-path URL', () => {
-    expect(resolveDashboardOrigin('https://example.com/marveen/', 3420)).toBe('https://example.com/marveen')
+    expect(resolveDashboardOrigin('https://example.com/webinarMagus/', 3420)).toBe('https://example.com/webinarMagus')
   })
 
   it('accepts a non-default port in the public URL', () => {
@@ -73,12 +73,12 @@ describe('resolveDashboardOrigin', () => {
   it('REGRESSION GUARD: an empty agent origin changes nothing (old behaviour)', () => {
     // This is the test that protects existing k3s/distributed installs: with
     // the key unset, the resolver must behave exactly as before the key existed.
-    expect(resolveDashboardOrigin('https://marveen.example.com', 3420, '')).toBe('https://marveen.example.com')
+    expect(resolveDashboardOrigin('https://webinarMagus.example.com', 3420, '')).toBe('https://webinarMagus.example.com')
     expect(resolveDashboardOrigin('', 3420, '')).toBe('http://localhost:3420')
   })
 
   it('the agent origin wins over the public URL when both are set', () => {
-    expect(resolveDashboardOrigin('https://marveen.example.com', 3420, 'http://localhost:3420'))
+    expect(resolveDashboardOrigin('https://webinarMagus.example.com', 3420, 'http://localhost:3420'))
       .toBe('http://localhost:3420')
   })
 
@@ -92,13 +92,13 @@ describe('resolveDashboardOrigin', () => {
   })
 
   it('supports an internal service name (k8s-style) as the agent origin', () => {
-    expect(resolveDashboardOrigin('https://marveen.example.com', 3420, 'http://marveen-dashboard.default.svc:3420'))
-      .toBe('http://marveen-dashboard.default.svc:3420')
+    expect(resolveDashboardOrigin('https://webinarMagus.example.com', 3420, 'http://webinarMagus-dashboard.default.svc:3420'))
+      .toBe('http://webinarMagus-dashboard.default.svc:3420')
   })
 
   it('defaults the third argument, so two-argument callers keep working', () => {
     // Existing call sites and tests pass two arguments; that must stay valid.
-    expect(resolveDashboardOrigin('https://marveen.example.com', 3420)).toBe('https://marveen.example.com')
+    expect(resolveDashboardOrigin('https://webinarMagus.example.com', 3420)).toBe('https://webinarMagus.example.com')
   })
 })
 
@@ -190,9 +190,9 @@ describe('renderHeartbeatClaudeMd: respects dashboardOrigin', () => {
   }
 
   it('uses a public URL when dashboardOrigin is set to one', () => {
-    const id: HeartbeatIdentity = { ...BASE, dashboardOrigin: 'https://marveen.example.com' }
+    const id: HeartbeatIdentity = { ...BASE, dashboardOrigin: 'https://webinarMagus.example.com' }
     const out = renderHeartbeatClaudeMd(id)
-    expect(out).toContain('https://marveen.example.com/api/messages')
+    expect(out).toContain('https://webinarMagus.example.com/api/messages')
     expect(out).not.toContain('http://localhost:3420/api/messages')
   })
 
@@ -202,7 +202,7 @@ describe('renderHeartbeatClaudeMd: respects dashboardOrigin', () => {
   })
 
   it('emits no hardcoded hostname other than the dashboardOrigin host', () => {
-    const id: HeartbeatIdentity = { ...BASE, dashboardOrigin: 'https://marveen.example.com' }
+    const id: HeartbeatIdentity = { ...BASE, dashboardOrigin: 'https://webinarMagus.example.com' }
     const out = renderHeartbeatClaudeMd(id)
     // The only host that should appear in the output is the one we supplied;
     // no stale 'localhost' sneaks in alongside it.
