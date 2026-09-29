@@ -32,8 +32,20 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Stub the claude binary for PATH resolution
+        shell: bash
+        run: |
+          sudo install -m 755 /dev/stdin /usr/local/bin/claude <<'EOF'
+          #!/bin/sh
+          echo "claude CI stub: tests must not execute this binary" >&2
+          exit 1
+          EOF
+
       - name: Typecheck
         run: npm run typecheck
+
+      - name: Syntax check
+        run: npm run syntax-check
 
       - name: Tests
         run: npm test
