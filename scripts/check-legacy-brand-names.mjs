@@ -35,6 +35,10 @@ function walk(dir) {
       continue
     }
     if (!entry.isFile() || binaryExts.has(path.extname(entry.name).toLowerCase())) continue
+    // Local runtime logs can legitimately contain historical update output from
+    // before a rebrand. They are not source, prompts, templates or shipped
+    // runtime content, so do not let them make a clean current install fail.
+    if (relLower.startsWith('store' + path.sep) && path.extname(entry.name).toLowerCase() === '.log') continue
 
     let content
     try { content = fs.readFileSync(full, 'utf8') } catch { continue }
