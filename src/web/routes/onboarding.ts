@@ -357,9 +357,25 @@ export async function tryHandleOnboarding(ctx: RouteContext): Promise<boolean> {
         return true
       }
 
+      const wasRunning = agentsRunning()
       saveAiProviderSelection(providerId, modelId, apiKey)
-      logger.info({ provider: providerId, model: modelId }, 'onboarding: AI provider configured and verified')
-      json(res, { ok: true, verified: true, provider: providerId, model: modelId })
+
+      // A running agent keeps the provider environment it was spawned with.
+      // Saving DeepSeek/OpenAI/Gemini while Claude is already running must
+      // therefore restart the channels session; otherwise the UI says one
+      // provider while the live agent keeps using the previous one.
+      let restarted = false
+      let restartError: string | null = null
+      if (wasRunning) {
+        const rr = hardRestartWebinarMagusChannels()
+        restarted = rr.ok
+        if (!rr.ok) restartError = rr.error || 'restart failed'
+      }
+
+      logger.info({ provider: providerId, model: modelId, restarted }, 'onboarding: AI provider configured and verified')
+      json(res, restartError
+        ? { ok: true, verified: true, provider: providerId, model: modelId, restarted, restartError }
+        : { ok: true, verified: true, provider: providerId, model: modelId, restarted })
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Nem sikerült menteni az AI szolgáltatót.'
       json(res, { error: message, reason: 'invalid-provider' }, 400)
@@ -420,7 +436,10 @@ export async function tryHandleOnboarding(ctx: RouteContext): Promise<boolean> {
       paired: pr,
       // The identity step never re-opens the wizard on an already-configured
       // install: it only participates while first-run setup is incomplete.
-      needsOnboarding: (!aiConfigured && !claude) || !running || !ch || !pr,
+      // Do not let an unrelated pre-existing Claude login silently bypass
+      // explicit provider choice. The user may still dismiss the wizard, but a
+      // completed onboarding requires a saved provider/model selection.
+      needsOnboarding: !aiConfigured || !running || !ch || !pr,
     })
     return true
   }
