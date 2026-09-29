@@ -33,7 +33,7 @@ INSTALL_DIR="$INSTALL_DIR" python3 "${INSTALL_DIR}/scripts/boot-hook-prune.py" 2
 # Timestamp every run: this script appends to store/boot.log across reboots,
 # and without a date the log cannot tell "started once" from "started twice".
 echo "=== $(date '+%Y-%m-%d %H:%M:%S %Z') ==="
-echo "${BOT_NAME:-Marveen} $(_t start.starting)"
+echo "${BOT_NAME:-Webinár Mágus} $(_t start.starting)"
 OS="$(uname -s)"
 LAUNCHD_FAILED=""
 if [ "$OS" = "Darwin" ]; then
