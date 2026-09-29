@@ -210,8 +210,8 @@ export function formatForSlackMrkdwn(text: string): string {
 
 const slackProvider: ChannelProvider = {
   type: 'slack',
-  pluginId: 'slack-channel@marveen-marketplace',
-  pluginPaneId: 'plugin:slack-channel:marveen-marketplace',
+  pluginId: 'slack-channel@webinarmagus-marketplace',
+  pluginPaneId: 'plugin:slack-channel:webinarmagus-marketplace',
   envKeys: ['SLACK_BOT_TOKEN', 'SLACK_APP_TOKEN'],
   stateDir: 'slack',
   chatIdFormat: 'Slack channel/DM ID (e.g. C01234ABCDE)',
@@ -442,8 +442,8 @@ const TEAMS_MAX_MESSAGE_LENGTH = 28000
 
 const teamsProvider: ChannelProvider = {
   type: 'teams',
-  pluginId: 'teams@marveen-marketplace',
-  pluginPaneId: 'plugin:teams:marveen-marketplace',
+  pluginId: 'teams@webinarmagus-marketplace',
+  pluginPaneId: 'plugin:teams:webinarmagus-marketplace',
   envKeys: ['TEAMS_BOT_APP_ID', 'TEAMS_BOT_APP_PASSWORD', 'TEAMS_BOT_TENANT_ID'],
   stateDir: 'teams',
   chatIdFormat: 'Teams conversation id (managed by the plugin per pairing)',

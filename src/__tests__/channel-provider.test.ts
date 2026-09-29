@@ -32,7 +32,7 @@ describe('getProvider', () => {
   it('returns slack provider with correct pluginId', () => {
     const p = getProvider('slack')
     expect(p.type).toBe('slack')
-    expect(p.pluginId).toBe('slack-channel@marveen-marketplace')
+    expect(p.pluginId).toBe('slack-channel@webinarmagus-marketplace')
     expect(p.envKeys).toContain('SLACK_BOT_TOKEN')
     expect(p.stateDir).toBe('slack')
   })
@@ -220,9 +220,9 @@ describe('checkTelegramTokenBusy', () => {
 })
 
 // readChannelToken is the single parser behind the scheduler-alert token
-// fallback (marveen/.env -> channel .env), agentHasChannel/hasChannel and ten
+// fallback (webinarmagus/.env -> channel .env), agentHasChannel/hasChannel and ten
 // other call sites. Its regex used to be unanchored, so a commented-out
-// `# SLACK_BOT_TOKEN=old` in marveen/.env matched first and shadowed the live
+// `# SLACK_BOT_TOKEN=old` in webinarmagus/.env matched first and shadowed the live
 // token in the channel .env -- exactly the fallback the alert path relies on
 // after a token rotation.
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
@@ -274,7 +274,7 @@ describe('readChannelToken (anchored, whole-line match)', () => {
   it('an empty value is not a token, so the caller falls through to the next location', () => {
     // Documents behaviour rather than guarding the anchor (`(.+)` already
     // refused an empty value before the fix): resolveSchedulerAlertToken
-    // chains marveen/.env || channel .env, and a key left with no value must
+    // chains webinarmagus/.env || channel .env, and a key left with no value must
     // not win that chain.
     expect(readChannelToken('telegram', envFile('TELEGRAM_BOT_TOKEN=\n'))).toBeNull()
     expect(readChannelToken('telegram', envFile('TELEGRAM_BOT_TOKEN=\nTELEGRAM_BOT_TOKEN=222:live\n'))).toBe('222:live')

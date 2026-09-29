@@ -36,7 +36,7 @@ describe('a channel identity may not be a desktop-lock owner', () => {
       // Both halves asserted together: this id really does earn the privileged
       // envelope, AND the lock route really does refuse to mint it. Asserting
       // only the second half would still pass if the framing quietly changed.
-      expect(classifyAgentMessage(id, 'marveen')!.category).toBe('channel-inbound')
+      expect(classifyAgentMessage(id, 'webinarmagus')!.category).toBe('channel-inbound')
       expect(lockOwnerRefusal(id)).toMatch(/channel identity/i)
     }
   })
@@ -52,7 +52,7 @@ describe('a channel identity may not be a desktop-lock owner', () => {
   it('NEGATIVE CONTROL: ordinary agents and the owner keep the screen', () => {
     // Without this the rule above proves nothing -- a guard that refuses
     // EVERY owner would satisfy it and park the whole fleet out of the screen.
-    for (const ok of ['samu', 'mira', 'marveen', 'szabolcs', 'iris']) {
+    for (const ok of ['samu', 'mira', 'webinarmagus', 'szabolcs', 'iris']) {
       expect(lockOwnerRefusal(ok), `ordinary owner ${ok}`).toBeNull()
       expect(isChannelInboundSender(ok)).toBe(false)
     }

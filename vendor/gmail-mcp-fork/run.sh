@@ -2,7 +2,7 @@
 # Launcher for the vendored Gmail MCP fork (see VENDOR.md).
 # Self-healing: prod deps installed on first run; config dir defaults to the
 # v2 path so the parallel-run phase NEVER touches the live ~/.gmail-mcp of
-# the current MCP (Marveen's condition, 2026-09-07: separate dir even for
+# the current MCP (WebinarMagus's condition, 2026-09-07: separate dir even for
 # the same account, so rollback stays one step and token files cannot
 # cross-write).
 set -e

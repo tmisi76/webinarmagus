@@ -11,7 +11,7 @@ import { join } from 'node:path'
 //       -> sh -c "/usr/lib/needrestart/apt-pinvoke -m u"
 //         -> whiptail --msgbox "Pending kernel upgrade"      <-- install stops here
 //
-// The customer installs from the Marveen app: no terminal, no stdin, nothing to
+// The customer installs from the WebinarMagus app: no terminal, no stdin, nothing to
 // dismiss the dialog with. It appears on any machine with a pending kernel
 // upgrade or a service needing restart. It had been hidden until now because the
 // test machines already had node from earlier rounds, so this apt-install step

@@ -125,10 +125,10 @@ assert_eq "second run calls no systemctl" "0" "$(wc -c < "$TMP/systemctl.calls" 
 assert_eq "second run prints nothing" "" "$OUT"
 
 # 2d. A renamed agent: the timer follows the unit name actually on disk.
-printf '[Service]\n' > "$UNITS/marveen-channels.service"
+printf '[Service]\n' > "$UNITS/webinarmagus-channels.service"
 OUT="$(run_fn "$UNITS")"
 assert_eq "second agent gets its own probe timer" "yes" \
-  "$([ -f "$UNITS/marveen-channel-keepalive-probe.timer" ] && echo yes || echo no)"
+  "$([ -f "$UNITS/webinarmagus-channel-keepalive-probe.timer" ] && echo yes || echo no)"
 
 # 2e. No probe script (an install predating it) -> write nothing rather than
 #     enabling a unit whose ExecStart does not exist.

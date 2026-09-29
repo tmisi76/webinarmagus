@@ -955,7 +955,7 @@ class TestCodexSnapshotFreshness(unittest.TestCase):
             self.assertAlmostEqual(result["snapshot_age_hours"], 3.0, delta=0.2)
 
     def test_collect_codex_no_rate_limits_fails_closed_with_named_state(self):
-        # Regression guard (Marveen review of #1287): the edit that added the
+        # Regression guard (WebinarMagus review of #1287): the edit that added the
         # timestamp capture must NOT drop the "no rate_limits entries" raise.
         # An empty/absent rate_limits payload must fail closed (ok False) with a
         # message that NAMES THE STATE ("rate_limits") -- so a later round sees

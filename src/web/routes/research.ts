@@ -23,7 +23,7 @@ import type { RouteContext } from './types.js'
 //      point out of the tree.
 //
 // Layer 2 is measured against the RESOLVED research root, never against
-// PROJECT_ROOT: in production marveen/research is itself a symlink to
+// PROJECT_ROOT: in production webinarmagus/research is itself a symlink to
 // ~/research, so a repo-path containment check would resolve every real file
 // as "outside" and silently serve an empty page.
 const SEGMENT_RE = /^[A-Za-z0-9._-]+$/

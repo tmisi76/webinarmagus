@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """A leiras (description) mozgatasa komment-modban -- EKEZETKAPU919.
 
-A lelet (Marveen, 2026-09-19): a leiras volt az EGYETLEN kartya-mezo, amit letrehozas
+A lelet (WebinarMagus, 2026-09-19): a leiras volt az EGYETLEN kartya-mezo, amit letrehozas
 utan senki nem tudott javitani. A `--desc-file` csak a letrehozo agon volt bekotve, a
 komment-ag pedig a keveres-kapuval utasitotta vissza -- nem leiras-vedelembol, hanem
 mert a mozgato ag nem ismerte a mezot. Eloszor egy gazda ele keszulo szovegben okozott

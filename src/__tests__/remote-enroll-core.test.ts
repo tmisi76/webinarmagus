@@ -38,14 +38,14 @@ function u32(n: number): Buffer {
 
 const UUID = '3f2504e0-4f89-41d3-9a0c-0305e82c3301'
 const B64 = makeEd25519Base64()
-const VALID_LINE = `ssh-ed25519 ${B64} marveen-remote:${UUID}`
+const VALID_LINE = `ssh-ed25519 ${B64} webinarmagus-remote:${UUID}`
 
 describe('validatePublicKeyLine', () => {
   it('accepts a well-formed line', () => {
     const parsed = validatePublicKeyLine(VALID_LINE)
     expect(parsed.keyType).toBe('ssh-ed25519')
     expect(parsed.base64).toBe(B64)
-    expect(parsed.comment).toBe(`marveen-remote:${UUID}`)
+    expect(parsed.comment).toBe(`webinarmagus-remote:${UUID}`)
     expect(parsed.installId).toBe(UUID)
   })
 
@@ -54,13 +54,13 @@ describe('validatePublicKeyLine', () => {
   })
 
   it('rejects a wrong key type', () => {
-    const line = `ssh-rsa ${B64} marveen-remote:${UUID}`
+    const line = `ssh-rsa ${B64} webinarmagus-remote:${UUID}`
     expect(() => validatePublicKeyLine(line)).toThrow(RemoteEnrollError)
     expect(() => validatePublicKeyLine(line)).toThrow(/key type must be exactly ssh-ed25519/)
   })
 
   it('rejects bad base64', () => {
-    const line = `ssh-ed25519 not!valid!base64 marveen-remote:${UUID}`
+    const line = `ssh-ed25519 not!valid!base64 webinarmagus-remote:${UUID}`
     expect(() => validatePublicKeyLine(line)).toThrow(/not valid base64/)
   })
 
@@ -68,7 +68,7 @@ describe('validatePublicKeyLine', () => {
     const type = Buffer.from('ssh-rsa4567', 'utf8') // 11 bytes, wrong value
     const key = Buffer.alloc(32, 1)
     const b64 = Buffer.concat([u32(type.length), type, u32(32), key]).toString('base64')
-    const line = `ssh-ed25519 ${b64} marveen-remote:${UUID}`
+    const line = `ssh-ed25519 ${b64} webinarmagus-remote:${UUID}`
     expect(() => validatePublicKeyLine(line)).toThrow(/embedded key type/)
   })
 
@@ -76,7 +76,7 @@ describe('validatePublicKeyLine', () => {
     const type = Buffer.from('ssh-ed25519', 'utf8')
     const key = Buffer.alloc(31, 1) // one byte short
     const b64 = Buffer.concat([u32(type.length), type, u32(31), key]).toString('base64')
-    const line = `ssh-ed25519 ${b64} marveen-remote:${UUID}`
+    const line = `ssh-ed25519 ${b64} webinarmagus-remote:${UUID}`
     expect(() => validatePublicKeyLine(line)).toThrow(/must be 32 bytes/)
   })
 
@@ -84,7 +84,7 @@ describe('validatePublicKeyLine', () => {
     const type = Buffer.from('ssh-ed25519', 'utf8')
     const key = Buffer.alloc(32, 1)
     const b64 = Buffer.concat([u32(type.length), type, u32(32), key, Buffer.alloc(4)]).toString('base64')
-    const line = `ssh-ed25519 ${b64} marveen-remote:${UUID}`
+    const line = `ssh-ed25519 ${b64} webinarmagus-remote:${UUID}`
     expect(() => validatePublicKeyLine(line)).toThrow(/trailing or missing bytes/)
   })
 
@@ -94,17 +94,17 @@ describe('validatePublicKeyLine', () => {
   })
 
   it('rejects a comment whose id is not a uuid v4', () => {
-    const line = `ssh-ed25519 ${B64} marveen-remote:not-a-uuid`
+    const line = `ssh-ed25519 ${B64} webinarmagus-remote:not-a-uuid`
     expect(() => validatePublicKeyLine(line)).toThrow(/uuid v4/)
   })
 
   it('rejects a line carrying authorized_keys options', () => {
-    const line = `no-pty ssh-ed25519 ${B64} marveen-remote:${UUID}`
+    const line = `no-pty ssh-ed25519 ${B64} webinarmagus-remote:${UUID}`
     expect(() => validatePublicKeyLine(line)).toThrow(/exactly three fields/)
   })
 
   it('rejects an extra trailing field', () => {
-    const line = `ssh-ed25519 ${B64} marveen-remote:${UUID} extra`
+    const line = `ssh-ed25519 ${B64} webinarmagus-remote:${UUID} extra`
     expect(() => validatePublicKeyLine(line)).toThrow(/exactly three fields/)
   })
 
@@ -122,7 +122,7 @@ describe('buildRestrictedLine', () => {
     const parsed = validatePublicKeyLine(VALID_LINE)
     const line = buildRestrictedLine(parsed)
     expect(line).toBe(
-      `restrict,port-forwarding,permitopen="127.0.0.1:3420",command="/bin/false" ssh-ed25519 ${B64} marveen-remote:${UUID}`,
+      `restrict,port-forwarding,permitopen="127.0.0.1:3420",command="/bin/false" ssh-ed25519 ${B64} webinarmagus-remote:${UUID}`,
     )
     // Sanity: options segment is exactly as specified.
     expect(line.startsWith(RESTRICT_OPTIONS + ' ')).toBe(true)
@@ -134,7 +134,7 @@ describe('buildRestrictedLine', () => {
     const parsed = validatePublicKeyLine(VALID_LINE)
     const line = buildRestrictedLine(parsed, 3421)
     expect(line).toBe(
-      `restrict,port-forwarding,permitopen="127.0.0.1:3421",command="/bin/false" ssh-ed25519 ${B64} marveen-remote:${UUID}`,
+      `restrict,port-forwarding,permitopen="127.0.0.1:3421",command="/bin/false" ssh-ed25519 ${B64} webinarmagus-remote:${UUID}`,
     )
     // Security narrowing preserved: exactly one loopback port, no wildcard/range,
     // restrict + forced command intact.
@@ -170,14 +170,14 @@ describe('mergeAuthorizedKeys', () => {
 
   it('replaces exactly the matching id line and preserves others', () => {
     const otherId = '11111111-2222-4333-8444-555555555555'
-    const stale = `restrict ssh-ed25519 OLDKEY marveen-remote:${UUID}`
+    const stale = `restrict ssh-ed25519 OLDKEY webinarmagus-remote:${UUID}`
     const keep1 = 'ssh-rsa AAAA someone@host'
-    const keep2 = `restrict ssh-ed25519 KEEP marveen-remote:${otherId}`
+    const keep2 = `restrict ssh-ed25519 KEEP webinarmagus-remote:${otherId}`
     const existing = `${keep1}\n${stale}\n${keep2}\n`
     const { content, action } = mergeAuthorizedKeys(existing, restricted, UUID)
     expect(action).toBe('replaced')
     expect(content).toBe(`${keep1}\n${restricted}\n${keep2}\n`)
-    // The other marveen-remote id must be untouched.
+    // The other webinarmagus-remote id must be untouched.
     expect(content).toContain(keep2)
     expect(content).not.toContain('OLDKEY')
   })
@@ -227,7 +227,7 @@ describe('bundle', () => {
     })
     const decoded = decodeBundle(encodeBundle(bundle))
     expect(decoded).toEqual({
-      format: 'marveen-remote/1',
+      format: 'webinarmagus-remote/1',
       kind: 'connection',
       displayName: 'my-host',
       host: '203.0.113.5',

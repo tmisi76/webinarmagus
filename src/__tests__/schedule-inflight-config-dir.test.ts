@@ -109,7 +109,7 @@ describe('in-flight watchdog: the MAIN agent transcript may live under an isolat
 
   beforeEach(() => {
     root = mkdtempSync(join(tmpdir(), 'inflight-main-config-'))
-    workingDir = join(root, 'marveen')
+    workingDir = join(root, 'webinarmagus')
     mkdirSync(workingDir, { recursive: true })
   })
 

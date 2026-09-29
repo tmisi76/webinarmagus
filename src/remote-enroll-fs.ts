@@ -54,7 +54,7 @@ function assertSafeSshDir(sshDir: string, operation: string): void {
   throw new SshDirGuardError(
     `ENROLL813: refusing to ${operation} the REAL ${realSshDir()}/${AUTH_KEYS_NAME} ` +
       `from a test run (${describeTestRunSignal()}). Pass a scratch sshDir (the suite ` +
-      'sets MARVEEN_SSH_DIR per worker in src/__tests__/setup/default-ssh-dir-seam.ts). ' +
+      'sets WEBINAR_MAGUS_SSH_DIR per worker in src/__tests__/setup/default-ssh-dir-seam.ts). ' +
       'This guard exists because a route test silently enrolled real keys for weeks.',
   )
 }
@@ -342,7 +342,7 @@ export interface RemoveEnrolledResult {
 }
 
 /**
- * Remove the marveen-remote:<installId> line from <sshDir>/authorized_keys --
+ * Remove the webinarmagus-remote:<installId> line from <sshDir>/authorized_keys --
  * the revoke counterpart of enrollAuthorizedKey, under the same lock and
  * atomic-replace discipline. A missing file or missing line reports
  * removed:false (idempotent: revoking twice must not fail).

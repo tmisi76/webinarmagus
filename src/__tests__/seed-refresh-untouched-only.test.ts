@@ -47,7 +47,7 @@ function makeFixture() {
   mkdirSync(join(install, 'seed-scheduled-tasks', 'demo-task'), { recursive: true })
   mkdirSync(join(home, '.claude', 'skills'), { recursive: true })
   mkdirSync(join(home, '.claude', 'scheduled-tasks'), { recursive: true })
-  writeFileSync(join(install, '.env'), 'MAIN_AGENT_ID=marveen\nBOT_NAME=Marveen\nOWNER_NAME=Szabolcs\nWEB_PORT=3420\n')
+  writeFileSync(join(install, '.env'), 'MAIN_AGENT_ID=webinarmagus\nBOT_NAME=WebinarMagus\nOWNER_NAME=Szabolcs\nWEB_PORT=3420\n')
 
   git(install, ['init', '-q'])
   git(install, ['config', 'user.email', 'test@example.invalid'])
@@ -149,9 +149,9 @@ describe('seed refresh touches only provably untouched copies', () => {
     try {
       const dir = join(f.home, '.claude', 'scheduled-tasks', 'demo-task')
       mkdirSync(dir, { recursive: true })
-      writeFileSync(join(dir, 'SKILL.md'), 'task v1 marveen\n')          // rendered v1, untouched
+      writeFileSync(join(dir, 'SKILL.md'), 'task v1 webinarmagus\n')          // rendered v1, untouched
       runRefresh(f.install, f.home)
-      expect(readFileSync(join(dir, 'SKILL.md'), 'utf-8')).toBe('task v3 marveen\n')
+      expect(readFileSync(join(dir, 'SKILL.md'), 'utf-8')).toBe('task v3 webinarmagus\n')
     } finally {
       rmSync(f.base, { recursive: true, force: true })
     }
@@ -162,7 +162,7 @@ describe('seed refresh touches only provably untouched copies', () => {
     try {
       const dir = join(f.home, '.claude', 'scheduled-tasks', 'demo-task')
       mkdirSync(dir, { recursive: true })
-      const edited = 'task v1 marveen\n# operator note\n'
+      const edited = 'task v1 webinarmagus\n# operator note\n'
       writeFileSync(join(dir, 'SKILL.md'), edited)
       runRefresh(f.install, f.home)
       expect(readFileSync(join(dir, 'SKILL.md'), 'utf-8')).toBe(edited)
@@ -258,7 +258,7 @@ describe('top-level scheduled-tasks/ refresh (SEEDREFRESH826)', () => {
     }
     // What the NODE seeder wrote at install time: v1 with PROJECT_ROOT and
     // MAIN_AGENT_ID resolved -- exactly the on-disk shape update.sh meets.
-    const rendered = (s: string) => s.replaceAll('{{PROJECT_ROOT}}', install).replaceAll('{{MAIN_AGENT_ID}}', 'marveen')
+    const rendered = (s: string) => s.replaceAll('{{PROJECT_ROOT}}', install).replaceAll('{{MAIN_AGENT_ID}}', 'webinarmagus')
     const liveDir = join(home, '.claude', 'scheduled-tasks', 'demo-top')
     mkdirSync(liveDir, { recursive: true })
     return { base, install, home, versions, rendered, livePath: join(liveDir, 'SKILL.md') }
@@ -271,7 +271,7 @@ describe('top-level scheduled-tasks/ refresh (SEEDREFRESH826)', () => {
       'GREEN=""; NC=""',
       `INSTALL_DIR="${install}"`,
       `HOME="${home}"`,
-      'MAIN_AGENT_ID="marveen"; BOT_NAME="Bot"; OWNER_NAME="Owner"; WEB_PORT="3420"',
+      'MAIN_AGENT_ID="webinarmagus"; BOT_NAME="Bot"; OWNER_NAME="Owner"; WEB_PORT="3420"',
       FUNCS,
       'run_seed_refresh',
     ].join('\n') + '\n')

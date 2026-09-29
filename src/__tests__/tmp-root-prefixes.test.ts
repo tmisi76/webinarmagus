@@ -32,7 +32,7 @@ describe('isTmpRootedPath', () => {
 
   it('allows a home-rooted worktree', () => {
     expect(isTmpRootedPath('/Users/marvin/claw-test')).toBe(false)
-    expect(isTmpRootedPath('/home/runner/work/marveen/marveen')).toBe(false)
+    expect(isTmpRootedPath('/home/runner/work/webinarmagus/webinarmagus')).toBe(false)
   })
 
   it('does NOT refuse a home path that merely CONTAINS a tmp segment', () => {

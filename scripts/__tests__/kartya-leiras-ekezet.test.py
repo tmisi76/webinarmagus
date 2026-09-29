@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Az ekezet-kapu a LEIRASRA is -- EKEZETKAPU919, mindket agon.
 
-A lelet (Marveen merte 2026-09-20, Geri visszamerte 2026-09-21): az `_ekezet_kapu`
+A lelet (WebinarMagus merte 2026-09-20, Geri visszamerte 2026-09-21): az `_ekezet_kapu`
 PONTOSAN EGYSZER hivodott, a komment szovegere. A leiras egyik aga sem hivta, sem a
 letrehozo, sem a 2026-09-19 ota letezo mozgato. A leiras volt az utolso gazdanak szant
 mezo, ami ekezet nelkul bement -- es a gazda ugyanugy OLVASSA, mint a kommentet.

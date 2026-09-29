@@ -2,8 +2,8 @@
 """Two-source, three-state support entitlement check (SUPPJOGVAK901).
 
 WHY THIS EXISTS: the old support-inbox check queried ONE customer DB
-(ai-a-mindennapokban). marveen.io install/lifetime buyers live in a SEPARATE
-Supabase project, so a paying marveen.io customer read as "not found" -> the
+(ai-a-mindennapokban). webinarmagus.io install/lifetime buyers live in a SEPARATE
+Supabase project, so a paying webinarmagus.io customer read as "not found" -> the
 task's "no support" branch would send a false "you have no support" reply to a
 buyer (measured 2026-09-02: 3 active mio customers invisible to the AIAM check).
 
@@ -51,7 +51,7 @@ def _env(key: str, default: str = "") -> str:
 
 AIAM_REF = _env("SUPPORT_ENTITLEMENT_AIAM_REF", "ymljpjpjrwbmkfvtahtn")
 MIO_REF = _env("SUPPORT_ENTITLEMENT_MIO_REF", "fpxycpxdxgifimbmwgzj")
-PAT_VAULT_KEY = _env("SUPPORT_ENTITLEMENT_PAT_KEY", "MARVEEN-CONNECTORS-PAT")
+PAT_VAULT_KEY = _env("SUPPORT_ENTITLEMENT_PAT_KEY", "WEBINAR_MAGUS-CONNECTORS-PAT")
 WEB_PORT = _env("WEB_PORT", "3420")
 
 # Strict address shape: anything outside this is rejected (-> UNDECIDED/review),
@@ -109,7 +109,7 @@ def check(email: str) -> dict:
         aiam = _query(pat, AIAM_REF, f"""SELECT
           EXISTS(SELECT 1 FROM customers c WHERE lower(c.email)='{e}' AND (
             c.support_valid_until > now()
-            OR EXISTS(SELECT 1 FROM marveen_purchases p WHERE p.customer_id=c.id
+            OR EXISTS(SELECT 1 FROM webinarmagus_purchases p WHERE p.customer_id=c.id
                       AND (p.standard_support_until > now()
                            OR p.stripe_subscription_id IS NOT NULL))
           )) AS valid,
@@ -131,7 +131,7 @@ def check(email: str) -> dict:
                 "reason": "a source unreachable -> review, NOT no-support: " + "; ".join(errors),
                 "aiam": aiam, "mio": mio}
     if aiam["valid"] or mio["valid"]:
-        src = "AIAM" if aiam["valid"] else "marveen.io"
+        src = "AIAM" if aiam["valid"] else "webinarmagus.io"
         return {"state": "VALID", "reason": f"active support in {src}",
                 "aiam": aiam, "mio": mio}
     return {"state": "NONE",

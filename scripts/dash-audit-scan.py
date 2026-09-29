@@ -7,7 +7,7 @@ noise -- a false-alarm rate is the slow way to switch a gate off. The fix is
 the #1319 egress-drift shape: classify every occurrence, exclude what is not
 ours from the denominator, and let only the BARE occurrences be findings.
 
-The convention (Marveen + Mira, 2026-09-15, final form on the card):
+The convention (WebinarMagus + Mira, 2026-09-15, final form on the card):
   PROSE      the word ("em dash", "gondolatjel") is enough -- a literal
              U+2014 in prose or rule documentation is a FINDING to be
              REWRITTEN to the word, never to be marked.

@@ -23,7 +23,7 @@ import { readClaudePlans, writeClaudePlans, validatePlan } from '../claude-plans
 import { readClaudePlansState, writeClaudePlansState, applyRotation } from '../claude-plans-state.js'
 import { agentDir, writeAgentClaudePlan } from '../agent-config.js'
 import { restartAgentProcess } from '../agent-process.js'
-import { hardRestartMarveenChannels } from '../channel-monitor.js'
+import { hardRestartWebinarMagusChannels } from '../channel-monitor.js'
 import type { RouteContext } from './types.js'
 
 function isRotationEnabled(): boolean {
@@ -150,7 +150,7 @@ export async function tryHandleClaudePlans(ctx: RouteContext): Promise<boolean> 
       // comes up.
       writeClaudePlansState(applyRotation(readClaudePlansState(), MAIN_AGENT_ID, targetPlanId))
 
-      const result = hardRestartMarveenChannels()
+      const result = hardRestartWebinarMagusChannels()
       if (!result.ok) {
         json(res, { error: result.error || 'Main agent restart failed' }, 500)
         return true

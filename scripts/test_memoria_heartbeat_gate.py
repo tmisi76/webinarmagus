@@ -74,7 +74,7 @@ def add_tool(con, agent="picard", summary="ls") -> None:
 # end-of-turn bookkeeping call (matches the live tool_call_log row 4266,
 # modulo the machine-specific install path).
 MARK_SEEN_SUMMARY = (
-    f"python3 {gate.MARVEEN_DIR}/scripts/memoria_heartbeat_gate.py "
+    f"python3 {gate.WEBINAR_MAGUS_DIR}/scripts/memoria_heartbeat_gate.py "
     "--mark-seen --conv-upto 1609"
 )
 

@@ -3,7 +3,7 @@
 // (~1.3 MB of title text) into comments by hand; these triggers automate that
 // exact transformation for future writes.
 //
-// Shape mandated in the GO (Marveen msg 15082): NOT a CHECK constraint --
+// Shape mandated in the GO (WebinarMagus msg 15082): NOT a CHECK constraint --
 // agents write this table with raw sqlite3 and rarely inspect exit codes, so
 // a rejected INSERT would silently lose the card. The trigger relocates
 // instead: full original title into a marked comment on the same card, then

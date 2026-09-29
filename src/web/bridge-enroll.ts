@@ -12,7 +12,7 @@
 // shared token keep working unchanged (backward compatibility is not
 // negotiable); they simply do not gain per-device revocation.
 //
-// Re-pairing the same device (same marveen-remote:<uuid>) REPLACES both sides:
+// Re-pairing the same device (same webinarmagus-remote:<uuid>) REPLACES both sides:
 // the authorized_keys line (merge-by-id, existing behavior) and the device key
 // (the old row is revoked, a fresh key is minted) -- so a device never
 // accumulates keys.
@@ -41,7 +41,7 @@ import { createDeviceKey, findDeviceKeyByInstallId, revokeDeviceKey } from './au
 export { RemoteEnrollError }
 
 export interface BridgeEnrollInput {
-  /** The pasted `ssh-ed25519 <base64> marveen-remote:<uuid>` line. */
+  /** The pasted `ssh-ed25519 <base64> webinarmagus-remote:<uuid>` line. */
   keyLine: string
   /** Display name for the device key (shown in the device-key list). */
   name: string
@@ -83,12 +83,12 @@ export interface BridgeEnrollOutcome {
 export { sshDirOverride }
 
 /** Shared resolver plus this module's own loud notice. Under a test runner with
- * no MARVEEN_SSH_DIR this THROWS instead of returning the real ~/.ssh: the
+ * no WEBINAR_MAGUS_SSH_DIR this THROWS instead of returning the real ~/.ssh: the
  * enroll route calls bridgeEnroll() WITHOUT deps, so a silent fallback here is
  * exactly how a green test enrolled real keys for weeks (ENROLL813). */
 function resolveSshDir(): string {
   return resolveSshDirShared((sshDir) => {
-    logger.warn({ sshDir }, 'MARVEEN_SSH_DIR override active -- authorized_keys writes are redirected (test seam; must be unset in production)')
+    logger.warn({ sshDir }, 'WEBINAR_MAGUS_SSH_DIR override active -- authorized_keys writes are redirected (test seam; must be unset in production)')
   })
 }
 

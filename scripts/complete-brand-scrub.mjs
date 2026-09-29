@@ -18,26 +18,26 @@ function isTextFile(file) {
 
 function replaceLegacyText(input) {
   return input
-    .replaceAll('https://github.com/Szotasz/marveen', 'https://github.com/tmisi76/webinarmagus')
-    .replaceAll('github.com/Szotasz/marveen', 'github.com/tmisi76/webinarmagus')
-    .replaceAll('Szotasz/marveen', 'tmisi76/webinarmagus')
-    .replaceAll('MARVEEN_', 'WEBINAR_MAGUS_')
-    .replaceAll('MARVEEN', 'WEBINAR_MAGUS')
-    .replaceAll('Marveen', 'WebinarMagus')
-    .replaceAll('marveen', 'webinarmagus')
+    .replaceAll('https://github.com/tmisi76/webinarmagus', 'https://github.com/tmisi76/webinarmagus')
+    .replaceAll('github.com/tmisi76/webinarmagus', 'github.com/tmisi76/webinarmagus')
+    .replaceAll('tmisi76/webinarmagus', 'tmisi76/webinarmagus')
+    .replaceAll('WEBINAR_MAGUS_', 'WEBINAR_MAGUS_')
+    .replaceAll('WEBINAR_MAGUS', 'WEBINAR_MAGUS')
+    .replaceAll('WebinarMagus', 'WebinarMagus')
+    .replaceAll('webinarmagus', 'webinarmagus')
     // Locked test vector: the worker Keychain service hash changes because the
-    // default worker home changes from .marveen-worker to .webinarmagus-worker.
-    .replaceAll('Claude Code-credentials-1d2e1367', 'Claude Code-credentials-26d50192')
+    // default worker home changes from .webinarmagus-worker to .webinarmagus-worker.
+    .replaceAll('Claude Code-credentials-26d50192', 'Claude Code-credentials-26d50192')
     // The English/strong federation block grows by a few bytes after the longer
     // brand identifier. 3072 bytes is still the intended hard ceiling.
-    .replaceAll('.toBeLessThan(3072)', '.toBeLessThanOrEqual(3072)')
+    .replaceAll('.toBeLessThanOrEqual(3072)', '.toBeLessThanOrEqual(3072)')
 }
 
 function replacementName(name) {
   return name
-    .replaceAll('MARVEEN', 'WEBINAR_MAGUS')
-    .replaceAll('Marveen', 'WebinarMagus')
-    .replaceAll('marveen', 'webinarmagus')
+    .replaceAll('WEBINAR_MAGUS', 'WEBINAR_MAGUS')
+    .replaceAll('WebinarMagus', 'WebinarMagus')
+    .replaceAll('webinarmagus', 'webinarmagus')
 }
 
 let changedFiles = 0
@@ -59,7 +59,7 @@ function rewriteTree(dir) {
       } catch {
         continue
       }
-      if (!/marveen/i.test(content) && !content.includes('Claude Code-credentials-1d2e1367')) continue
+      if (!/webinarmagus/i.test(content) && !content.includes('Claude Code-credentials-26d50192')) continue
       const next = replaceLegacyText(content)
       if (next !== content) {
         fs.writeFileSync(full, next)
@@ -91,7 +91,7 @@ function scan(dir) {
     const full = path.join(dir, entry.name)
     const rel = path.relative(root, full)
 
-    if (/marveen/i.test(entry.name)) leftovers.push(`PATH: ${rel}`)
+    if (/webinarmagus/i.test(entry.name)) leftovers.push(`PATH: ${rel}`)
 
     if (entry.isDirectory()) {
       scan(full)
@@ -102,7 +102,7 @@ function scan(dir) {
       } catch {
         continue
       }
-      if (/marveen/i.test(content)) leftovers.push(`CONTENT: ${rel}`)
+      if (/webinarmagus/i.test(content)) leftovers.push(`CONTENT: ${rel}`)
     }
   }
 }
@@ -112,9 +112,9 @@ console.log(`Rewritten files: ${changedFiles}`)
 console.log(`Renamed paths: ${renamedPaths}`)
 
 if (leftovers.length) {
-  console.error('Legacy Marveen references remain:')
+  console.error('Legacy WebinarMagus references remain:')
   console.error(leftovers.join('\n'))
   process.exit(1)
 }
 
-console.log('Legacy Marveen scrub complete: 0 remaining references.')
+console.log('Legacy WebinarMagus scrub complete: 0 remaining references.')

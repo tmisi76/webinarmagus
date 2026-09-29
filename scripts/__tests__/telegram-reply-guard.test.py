@@ -18,7 +18,7 @@ HOOK = os.path.join(HOOKS, "telegram-reply-guard.py")
 sys.path.insert(0, HOOKS)
 
 
-def run_hook(db_path, cwd="/Users/edgar/marveen", extra_env=None):
+def run_hook(db_path, cwd="/Users/edgar/webinarmagus", extra_env=None):
     env = dict(os.environ)
     env["LEDGER_DB_PATH"] = db_path
     if extra_env:
@@ -73,26 +73,26 @@ def main():
     # 1. Unanswered real question -> BLOCK
     db = fresh_db()
     lib = load_lib(db)
-    lib.log_inbound("marveen", "8695313113", "1001", "mennyi 2+2?", "2026-08-02T22:00:00.000Z")
+    lib.log_inbound("webinarmagus", "8695313113", "1001", "mennyi 2+2?", "2026-08-02T22:00:00.000Z")
     d, _ = run_hook(db)
     check("unanswered question blocks", d, "block")
 
     # 2. Same question, but answered via reply-tool (outbound logged) -> ALLOW
-    lib.log_outbound("marveen", "8695313113", "4")
+    lib.log_outbound("webinarmagus", "8695313113", "4")
     d, _ = run_hook(db)
     check("answered question allows", d, None)
 
     # 3. Pure acknowledgement -> ALLOW (no reply owed)
     db = fresh_db()
     lib = load_lib(db)
-    lib.log_inbound("marveen", "8695313113", "1002", "köszi 👍", "2026-08-02T22:05:00.000Z")
+    lib.log_inbound("webinarmagus", "8695313113", "1002", "köszi 👍", "2026-08-02T22:05:00.000Z")
     d, _ = run_hook(db)
     check("ack allows", d, None)
 
     # 4. Stale (older than STALE_SECONDS) unanswered question -> ALLOW
     db = fresh_db()
     lib = load_lib(db)
-    lib.log_inbound("marveen", "8695313113", "1003", "regi kerdes", "2026-08-01T00:00:00.000Z")
+    lib.log_inbound("webinarmagus", "8695313113", "1003", "regi kerdes", "2026-08-01T00:00:00.000Z")
     # backdate created_at directly
     con = lib.connect()
     con.execute("UPDATE conversation_log SET created_at=? WHERE message_id='1003'",
@@ -104,7 +104,7 @@ def main():
     # 5. Max-block backstop: after MAX_BLOCKS blocks on the same id -> ALLOW
     db = fresh_db()
     lib = load_lib(db)
-    lib.log_inbound("marveen", "8695313113", "1004", "makacs kerdes", "2026-08-02T22:10:00.000Z")
+    lib.log_inbound("webinarmagus", "8695313113", "1004", "makacs kerdes", "2026-08-02T22:10:00.000Z")
     env = {"TG_GUARD_MAX_BLOCKS": "2"}
     d1, _ = run_hook(db, extra_env=env)   # block 1
     d2, _ = run_hook(db, extra_env=env)   # block 2

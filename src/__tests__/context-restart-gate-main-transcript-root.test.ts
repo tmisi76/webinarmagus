@@ -25,8 +25,8 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
 const FIXTURE = mkdtempSync(join(tmpdir(), 'gate-main-root-'))
-const PROJECT_ROOT = '/Users/x/marveen'
-const ENCODED = '-Users-x-marveen'
+const PROJECT_ROOT = '/Users/x/webinarmagus'
+const ENCODED = '-Users-x-webinarmagus'
 
 const SHARED_CONFIG = join(FIXTURE, 'home', '.claude')
 const ISOLATED_CONFIG = join(FIXTURE, 'channels-config')
@@ -42,7 +42,7 @@ vi.mock('../web/inbound-probe.js', () => ({ mainConfigRoots: () => roots }))
 
 vi.mock('../config.js', async (orig) => ({
   ...(await orig<Record<string, unknown>>()),
-  MAIN_AGENT_ID: 'marveen',
+  MAIN_AGENT_ID: 'webinarmagus',
   PROJECT_ROOT,
 }))
 
@@ -80,7 +80,7 @@ describe('context-restart gate: which config root the main agent is read from', 
 
   it('picks the isolated root when its transcript is the newer one', async () => {
     const { configDirFor } = await import('../web/context-restart-gate-runner.js')
-    expect(configDirFor('marveen')).toBe(ISOLATED_CONFIG)
+    expect(configDirFor('webinarmagus')).toBe(ISOLATED_CONFIG)
   })
 
   it('picks the shared root when THAT is the newer one (pre-migration history is real)', async () => {

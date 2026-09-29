@@ -8,7 +8,7 @@ import { join } from 'node:path'
 //   "systemd --user nem elerheto (WSL / konteneren / VPS user-session nelkul)"
 //   "Channels (Telegram bridge) fut (nohup, pid 782)"
 // and the pairing step that follows it printed
-//   "A marveen-channels service nem indult el. Parositas kihagyva."
+//   "A webinarmagus-channels service nem indult el. Parositas kihagyva."
 // about that same, running bridge -- then the install ended on the red
 // "FIGYELEM: Telegram parositas nem tortent meg!" banner with ALLOWED_CHAT_ID=0.
 //
@@ -54,7 +54,7 @@ function bridgeProbeBlock(src: string): string {
  * `sleep` is stubbed so the 15s wait costs nothing.
  */
 function runProbe(opts: { systemdUser?: boolean; systemdSystem?: boolean; pid?: number | '' }): string {
-  const dir = mkdtempSync(join(tmpdir(), 'marveen-pairprobe-'))
+  const dir = mkdtempSync(join(tmpdir(), 'webinarmagus-pairprobe-'))
   mkdirSync(join(dir, 'store'), { recursive: true })
   if (opts.pid !== undefined && opts.pid !== '') {
     writeFileSync(join(dir, 'store', 'channels.pid'), String(opts.pid))
@@ -74,7 +74,7 @@ function runProbe(opts: { systemdUser?: boolean; systemdSystem?: boolean; pid?: 
   const script = [
     'set -e',
     `INSTALL_DIR=${JSON.stringify(dir)}`,
-    'CHAN_UNIT=marveen-channels',
+    'CHAN_UNIT=webinarmagus-channels',
     ...systemctlStub,
     'sleep() { :; }',
     bridgeProbeBlock(LINUX),

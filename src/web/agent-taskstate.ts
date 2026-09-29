@@ -107,7 +107,7 @@ const SENTINEL = '=== TASK-FOLYTATAS (NEM uj feladat) ==='
 /**
  * Build the additionalContext string. The structured do-not-resend lists are
  * the concrete defense against re-execution / re-delegation -- not the soft
- * framing alone (review hardening, Marveen 2026-06-03).
+ * framing alone (review hardening, WebinarMagus 2026-06-03).
  */
 export function buildTaskStateInjection(r: AgentTaskState): string {
   const lines: string[] = [

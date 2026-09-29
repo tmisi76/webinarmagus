@@ -185,7 +185,7 @@ describe('the sentinel rule lives here now -- unknown output is instrument failu
   })
 
   it('a FUTURE sentinel version reads as instrument failure, never accepted as "looks right"', () => {
-    // Marveen's stipulation on HBMEMBLIND819 (2026-08-25), carried over: the
+    // WebinarMagus's stipulation on HBMEMBLIND819 (2026-08-25), carried over: the
     // known-version check must fail closed on V2 under V1 code.
     const out = renderHeartbeatMetricsBlock(HAPPY.replace(HB_METRICS_SENTINEL, 'HB_METRICS_V2'))
     expect(out).toMatch(/muszer-hiba: HB_METRICS_V2 ts=2026-09-11 11:00/)

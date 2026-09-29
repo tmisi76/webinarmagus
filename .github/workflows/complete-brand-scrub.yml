@@ -53,16 +53,16 @@ jobs:
       - name: Build
         run: npm run build
 
-      - name: Verify no Marveen references remain
+      - name: Verify no WebinarMagus references remain
         shell: bash
         run: |
-          if git grep -In -i marveen -- ':!LICENSE' ; then
-            echo "Legacy Marveen reference remains."
+          if git grep -In -i webinarmagus -- ':!LICENSE' ; then
+            echo "Legacy WebinarMagus reference remains."
             exit 1
           fi
-          if find . -path './.git' -prune -o -iname '*marveen*' -print | grep -q . ; then
-            echo "Legacy Marveen path remains."
-            find . -path './.git' -prune -o -iname '*marveen*' -print
+          if find . -path './.git' -prune -o -iname '*webinarmagus*' -print | grep -q . ; then
+            echo "Legacy WebinarMagus path remains."
+            find . -path './.git' -prune -o -iname '*webinarmagus*' -print
             exit 1
           fi
 
@@ -76,5 +76,5 @@ jobs:
             echo "Nothing to commit."
             exit 0
           fi
-          git commit -m "refactor: remove all Marveen legacy identifiers"
+          git commit -m "refactor: remove all WebinarMagus legacy identifiers"
           git push origin HEAD:fix/complete-webinar-magus-rebrand

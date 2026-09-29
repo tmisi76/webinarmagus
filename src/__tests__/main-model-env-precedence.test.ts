@@ -57,7 +57,7 @@ describe('readConfiguredMainModel', () => {
   })
 
   it('falls back to settings.json when .env has no MAIN_AGENT_MODEL', () => {
-    writeEnv('CHANNEL_PLUGINS_EXTRA=slack-channel@marveen-marketplace\n')
+    writeEnv('CHANNEL_PLUGINS_EXTRA=slack-channel@webinarmagus-marketplace\n')
     writeSettings({ model: 'claude-opus-4-8[1m]' })
     expect(readConfiguredMainModel(root)).toBe('claude-opus-4-8[1m]')
   })
@@ -98,9 +98,9 @@ describe('readConfiguredMainModel', () => {
 
 describe('readExtraChannelPluginIds (shares the same .env reader)', () => {
   it('still splits a space-separated list', () => {
-    writeEnv('CHANNEL_PLUGINS_EXTRA=slack-channel@marveen-marketplace  discord@x\n')
+    writeEnv('CHANNEL_PLUGINS_EXTRA=slack-channel@webinarmagus-marketplace  discord@x\n')
     expect(readExtraChannelPluginIds(root)).toEqual([
-      'slack-channel@marveen-marketplace',
+      'slack-channel@webinarmagus-marketplace',
       'discord@x',
     ])
   })

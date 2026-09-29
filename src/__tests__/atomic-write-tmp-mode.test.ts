@@ -16,7 +16,7 @@ const atomicWriteSrc = join(here, '..', 'web', 'atomic-write.ts')
 // world-readable window even though the final renamed file ends up 0600.
 describe('atomic-write tmp-file creation mode', () => {
   // DO NOT delete this source-scan as "redundant" with the behaviour tests
-  // below. Verified 2026-08-19 (Marveen's negative control): reverting the fix
+  // below. Verified 2026-08-19 (WebinarMagus's negative control): reverting the fix
   // to a mode-less tmp create keeps BOTH behaviour tests GREEN -- the trailing
   // chmod still repairs the END state, so statSync on the final file sees 0600.
   // Only this source-scan turns red. This fault class (a transient world-readable

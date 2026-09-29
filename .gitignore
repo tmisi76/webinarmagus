@@ -96,7 +96,7 @@ scripts/support-mail/no-support-reply.html
 # secret -- never commit. Operator keeps this locally per install.
 # GITIGNENV820 same-class gap: exact-name-only patterns left their backup/copy
 # variants (name.bak, name.old, name.secret.bak) stageable. Glob the whole family.
-marveen-mail-ugyfelkod*
+webinarmagus-mail-ugyfelkod*
 *.secret
 *.secret.*
 .mail-credentials*

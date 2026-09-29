@@ -1,6 +1,6 @@
 // Regression tests for the self-healing main-session fix.
 //
-// Background: the channel-monitor down-cascade (handleMarveenDown) recovers a
+// Background: the channel-monitor down-cascade (handleWebinarMagusDown) recovers a
 // main session by replacing the claude process in the EXISTING tmux pane via
 // `tmux respawn-pane`. respawn-pane needs a live pane -- it cannot recreate a
 // session that has vanished entirely (crash, self-update mid-restart, OOM,
@@ -65,26 +65,26 @@ describe("channel-monitor: self-healing vanished main session", () => {
     expect(fn).toContain("writeRespawnStamp()")
   })
 
-  it("respawnMarveenSessionFresh falls back to a full recreate when the pane is gone", () => {
+  it("respawnWebinarMagusSessionFresh falls back to a full recreate when the pane is gone", () => {
     // respawn-pane -k fails with 'can't find pane' if the session vanished
     // entirely; the hard-restart escalation must then recreate the session via
     // createMainChannelsSession() instead of dead-ending (root-caused 2026-08-06:
     // respawn-pane looped on 'can't find pane' for hours while the session was
     // absent, and the main channel stayed down).
-    const fn = sliceFn("respawnMarveenSessionFresh")
+    const fn = sliceFn("respawnWebinarMagusSessionFresh")
     expect(fn).toContain("can't find pane")
     expect(fn).toContain("createMainChannelsSession()")
   })
 
-  it("resumeMarveenSession writes the shared respawn stamp (2026-06-08 self-defer fix)", () => {
+  it("resumeWebinarMagusSession writes the shared respawn stamp (2026-06-08 self-defer fix)", () => {
     // Without this stamp the stuck-tool-call-watcher cannot defer its own
     // self-respawn during the post-respawn grace, because lastMainRespawnAt()
     // only sees the keepalive and launchctl timestamps -- not a stage-3 /
     // watcher-triggered resume. The 2026-06-08 false-positive loop respawned
     // the session 13 times in 8h because every fresh respawn left a residual
     // TUI footer the watcher then re-classified as a wedge.
-    const start = src.indexOf("export async function resumeMarveenSession")
-    expect(start, "resumeMarveenSession not found").toBeGreaterThan(0)
+    const start = src.indexOf("export async function resumeWebinarMagusSession")
+    expect(start, "resumeWebinarMagusSession not found").toBeGreaterThan(0)
     // Slice generously to the next top-level export so the assertion catches
     // a stamp call anywhere inside the function, not just before the next "\n}\n".
     const end = src.indexOf("\nexport ", start + 1)
@@ -105,19 +105,19 @@ describe("channel-monitor: self-healing vanished main session", () => {
   it("check() recreates an absent session instead of running the respawn-pane cascade", () => {
     // The monitor loop must consult mainChannelsSessionExists() and route a
     // vanished session to createMainChannelsSession(), only falling through to
-    // handleMarveenDown() when the session still exists (dead/wedged claude in
+    // handleWebinarMagusDown() when the session still exists (dead/wedged claude in
     // a live pane -- the case respawn-pane can actually fix).
     const fnStart = src.indexOf("export function startChannelPluginMonitor")
     expect(fnStart, "startChannelPluginMonitor not found").toBeGreaterThan(0)
     const loop = src.slice(fnStart)
     const existsIdx = loop.indexOf("!mainChannelsSessionExists()")
     const createIdx = loop.indexOf("createMainChannelsSession()")
-    const downIdx = loop.indexOf("handleMarveenDown()")
+    const downIdx = loop.indexOf("handleWebinarMagusDown()")
     expect(existsIdx, "absent-session guard missing from monitor loop").toBeGreaterThan(0)
     expect(createIdx, "createMainChannelsSession call missing from monitor loop").toBeGreaterThan(0)
-    expect(downIdx, "handleMarveenDown fall-through missing from monitor loop").toBeGreaterThan(0)
+    expect(downIdx, "handleWebinarMagusDown fall-through missing from monitor loop").toBeGreaterThan(0)
     // The absent-session check and its recreate must come before the
-    // handleMarveenDown fall-through in the same branch.
+    // handleWebinarMagusDown fall-through in the same branch.
     expect(existsIdx).toBeLessThan(createIdx)
     expect(createIdx).toBeLessThan(downIdx)
   })

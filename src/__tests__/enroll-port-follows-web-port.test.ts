@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { randomBytes, randomUUID } from 'node:crypto'
 
-// INSTUX1 regression (Marveen msg 23503): BOTH enroll paths must follow the
+// INSTUX1 regression (WebinarMagus msg 23503): BOTH enroll paths must follow the
 // install's real WEB_PORT into the permitopen restriction AND the connection
 // bundle. The original defect: the enrolled key's permitopen targeted a
 // hardcoded 3420 while the dashboard ran elsewhere -- the tunnel opened a dead
@@ -49,7 +49,7 @@ function makeKeyLine(installId = randomUUID()): { line: string; installId: strin
     Buffer.from([0, 0, 0, type.length]), type,
     Buffer.from([0, 0, 0, 32]), key,
   ])
-  return { line: `ssh-ed25519 ${blob.toString('base64')} marveen-remote:${installId}`, installId }
+  return { line: `ssh-ed25519 ${blob.toString('base64')} webinarmagus-remote:${installId}`, installId }
 }
 
 const HOST_KEY_B64 = Buffer.concat([
@@ -140,7 +140,7 @@ describe('INSTUX1: enroll paths follow WEB_PORT on a NON-default port', () => {
   })
 
   it('the import-guard still runs main() through a SYMLINKED absolute path (realpath guard)', () => {
-    // Marveen review (msg 23506, measured): a bare URL comparison silently
+    // WebinarMagus review (msg 23506, measured): a bare URL comparison silently
     // no-ops on a symlinked ABSOLUTE invocation -- exit 0, zero output, which
     // the installer reads as "no bundle": the exact silent-failure family of
     // this card. The guard therefore realpaths both sides; this test invokes

@@ -56,8 +56,8 @@ function runScript(body: string): { out: string; code: number } {
   }
 }
 
-const OLD_CHANNELS_UNIT = ['[Service]', 'ExecStart=/root/marveen/scripts/channels.sh', 'Restart=on-failure', 'RestartSec=10', ''].join('\n')
-const OLD_MORNING_TIMER = ['[Unit]', 'Description=Marveen Reggeli Napindito Timer', 'Requires=marveen-morning.service', '', '[Timer]', 'OnCalendar=*-*-* 07:27:00', ''].join('\n')
+const OLD_CHANNELS_UNIT = ['[Service]', 'ExecStart=/root/webinarmagus/scripts/channels.sh', 'Restart=on-failure', 'RestartSec=10', ''].join('\n')
+const OLD_MORNING_TIMER = ['[Unit]', 'Description=WebinarMagus Reggeli Napindito Timer', 'Requires=webinarmagus-morning.service', '', '[Timer]', 'OnCalendar=*-*-* 07:27:00', ''].join('\n')
 
 describe('unit maintenance runs before the up-to-date early exit', () => {
   it('the maintenance call precedes the early exit in file order', () => {
@@ -73,7 +73,7 @@ describe('unit maintenance runs before the up-to-date early exit', () => {
     // breadcrumb comment that says so.
     expect(below).not.toMatch(/^migrate_channels_restart\b/m)
     expect(below).not.toMatch(/^repair_morning_timer\b/m)
-    expect(below).not.toMatch(/^\s*sed -i\.marveen-bak .*-morning\.service/m)
+    expect(below).not.toMatch(/^\s*sed -i\.webinarmagus-bak .*-morning\.service/m)
   })
 
   it('every repair is wired into the single maintenance entry point', () => {
@@ -100,15 +100,15 @@ describe('the maintenance itself, executed for real', () => {
   it('repairs BOTH unit kinds in one pass', () => {
     const dir = mkdtempSync(join(tmpdir(), 'units-'))
     try {
-      writeFileSync(join(dir, 'marveen-channels.service'), OLD_CHANNELS_UNIT)
-      writeFileSync(join(dir, 'marveen-morning.timer'), OLD_MORNING_TIMER)
+      writeFileSync(join(dir, 'webinarmagus-channels.service'), OLD_CHANNELS_UNIT)
+      writeFileSync(join(dir, 'webinarmagus-morning.timer'), OLD_MORNING_TIMER)
       const r = run(dir)
       expect(r.code).toBe(0)
-      expect(readFileSync(join(dir, 'marveen-channels.service'), 'utf-8')).toMatch(/^Restart=always$/m)
-      expect(readFileSync(join(dir, 'marveen-morning.timer'), 'utf-8')).not.toMatch(/^Requires=/m)
+      expect(readFileSync(join(dir, 'webinarmagus-channels.service'), 'utf-8')).toMatch(/^Restart=always$/m)
+      expect(readFileSync(join(dir, 'webinarmagus-morning.timer'), 'utf-8')).not.toMatch(/^Requires=/m)
       // the rest of the timer must survive
-      expect(readFileSync(join(dir, 'marveen-morning.timer'), 'utf-8')).toContain('OnCalendar=*-*-* 07:27:00')
-      expect(readdirSync(dir).filter((f) => f.includes('marveen-bak'))).toEqual([])
+      expect(readFileSync(join(dir, 'webinarmagus-morning.timer'), 'utf-8')).toContain('OnCalendar=*-*-* 07:27:00')
+      expect(readdirSync(dir).filter((f) => f.includes('webinarmagus-bak'))).toEqual([])
     } finally {
       rmSync(dir, { recursive: true, force: true })
     }
@@ -117,18 +117,18 @@ describe('the maintenance itself, executed for real', () => {
   it('is idempotent: the second pass changes nothing and says nothing', () => {
     const dir = mkdtempSync(join(tmpdir(), 'units-'))
     try {
-      writeFileSync(join(dir, 'marveen-channels.service'), OLD_CHANNELS_UNIT)
-      writeFileSync(join(dir, 'marveen-morning.timer'), OLD_MORNING_TIMER)
+      writeFileSync(join(dir, 'webinarmagus-channels.service'), OLD_CHANNELS_UNIT)
+      writeFileSync(join(dir, 'webinarmagus-morning.timer'), OLD_MORNING_TIMER)
       run(dir)
       const after1 = [
-        readFileSync(join(dir, 'marveen-channels.service'), 'utf-8'),
-        readFileSync(join(dir, 'marveen-morning.timer'), 'utf-8'),
+        readFileSync(join(dir, 'webinarmagus-channels.service'), 'utf-8'),
+        readFileSync(join(dir, 'webinarmagus-morning.timer'), 'utf-8'),
       ]
       const second = run(dir)
       expect(second.code).toBe(0)
       expect(second.out).not.toContain('javitva')
-      expect(readFileSync(join(dir, 'marveen-channels.service'), 'utf-8')).toBe(after1[0])
-      expect(readFileSync(join(dir, 'marveen-morning.timer'), 'utf-8')).toBe(after1[1])
+      expect(readFileSync(join(dir, 'webinarmagus-channels.service'), 'utf-8')).toBe(after1[0])
+      expect(readFileSync(join(dir, 'webinarmagus-morning.timer'), 'utf-8')).toBe(after1[1])
     } finally {
       rmSync(dir, { recursive: true, force: true })
     }

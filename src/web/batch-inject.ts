@@ -16,7 +16,7 @@ import { readEnvFile } from '../env.js'
 // the NEXT, still-undelivered one already withdrew.
 //
 // This composes SEVERAL pending rows for one recipient into ONE injection.
-// The five conditions from the decision (Marveen 27277), each load-bearing:
+// The five conditions from the decision (WebinarMagus 27277), each load-bearing:
 //   1. every message keeps its OWN full envelope (prefix + wrapped): the trust
 //      boundary is per row, never per batch -- a batch is not a trust unit;
 //   2. ascending msg_id, so a correction never precedes the claim it corrects;

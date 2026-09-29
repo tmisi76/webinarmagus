@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { shouldNotify, buildAgentPrompt } from '../heartbeat.js'
 import type { HeartbeatCalendarResult } from '../heartbeat.js'
 
-// 5E0A32B0 #1159 review (Marveen): the code-side heartbeat prompt was the
+// 5E0A32B0 #1159 review (WebinarMagus): the code-side heartbeat prompt was the
 // SECOND calendar source in the same round, and the one that lied -- a failed
 // fetch collapsed to [] and rendered as "Nincs kozelgo esemeny.", while
 // shouldNotify saw an empty list and, on a quiet weekday, skipped the round
