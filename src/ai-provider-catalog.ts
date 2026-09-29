@@ -51,11 +51,11 @@ export const AI_PROVIDER_CATALOG: readonly AiProviderOption[] = [
     recommendedModel: 'deepseek-flash',
     priceLevel: 'nagyon-olcso',
     priceLabel: 'Nagyon olcsó',
-    precisionLabel: 'Erős agent és elemző munka',
+    precisionLabel: 'Erős ügynök- és elemzőmunka',
     hungarianLabel: 'Jó magyar',
     recommendation: 'Jó választás nagy volumenű háttérmunkára',
     decisionLabel: 'OLCSÓ HÁTTÉRMUNKA',
-    recommendedFor: ['automatizmusok', 'adat- és funnel elemzés', 'háttér-agentek', 'kód és eszközhasználat'],
+    recommendedFor: ['automatizmusok', 'adat- és funnel elemzés', 'háttérügynökök', 'kódolás és eszközhasználat'],
     caveat: 'Peak/off-peak árazás: csúcsidőn kívül kb. félár.',
     models: [
       {
@@ -65,7 +65,7 @@ export const AI_PROVIDER_CATALOG: readonly AiProviderOption[] = [
         inputUsdPerM: 0.30,
         outputUsdPerM: 1.20,
         priceNote: 'Peak ár; off-peak: $0.15 / $0.60.',
-        bestFor: ['olcsó agent workflow', 'elemzés', 'automatizálás', 'nagy volumen'],
+        bestFor: ['olcsó ügynökmunka', 'elemzés', 'automatizálás', 'nagy volumen'],
       },
       {
         id: 'deepseek-v4-pro',
@@ -74,7 +74,7 @@ export const AI_PROVIDER_CATALOG: readonly AiProviderOption[] = [
         inputUsdPerM: 1.32,
         outputUsdPerM: 3.96,
         priceNote: 'Peak ár; off-peak: $0.66 / $1.98.',
-        bestFor: ['összetettebb reasoning', 'nehéz agent feladatok'],
+        bestFor: ['összetettebb gondolkodás', 'nehéz ügynökfeladatok'],
       },
     ],
   },
@@ -88,11 +88,11 @@ export const AI_PROVIDER_CATALOG: readonly AiProviderOption[] = [
     recommendedModel: 'claude-sonnet-5-5',
     priceLevel: 'kozepes',
     priceLabel: 'Közepes / prémium',
-    precisionLabel: 'Nagyon precíz agentmunka',
+    precisionLabel: 'Nagyon precíz ügynökmunka',
     hungarianLabel: 'Nagyon jó magyar',
-    recommendation: 'Jó választás összetett, precíz agent feladatokra',
+    recommendation: 'Jó választás összetett, precíz ügynökfeladatokra',
     decisionLabel: 'PRECÍZ ÖSSZETETT MUNKA',
-    recommendedFor: ['stratégia', 'hosszú több-lépéses feladat', 'precíz ellenőrzés', 'kód és tool use'],
+    recommendedFor: ['stratégia', 'hosszú több-lépéses feladat', 'precíz ellenőrzés', 'kód és eszközhasználat'],
     models: [
       {
         id: 'claude-haiku-4-5-20251001',
@@ -108,7 +108,7 @@ export const AI_PROVIDER_CATALOG: readonly AiProviderOption[] = [
         tier: 'recommended',
         inputUsdPerM: 2,
         outputUsdPerM: 10,
-        bestFor: ['agent workflow', 'stratégia', 'írás', 'kód', 'ellenőrzés'],
+        bestFor: ['ügynökmunka', 'stratégia', 'írás', 'kód', 'ellenőrzés'],
       },
       {
         id: 'claude-opus-5-5',
@@ -150,7 +150,7 @@ export const AI_PROVIDER_CATALOG: readonly AiProviderOption[] = [
         tier: 'recommended',
         inputUsdPerM: 2,
         outputUsdPerM: 10,
-        bestFor: ['magyar marketing copy', 'stratégia', 'agent workflow', 'kutatás', 'döntéstámogatás'],
+        bestFor: ['magyar marketing copy', 'stratégia', 'ügynökmunka', 'kutatás', 'döntéstámogatás'],
       },
       {
         id: 'gpt-6-astra',
@@ -172,11 +172,11 @@ export const AI_PROVIDER_CATALOG: readonly AiProviderOption[] = [
     recommendedModel: 'gemini-3.8-flash',
     priceLevel: 'olcso',
     priceLabel: 'Jó ár/érték',
-    precisionLabel: 'Erős multimodális és agent munka',
+    precisionLabel: 'Erős multimodális és ügynökmunka',
     hungarianLabel: 'Kiváló magyar',
     recommendation: 'Jó választás magyar tartalomhoz és multimodális munkához',
     decisionLabel: 'MULTIMODÁLIS ÁR-ÉRTÉK',
-    recommendedFor: ['magyar szöveg', 'prezentáció és kreatív elemzés', 'képes/PDF input', 'agent workflow'],
+    recommendedFor: ['magyar szöveg', 'prezentáció és kreatív elemzés', 'képes/PDF input', 'ügynökmunka'],
     caveat: 'A $0.75 / $3.75 ár 2026. december 31-ig érvényes promóciós standard ár.',
     models: [
       {
@@ -186,7 +186,7 @@ export const AI_PROVIDER_CATALOG: readonly AiProviderOption[] = [
         inputUsdPerM: 0.75,
         outputUsdPerM: 3.75,
         priceNote: '2026.12.31-ig; utána jelenlegi listaár szerint $1.50 / $7.50.',
-        bestFor: ['magyar marketing', 'multimodális elemzés', 'hosszú agent workflow', 'prezentáció'],
+        bestFor: ['magyar marketing', 'multimodális elemzés', 'hosszú ügynökmunka', 'prezentáció'],
       },
     ],
   },
