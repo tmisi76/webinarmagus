@@ -1,6 +1,6 @@
 {
   "schedule": "*/2 * * * *",
-  "agent": "marveen",
+  "agent": "webinar_magus",
   "enabled": true,
   "type": "heartbeat",
   "skipIfBusy": true,
