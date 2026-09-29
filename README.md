@@ -136,7 +136,7 @@ launchctl print "gui/$(id -u)/com.webinarmagus.channels" | grep -E 'state =|pid 
 
 ### Windows
 
-A Windows telepítő automatikusan létrehoz egy `WebinarMagus` Scheduled Taskot. Ez Windows-bejelentkezéskor felébreszti a WSL-t és elindítja a Webinár Mágust a háttérben.
+A Windows telepítő automatikusan létrehoz egy `Webinar-Magus` Scheduled Taskot. Ez Windows-bejelentkezéskor felébreszti a WSL-t és elindítja a Webinár Mágust a háttérben.
 
 Ha ezt kézzel szeretnéd létrehozni vagy javítani, PowerShellben:
 
@@ -144,14 +144,14 @@ Ha ezt kézzel szeretnéd létrehozni vagy javítani, PowerShellben:
 $action = New-ScheduledTaskAction -Execute "$env:SystemRoot\System32\wsl.exe" -Argument 'bash -lc "cd ~/webinar-magus && bash scripts/start.sh"'
 $trigger = New-ScheduledTaskTrigger -AtLogOn
 $settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -StartWhenAvailable
-Register-ScheduledTask -TaskName "WebinarMagus" -Action $action -Trigger $trigger -Settings $settings -Description "Webinár Mágus háttérindítás Windows bejelentkezéskor" -Force
-Start-ScheduledTask -TaskName "WebinarMagus"
+Register-ScheduledTask -TaskName "Webinar-Magus" -Action $action -Trigger $trigger -Settings $settings -Description "Webinár Mágus háttérindítás Windows bejelentkezéskor" -Force
+Start-ScheduledTask -TaskName "Webinar-Magus"
 ```
 
 Ellenőrzés:
 
 ```powershell
-Get-ScheduledTask -TaskName "WebinarMagus"
+Get-ScheduledTask -TaskName "Webinar-Magus"
 ```
 
 ## Első dashboard-belépés
