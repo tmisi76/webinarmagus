@@ -63,7 +63,7 @@ describe('injected-prompt registry', () => {
 
   it('keeps sessions apart -- a record must never rescue the wrong pane', () => {
     recordInjectedPrompt('agent-cortex-router', INJECTED, 1_000)
-    expect(getInjectedPrompt('agent-adrimarveenja', 1_000)).toBeNull()
+    expect(getInjectedPrompt('agent-adriwebinar_magusja', 1_000)).toBeNull()
   })
 
   it('expires a stale record rather than re-injecting yesterday message', () => {

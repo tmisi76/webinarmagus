@@ -27,7 +27,7 @@ describe('stripSessionTitleBanner', () => {
     const pane = [
       '· esc to interrupt',
       '',
-      banner('MarveenSCHEDULED TASK NOTICE -- the next <scheduled-task'),
+      banner('WebinarMagusSCHEDULED TASK NOTICE -- the next <scheduled-task'),
       banner('source="..."> block is one of YOUR OWN scheduled tasks.'),
       banner('[Heartbeat: msiw-sentinel-watch]  <scheduled-task'),
     ].join('\n')

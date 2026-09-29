@@ -29,7 +29,7 @@ print(json.dumps([p for p in g.audit(sys.argv[1]) if "HIANYZO" in p]))
 
 describe('outgoing-copy gate tokenization: prose vs identifier (GATEKOTOJEL817/GATEHYPH816)', () => {
   it('a hyphen-suffixed foreign proper noun passes: the suffix fragment is not a standalone word', () => {
-    // Marveen's real blocked sentence, correctly accented -- must go through.
+    // WebinarMagus's real blocked sentence, correctly accented -- must go through.
     expect(auditAccent('Ha a Drive-ot választod, elég a mappába dobni, és köszönöm, hogy már átküldted.')).toEqual([])
   })
 

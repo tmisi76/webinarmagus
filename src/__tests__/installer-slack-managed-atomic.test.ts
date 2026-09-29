@@ -92,7 +92,7 @@ describe('slack-branch managed-settings write is atomic and refuses to rebuild (
       try {
         const before = JSON.stringify({
           channelsEnabled: true,
-          allowedChannelPlugins: [{ plugin: 'slack-channel', marketplace: 'marveen-marketplace' }],
+          allowedChannelPlugins: [{ plugin: 'slack-channel', marketplace: 'webinar_magus-marketplace' }],
         })
         const { status, after } = run(dir, before, 0o600)
         expect(status).toBe(0)
