@@ -104,7 +104,7 @@ async function switchTo(repo: string, branch: string): Promise<string> {
   // Never fails the checkout: the hook is best-effort by contract.
   await execFileAsync('git', ['-C', repo, 'checkout', '-q', branch], {
     timeout: 20000,
-    env: { ...process.env, MARVEEN_DASHBOARD_ORIGIN: origin, MARVEEN_GUARD_ALERT_TO: ALERT_TO },
+    env: { ...process.env, WEBINAR_MAGUS_DASHBOARD_ORIGIN: origin, WEBINAR_MAGUS_GUARD_ALERT_TO: ALERT_TO },
   })
   for (let i = 0; i < 100 && captured.length === 0; i++) await new Promise((r) => setTimeout(r, 20))
   expect(captured.length).toBe(1)
