@@ -9,14 +9,14 @@ import {
   channelsLaunchdLabel,
   channelsPlistPath,
 } from '../web/main-agent.js'
-import { buildMarveenIdentityCore } from '../web/routes/marveen.js'
+import { buildWebinarMagusIdentityCore } from '../web/routes/webinar-magus.js'
 
-// This suite proves the configurable-brand feature works under a NON-"marveen"
+// This suite proves the configurable-brand feature works under a NON-"webinarMagus"
 // identity: it sets BRAND_NAME / BOT_NAME / MAIN_AGENT_ID / OWNER_NAME to
 // generic placeholder values and asserts that the identity payload, template
 // substitution, main-agent detection, launchd label derivation, and the
 // brand-population fallback all resolve from those values with NO literal
-// "marveen"/"Marveen" leaking through. The DEFAULT (Marveen) is asserted
+// "webinarMagus"/"WebinarMagus" leaking through. The DEFAULT (WebinarMagus) is asserted
 // separately so the feature is also confirmed zero-change for existing installs.
 //
 // Generic, non-sensitive placeholders only.
@@ -26,18 +26,18 @@ const AGENT_ID = 'myassistant'
 const OWNER = 'Operator'
 
 // Anything that still hardcodes the product brand would surface as one of these
-// literals in a value derived from a non-marveen identity.
-const MARVEEN_RX = /marveen/i
+// literals in a value derived from a non-webinarMagus identity.
+const WEBINAR_MAGUS_RX = /webinar-magus/i
 
-function assertNoMarveen(value: string, label: string): void {
-  expect(value, `${label} leaked a literal brand: ${value}`).not.toMatch(MARVEEN_RX)
+function assertNoWebinarMagus(value: string, label: string): void {
+  expect(value, `${label} leaked a literal brand: ${value}`).not.toMatch(WEBINAR_MAGUS_RX)
 }
 
 describe('BRAND_NAME / BOT_NAME separation', () => {
   it('defaults BRAND_NAME to BOT_NAME when the env var is unset/empty (default-safe)', () => {
-    expect(resolveBrandName(undefined, 'Marveen')).toBe('Marveen')
-    expect(resolveBrandName('', 'Marveen')).toBe('Marveen')
-    expect(resolveBrandName('   ', 'Marveen')).toBe('Marveen')
+    expect(resolveBrandName(undefined, 'WebinarMagus')).toBe('WebinarMagus')
+    expect(resolveBrandName('', 'WebinarMagus')).toBe('WebinarMagus')
+    expect(resolveBrandName('   ', 'WebinarMagus')).toBe('WebinarMagus')
     // The product brand can differ from the agent display name.
     expect(resolveBrandName(undefined, AGENT_DISPLAY)).toBe(AGENT_DISPLAY)
   })
@@ -49,36 +49,36 @@ describe('BRAND_NAME / BOT_NAME separation', () => {
 })
 
 describe('brandSlug derivation (mirrors the installer NFKD rule)', () => {
-  it('slugs the default brand back to "marveen" so labels are unchanged by default', () => {
-    expect(brandSlug('Marveen')).toBe('marveen')
+  it('slugs the default brand back to "webinarMagus" so labels are unchanged by default', () => {
+    expect(brandSlug('WebinarMagus')).toBe('webinarMagus')
   })
 
-  it('derives an ASCII slug for a non-marveen brand', () => {
+  it('derives an ASCII slug for a non-webinarMagus brand', () => {
     expect(brandSlug(BRAND)).toBe('acmeai')
     expect(brandSlug(AGENT_DISPLAY)).toBe('myassistant')
     expect(brandSlug('My Assistant')).toBe('my-assistant')
     expect(brandSlug('Acme-AI v2!')).toBe('acme-ai-v2')
   })
 
-  it('folds accented brands to ASCII (no non-marveen unicode leak)', () => {
+  it('folds accented brands to ASCII (no non-webinarMagus unicode leak)', () => {
     // Generic accented example -- exercises the NFKD path without a real name.
     expect(brandSlug('Éxãmple Brand')).toBe('example-brand')
   })
 
-  it('falls back to "marveen" for an empty/blank brand', () => {
-    expect(brandSlug('')).toBe('marveen')
-    expect(brandSlug('   ')).toBe('marveen')
-    expect(brandSlug('!!!')).toBe('marveen')
+  it('falls back to "webinarMagus" for an empty/blank brand', () => {
+    expect(brandSlug('')).toBe('webinarMagus')
+    expect(brandSlug('   ')).toBe('webinarMagus')
+    expect(brandSlug('!!!')).toBe('webinarMagus')
   })
 })
 
 describe('resolveServiceId (launchd/systemd service id)', () => {
   it('equals MAIN_AGENT_ID for the default brand (default-safe labels)', () => {
     // Default brand slug == agent id -> same service id -> identical labels.
-    expect(resolveServiceId('marveen', 'marveen')).toBe('marveen')
+    expect(resolveServiceId('webinarMagus', 'webinarMagus')).toBe('webinarMagus')
   })
 
-  it('uses the brand slug for a distinct non-marveen brand', () => {
+  it('uses the brand slug for a distinct non-webinarMagus brand', () => {
     expect(resolveServiceId('acmeai', AGENT_ID)).toBe('acmeai')
     expect(resolveServiceId('acmeai', AGENT_ID)).not.toBe(AGENT_ID)
   })
@@ -89,10 +89,10 @@ describe('resolveServiceId (launchd/systemd service id)', () => {
   })
 })
 
-describe('launchd / channels label derivation for a non-marveen identity', () => {
+describe('launchd / channels label derivation for a non-webinarMagus identity', () => {
   it('builds the tmux channels session from the agent id', () => {
     expect(channelsSessionName(AGENT_ID)).toBe('myassistant-channels')
-    assertNoMarveen(channelsSessionName(AGENT_ID), 'channelsSessionName')
+    assertNoWebinarMagus(channelsSessionName(AGENT_ID), 'channelsSessionName')
   })
 
   it('builds the launchd label + plist path from the service id', () => {
@@ -100,20 +100,20 @@ describe('launchd / channels label derivation for a non-marveen identity', () =>
     expect(serviceId).toBe('acmeai')
     expect(channelsLaunchdLabel(serviceId)).toBe('com.acmeai.channels')
     expect(channelsPlistPath(serviceId)).toMatch(/\/com\.acmeai\.channels\.plist$/)
-    assertNoMarveen(channelsLaunchdLabel(serviceId), 'channelsLaunchdLabel')
-    assertNoMarveen(channelsPlistPath(serviceId), 'channelsPlistPath')
+    assertNoWebinarMagus(channelsLaunchdLabel(serviceId), 'channelsLaunchdLabel')
+    assertNoWebinarMagus(channelsPlistPath(serviceId), 'channelsPlistPath')
   })
 
-  it('keeps the default label as com.marveen.channels (zero change for existing installs)', () => {
-    const serviceId = resolveServiceId(brandSlug('Marveen'), 'marveen')
-    expect(channelsLaunchdLabel(serviceId)).toBe('com.marveen.channels')
+  it('keeps the default label as com.webinar-magus.channels (zero change for existing installs)', () => {
+    const serviceId = resolveServiceId(brandSlug('WebinarMagus'), 'webinarMagus')
+    expect(channelsLaunchdLabel(serviceId)).toBe('com.webinar-magus.channels')
   })
 })
 
 describe('identity payload core resolves from config, not the literal', () => {
-  it('maps display name / brand / canonical id for a non-marveen identity', () => {
+  it('maps display name / brand / canonical id for a non-webinarMagus identity', () => {
     const brandName = resolveBrandName(BRAND, AGENT_DISPLAY)
-    const core = buildMarveenIdentityCore(AGENT_DISPLAY, brandName, AGENT_ID)
+    const core = buildWebinarMagusIdentityCore(AGENT_DISPLAY, brandName, AGENT_ID)
     expect(core).toEqual({
       name: AGENT_DISPLAY,
       brandName: BRAND,
@@ -121,17 +121,17 @@ describe('identity payload core resolves from config, not the literal', () => {
       autoRestartId: AGENT_ID,
       role: 'main',
     })
-    for (const [k, v] of Object.entries(core)) assertNoMarveen(String(v), `identity.${k}`)
+    for (const [k, v] of Object.entries(core)) assertNoWebinarMagus(String(v), `identity.${k}`)
   })
 
   it('falls brandName back to the display name when no separate brand is set', () => {
     const brandName = resolveBrandName(undefined, AGENT_DISPLAY)
-    const core = buildMarveenIdentityCore(AGENT_DISPLAY, brandName, AGENT_ID)
+    const core = buildWebinarMagusIdentityCore(AGENT_DISPLAY, brandName, AGENT_ID)
     expect(core.brandName).toBe(AGENT_DISPLAY)
   })
 })
 
-describe('template substitution for a non-marveen identity', () => {
+describe('template substitution for a non-webinarMagus identity', () => {
   const identity: TemplateIdentity = {
     projectRoot: '/opt/myassistant',
     mainAgentId: AGENT_ID,
@@ -140,7 +140,7 @@ describe('template substitution for a non-marveen identity', () => {
     webPort: 3420,
   }
 
-  it('substitutes every identity placeholder with the non-marveen values', () => {
+  it('substitutes every identity placeholder with the non-webinarMagus values', () => {
     const tpl = [
       'root={{PROJECT_ROOT}}',
       'install={{INSTALL_DIR}}',
@@ -152,16 +152,16 @@ describe('template substitution for a non-marveen identity', () => {
     const out = substituteTemplatePlaceholders(tpl, identity)
     // No placeholder survives.
     expect([...out.matchAll(/\{\{[A-Z_]+\}\}/g)].map(m => m[0])).toEqual([])
-    // Values are the injected non-marveen identity.
+    // Values are the injected non-webinarMagus identity.
     expect(out).toContain('agent=myassistant')
     expect(out).toContain('bot=MyAssistant')
     expect(out).toContain('owner=Operator')
     expect(out).toContain('root=/opt/myassistant')
     // No literal brand leaked through the substitution.
-    assertNoMarveen(out, 'substituteTemplatePlaceholders output')
+    assertNoWebinarMagus(out, 'substituteTemplatePlaceholders output')
   })
 
-  it('does not invent a marveen value when the template has no brand reference', () => {
+  it('does not invent a webinarMagus value when the template has no brand reference', () => {
     expect(substituteTemplatePlaceholders('hello {{OWNER_NAME}}', identity)).toBe('hello Operator')
   })
 })
@@ -172,7 +172,7 @@ describe('brand-population fallback contract (initSidebarBrand)', () => {
   // against a regression where the chrome stops honoring brandName.
   const pickBrand = (m: { brandName?: string; name?: string }) => m.brandName || m.name
 
-  it('prefers brandName when present (non-marveen)', () => {
+  it('prefers brandName when present (non-webinarMagus)', () => {
     expect(pickBrand({ brandName: BRAND, name: AGENT_DISPLAY })).toBe(BRAND)
   })
 

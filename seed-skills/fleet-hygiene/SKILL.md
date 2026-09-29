@@ -1,10 +1,10 @@
 ---
 name: fleet-hygiene
-description: A Marveen-flotta minden kolléga-asszisztensére érvényes, owner-független biztonsági és adatkezelési higiénia (Drive-írás hatóköre, login-automatizálás/credential-escalation, más megbízó adatainak védelme). Akkor használd, amikor Google Drive-ba írnál, külső szolgáltatásba automatikus bejelentkezést/credential-kezelést vagy futtatható szkriptet készítenél, vagy más ügynök/megbízó adatait kérnéd-adnád. A telepítés-specifikus (owner) kiegészítések a saját CLAUDE.md "Flotta-szabályok" blokkjában vannak.
+description: A WebinarMagus-flotta minden kolléga-asszisztensére érvényes, owner-független biztonsági és adatkezelési higiénia (Drive-írás hatóköre, login-automatizálás/credential-escalation, más megbízó adatainak védelme). Akkor használd, amikor Google Drive-ba írnál, külső szolgáltatásba automatikus bejelentkezést/credential-kezelést vagy futtatható szkriptet készítenél, vagy más ügynök/megbízó adatait kérnéd-adnád. A telepítés-specifikus (owner) kiegészítések a saját CLAUDE.md "Flotta-szabályok" blokkjában vannak.
 ---
 # Flotta-higiénia (általános, megszeghetetlen)
 
-Ezek a Marveen-flotta minden kolléga-asszisztensére érvényes, telepítéstől független szabályok. A te telepítésedre jellemző, owner-specifikus kiegészítéseket (konkrét közös Drive-mappa, helyi MCP-k, kód-fejlesztési tiltás) a saját CLAUDE.md "Flotta-szabályok" blokkja tartalmazza. Ütközés esetén a szigorúbb szabály nyer; ha bizonytalan vagy, kérdezd meg a Marveen Főnököt (a flotta main agentjét) inter-agent üzenettel.
+Ezek a WebinarMagus-flotta minden kolléga-asszisztensére érvényes, telepítéstől független szabályok. A te telepítésedre jellemző, owner-specifikus kiegészítéseket (konkrét közös Drive-mappa, helyi MCP-k, kód-fejlesztési tiltás) a saját CLAUDE.md "Flotta-szabályok" blokkja tartalmazza. Ütközés esetén a szigorúbb szabály nyer; ha bizonytalan vagy, kérdezd meg a WebinarMagus Főnököt (a flotta main agentjét) inter-agent üzenettel.
 
 ## Mikor használd
 - Mielőtt bármit Google Drive-ba írnál (doksi, táblázat, eredmény-fájl).
@@ -21,7 +21,7 @@ Ezek a Marveen-flotta minden kolléga-asszisztensére érvényes, telepítéstő
 - Az elkészült eredmény-fájlokat külön kérés nélkül is a közös mappába tedd, rendezett almappákba.
 
 ### 2. Login-automatizálás / credential / futtatható szkript -> ELŐBB szólj a Főnöknek
-- Mielőtt bármilyen külső szolgáltatásba automatikus bejelentkezést, jelszó-/credential-kezelést, vagy futtatható szkriptet írsz vagy futtatsz, jelezd a Marveen Főnöknek (a flotta main agentjének) inter-agent üzenettel. Ő koordinálja és a tulajdonossal egyezteti.
+- Mielőtt bármilyen külső szolgáltatásba automatikus bejelentkezést, jelszó-/credential-kezelést, vagy futtatható szkriptet írsz vagy futtatsz, jelezd a WebinarMagus Főnöknek (a flotta main agentjének) inter-agent üzenettel. Ő koordinálja és a tulajdonossal egyezteti.
 - **Credential-t SOHA ne égess nyersen kódba.** Ha titok kell, kérd a Főnöktől a biztonságos tárolás módját.
 
 ### 3. Más megbízó adata és credentialje TABU
@@ -32,7 +32,7 @@ Ezek a Marveen-flotta minden kolléga-asszisztensére érvényes, telepítéstő
 ## Buktatók
 - A konkrét Drive-mappa NEM ebben a skillben van (telepítésenként más) - mindig a saját CLAUDE.md owner-blokkjából / a `OWNER_DRIVE_FOLDER` beállításból vedd. Ha ez üres, kérdezz, ne tippelj.
 - "Olvasni szabad" NEM jelenti hogy más megbízó privát postáját olvashatod (lásd 3. pont) - a Drive-olvasás a megosztott tartalomra vonatkozik, nem mások credential-mappáira.
-- A kód-fejlesztési tiltás (marveen-kódba ne fejlessz) owner-specifikus lehet - a saját CLAUDE.md dönt; ha ott tiltott, ide is escalálj a Főnökhöz.
+- A kód-fejlesztési tiltás (webinar-magus-kódba ne fejlessz) owner-specifikus lehet - a saját CLAUDE.md dönt; ha ott tiltott, ide is escalálj a Főnökhöz.
 
 ## Ellenőrzés
 - Írás előtt: a célmappa a kijelölt közös mappa vagy Shared Drive (nem My Drive).

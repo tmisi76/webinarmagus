@@ -2,7 +2,7 @@
 //
 // Background: every Telegram channel disconnect on 2026-06-01 13:09 / 13:51 /
 // 15:03 escalated stage1 -> stage4 (hard restart, context lost), because the
-// stage-3 path (`resumeMarveenSession`) called `tmux respawn-pane -k` but
+// stage-3 path (`resumeWebinarMagusSession`) called `tmux respawn-pane -k` but
 // never reaped the orphan bun poller grandchild. The freshly-respawned
 // --continue session raced the still-alive poller for the same bot token,
 // the plugin never reached an inbound-ready state, the recovery timed out
@@ -24,16 +24,16 @@ import { dirname, join } from 'node:path'
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const MONITOR_PATH = join(__dirname, '..', 'web', 'channel-monitor.ts')
 
-describe('channel-monitor: stage-3 resumeMarveenSession recovery hardening', () => {
+describe('channel-monitor: stage-3 resumeWebinarMagusSession recovery hardening', () => {
   const src = readFileSync(MONITOR_PATH, 'utf-8')
 
-  // Slice out the resumeMarveenSession body so unrelated mentions
+  // Slice out the resumeWebinarMagusSession body so unrelated mentions
   // elsewhere in the file (e.g. comments, sendAlert text) cannot
   // satisfy these checks by accident.
-  const fnStart = src.indexOf('function resumeMarveenSession')
-  expect(fnStart, 'resumeMarveenSession not found').toBeGreaterThan(0)
+  const fnStart = src.indexOf('function resumeWebinarMagusSession')
+  expect(fnStart, 'resumeWebinarMagusSession not found').toBeGreaterThan(0)
   const fnEnd = src.indexOf('\n}\n', fnStart)
-  expect(fnEnd, 'resumeMarveenSession closing brace not found').toBeGreaterThan(fnStart)
+  expect(fnEnd, 'resumeWebinarMagusSession closing brace not found').toBeGreaterThan(fnStart)
   const fnBody = src.slice(fnStart, fnEnd)
 
   it('reapChannelOrphans is imported in channel-monitor', () => {
@@ -47,7 +47,7 @@ describe('channel-monitor: stage-3 resumeMarveenSession recovery hardening', () 
     expect(src).toMatch(/import\s*{[^}]*\breapDetachedChannelClaudes\b[^}]*}\s*from\s*'\.\/channel-poller-reap\.js'/)
     const reapIdx = fnBody.indexOf('reapDetachedChannelClaudes(')
     const respawnIdx = fnBody.indexOf("'respawn-pane'")
-    expect(reapIdx, 'reapDetachedChannelClaudes call missing from resumeMarveenSession').toBeGreaterThan(0)
+    expect(reapIdx, 'reapDetachedChannelClaudes call missing from resumeWebinarMagusSession').toBeGreaterThan(0)
     expect(reapIdx).toBeLessThan(respawnIdx)
   })
 
@@ -55,21 +55,21 @@ describe('channel-monitor: stage-3 resumeMarveenSession recovery hardening', () 
     expect(src).toMatch(/dismissResumeSummaryModalIfPresent[\s\S]*?from\s*'\.\/agent-process\.js'/)
   })
 
-  it('reapChannelOrphans is called inside resumeMarveenSession BEFORE the tmux respawn', () => {
+  it('reapChannelOrphans is called inside resumeWebinarMagusSession BEFORE the tmux respawn', () => {
     const reapIdx = fnBody.indexOf('reapChannelOrphans(')
     const respawnIdx = fnBody.indexOf("'respawn-pane'")
-    expect(reapIdx, 'reapChannelOrphans call missing from resumeMarveenSession').toBeGreaterThan(0)
-    expect(respawnIdx, 'respawn-pane call missing from resumeMarveenSession').toBeGreaterThan(0)
+    expect(reapIdx, 'reapChannelOrphans call missing from resumeWebinarMagusSession').toBeGreaterThan(0)
+    expect(respawnIdx, 'respawn-pane call missing from resumeWebinarMagusSession').toBeGreaterThan(0)
     // Order matters: the reap must happen first to clear the orphan
     // before the fresh poller is spawned by the respawn.
     expect(reapIdx).toBeLessThan(respawnIdx)
   })
 
-  it('dismissResumeSummaryModalIfPresent is called inside resumeMarveenSession AFTER the tmux respawn', () => {
+  it('dismissResumeSummaryModalIfPresent is called inside resumeWebinarMagusSession AFTER the tmux respawn', () => {
     const dismissIdx = fnBody.indexOf('dismissResumeSummaryModalIfPresent(')
     const respawnIdx = fnBody.indexOf("'respawn-pane'")
-    expect(dismissIdx, 'modal dismiss call missing from resumeMarveenSession').toBeGreaterThan(0)
-    expect(respawnIdx, 'respawn-pane call missing from resumeMarveenSession').toBeGreaterThan(0)
+    expect(dismissIdx, 'modal dismiss call missing from resumeWebinarMagusSession').toBeGreaterThan(0)
+    expect(respawnIdx, 'respawn-pane call missing from resumeWebinarMagusSession').toBeGreaterThan(0)
     // Order matters: dismiss can only run on the fresh TUI that the
     // respawn just produced. Calling it before respawn would target
     // the dying parent's pane state.
@@ -99,33 +99,33 @@ describe('channel-monitor: post-respawn cold-start guard (2026-06-01 480s outage
   // keepalive-respawn timestamp, not just the hard-restart one).
   const src = readFileSync(MONITOR_PATH, 'utf-8')
 
-  const fnStart = src.indexOf('function handleMarveenDown')
-  expect(fnStart, 'handleMarveenDown not found').toBeGreaterThan(0)
+  const fnStart = src.indexOf('function handleWebinarMagusDown')
+  expect(fnStart, 'handleWebinarMagusDown not found').toBeGreaterThan(0)
   const fnEnd = src.indexOf('\nfunction ', fnStart + 1)
   const fnBody = src.slice(fnStart, fnEnd > fnStart ? fnEnd : undefined)
 
   it('post-respawn grace is at least 300 seconds (covers a large-context cold start)', () => {
-    const m = src.match(/const\s+MARVEEN_POST_RESPAWN_GRACE_MS\s*=\s*([\d_]+)/)
-    expect(m, 'MARVEEN_POST_RESPAWN_GRACE_MS constant not found').not.toBeNull()
+    const m = src.match(/const\s+WEBINAR_MAGUS_POST_RESPAWN_GRACE_MS\s*=\s*([\d_]+)/)
+    expect(m, 'WEBINAR_MAGUS_POST_RESPAWN_GRACE_MS constant not found').not.toBeNull()
     const value = parseInt((m![1] as string).replace(/_/g, ''), 10)
     expect(value).toBeGreaterThanOrEqual(300_000)
   })
 
-  it('handleMarveenDown gates on lastMainRespawnAt() so a keepalive respawn also suppresses escalation', () => {
+  it('handleWebinarMagusDown gates on lastMainRespawnAt() so a keepalive respawn also suppresses escalation', () => {
     // The earlier code gated only on marveenLastHardRestart, which a keepalive
     // fresh-respawn updated but a future refactor might not. lastMainRespawnAt()
     // is the single source of truth for "we respawned recently, give it time".
     expect(fnBody).toMatch(/lastMainRespawnAt\(\)/)
-    expect(fnBody).toMatch(/MARVEEN_POST_RESPAWN_GRACE_MS/)
+    expect(fnBody).toMatch(/WEBINAR_MAGUS_POST_RESPAWN_GRACE_MS/)
   })
 
   it('the cold-start guard returns BEFORE the cascade creates a down state', () => {
     // The grace check must short-circuit before the `if (!marveenDownState)`
     // branch, otherwise a still-booting session would begin stage 1 and stack.
-    const guardIdx = fnBody.indexOf('MARVEEN_POST_RESPAWN_GRACE_MS')
+    const guardIdx = fnBody.indexOf('WEBINAR_MAGUS_POST_RESPAWN_GRACE_MS')
     const downStateIdx = fnBody.indexOf('if (!marveenDownState)')
-    expect(guardIdx, 'grace guard missing from handleMarveenDown').toBeGreaterThan(0)
-    expect(downStateIdx, 'down-state init missing from handleMarveenDown').toBeGreaterThan(0)
+    expect(guardIdx, 'grace guard missing from handleWebinarMagusDown').toBeGreaterThan(0)
+    expect(downStateIdx, 'down-state init missing from handleWebinarMagusDown').toBeGreaterThan(0)
     expect(guardIdx).toBeLessThan(downStateIdx)
   })
 })
