@@ -1,4 +1,4 @@
-# MARVCI822: the repo's only workflow was the secret gate -- vitest and tsc
+# INSTCI822: the repo's only workflow was the secret gate -- vitest and tsc
 # never ran in CI for ANY PR, so every "N/N green" claim was a local
 # measurement the PR head could not prove (found via the review of
 # #1037/#1038, measured 2026-08-22).
@@ -7,7 +7,7 @@
 # introduction would block every open PR whose head predates the workflow
 # (the required-check-never-ran class). The switch to required is a separate
 # owner/WebinarMagus decision, gated on measuring how many open PRs run it green
-# (decision msg 14205, recorded on the MARVCI822 card).
+# (decision msg 14205, recorded on the INSTCI822 card).
 name: test
 
 on:
