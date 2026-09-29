@@ -5,7 +5,7 @@
 // operator can hand back to the device.
 //
 // Usage:
-//   npm run remote-enroll -- "ssh-ed25519 <base64 key> marveen-remote:<uuid>"
+//   npm run remote-enroll -- "ssh-ed25519 <base64 key> webinar_magus-remote:<uuid>"
 //   npm run remote-enroll -- --host 203.0.113.10 --port 2222 "<public key line>"
 //   npm run remote-enroll -- --web-port 3421 "<public key line>"
 //   npm run remote-enroll -- --no-dashboard-token "<public key line>"
@@ -184,13 +184,13 @@ async function main(): Promise<void> {
 
   const restrictedLine = buildRestrictedLine(parsed, args.webPort)
   // ENROLL813: this CLI used to hardcode homedir()/.ssh and did not know the
-  // MARVEEN_SSH_DIR seam at all (grep -c MARVEEN_SSH_DIR on this file was 0).
+  // WEBINAR_MAGUS_SSH_DIR seam at all (grep -c WEBINAR_MAGUS_SSH_DIR on this file was 0).
   // Nothing automated calls it today -- but any future automated caller would
   // have written the operator's real authorized_keys with no way to redirect it,
   // which is the same shape as the leak this change closes. One resolver for
   // every writer, or the next copy drifts again.
   const sshDir = resolveSshDir((dir) => {
-    process.stderr.write(`warning: MARVEEN_SSH_DIR override active -- writing to ${dir}, not the real ~/.ssh\n`)
+    process.stderr.write(`warning: WEBINAR_MAGUS_SSH_DIR override active -- writing to ${dir}, not the real ~/.ssh\n`)
   })
 
   const result = await enrollAuthorizedKey({
@@ -203,7 +203,7 @@ async function main(): Promise<void> {
     process.stderr.write(`warning: ${w}\n`)
   }
   process.stderr.write(
-    `${result.action === 'replaced' ? 'Replaced' : 'Added'} restricted entry for marveen-remote:${parsed.installId} in ${result.authorizedKeysPath}\n`,
+    `${result.action === 'replaced' ? 'Replaced' : 'Added'} restricted entry for webinar_magus-remote:${parsed.installId} in ${result.authorizedKeysPath}\n`,
   )
 
   // Assemble the connection bundle. The consuming side requires the host key,
@@ -267,7 +267,7 @@ async function main(): Promise<void> {
 // above, and an unguarded main() would execute the whole enrollment
 // (host-key scan, authorized_keys write) at import time.
 //
-// Realpath on BOTH sides (Marveen review, msg 23506, measured): a bare URL
+// Realpath on BOTH sides (WebinarMagus review, msg 23506, measured): a bare URL
 // comparison silently no-ops when the script is invoked through a SYMLINKED
 // ABSOLUTE path -- exit 0, zero output, and the installer reads that as
 // "no bundle", which is exactly the silent-failure family this card exists
