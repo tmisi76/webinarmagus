@@ -28,24 +28,16 @@ function ask(question: string): Promise<string> {
 }
 
 const BANNER = `
- ██████╗██╗      █████╗ ██╗   ██╗██████╗ ███████╗
-██╔════╝██║     ██╔══██╗██║   ██║██╔══██╗██╔════╝
-██║     ██║     ███████║██║   ██║██║  ██║█████╗
-██║     ██║     ██╔══██║██║   ██║██║  ██║██╔══╝
-╚██████╗███████╗██║  ██║╚██████╔╝██████╔╝███████╗
- ╚═════╝╚══════╝╚═╝  ╚═╝ ╚═════╝ ╚═════╝╚══════╝
- ██████╗██╗      █████╗ ██╗    ██╗
-██╔════╝██║     ██╔══██╗██║    ██║
-██║     ██║     ███████║██║ █╗ ██║
-██║     ██║     ██╔══██║██║███╗██║
-╚██████╗███████╗██║  ██║╚███╔███╔╝
- ╚═════╝╚══════╝╚═╝  ╚═╝ ╚══╝╚══╝  (lite)
+╔══════════════════════════════════════╗
+║           WEBINÁR MÁGUS              ║
+║   AI marketing- és ügyfélszerző csapat   ║
+╚══════════════════════════════════════╝
 `
 
 async function main() {
   console.log(BANNER)
-  header('Udvozol a WebinarMagus telepito!')
-  console.log('Ez a varazslo vegigvezet a beallitasokon.\n')
+  header('Üdvözöl a Webinár Mágus telepítő!')
+  console.log('A telepítő végigvezet az alapbeállításokon. Az AI szolgáltatót később a magyar dashboardon választod ki.\n')
 
   // --- Kovetelmeny ellenorzes ---
   header('1. Kovetelmeny ellenorzes')
@@ -63,9 +55,9 @@ async function main() {
   // Claude CLI
   try {
     const claudeVersion = execSync('claude --version 2>/dev/null', { encoding: 'utf-8' }).trim()
-    ok(`Claude CLI: ${claudeVersion}`)
+    ok(`Webinár Mágus AI runtime: ${claudeVersion}`)
   } catch {
-    fail('Claude CLI nem talalhato. Telepitsd: npm install -g @anthropic-ai/claude-code')
+    fail('A Webinár Mágus technikai AI runtime-ja nem található. Telepítés: npm install -g @anthropic-ai/claude-code')
     process.exit(1)
   }
 
@@ -146,22 +138,14 @@ async function main() {
     warn('ElevenLabs kihagyva — hangos valaszok nem lesznek elerhetoek')
   }
 
-  // DeepSeek-V4-Pro (alternativ modell a Claude mellett)
-  console.log('\nDeepSeek-V4-Pro alternativ modell tamogatas (opcionalis).')
-  console.log('A DeepSeek olcsobb mint a Claude, kompatibilis Anthropic API-t kinal,')
-  console.log('1M token kontextussal. API kulcsot itt szerezhetsz: https://api.deepseek.com')
-  const dsKey = await ask('DeepSeek API kulcs (Enter a kihagyashoz):')
-  if (dsKey) {
-    // Mentsuk a vault-ba (titkositott tarolas), nem a sima .env-be:
-    // a kulcs igy a dashboard felulet rotacios kontrollja ala kerul es
-    // nem jelenik meg a .env fajl tartalmaban hat hosszan.
-    const { setSecret } = await import('../dist/web/vault.js')
-    setSecret('DEEPSEEK_API_KEY', 'DEEPSEEK_API_KEY', dsKey)
-    ok('DeepSeek API kulcs mentve a vault-ba (DEEPSEEK_API_KEY)')
-    ok('A deepseek-v4-pro modell most mar elerheto agensekhez')
-  } else {
-    warn('DeepSeek kihagyva — kesobb a dashboard /vault oldalrol hozzaadhato')
-  }
+  // AI provider is chosen in the branded dashboard onboarding.
+  // There is no mandatory Claude subscription: users may choose DeepSeek,
+  // Anthropic, OpenAI or Google Gemini and store only that provider's API key.
+  console.log('\nAI szolgáltató beállítása:')
+  console.log('  A telepítés után a dashboardon szabadon választhatsz:')
+  console.log('  DeepSeek / Anthropic / OpenAI / Google Gemini.')
+  console.log('  Nincs kötelező Claude-előfizetés; csak a választott szolgáltató hozzáférése szükséges.')
+  ok('AI szolgáltató választása a dashboard onboardingban történik')
 
   // .env iras
   header('4. .env fajl irasa')
@@ -173,7 +157,7 @@ async function main() {
   ok('.env fajl letrehozva (0600)')
 
   // CLAUDE.md szerkesztes
-  header('5. CLAUDE.md testreszabas')
+  header('5. Asszisztens instrukciók testreszabása')
   const editor = process.env.EDITOR ?? 'nano'
   console.log(`Megnyitom a CLAUDE.md fajlt szerkesztesre (${editor})...`)
   console.log('Csereld ki a [NAGYBETUS] helyorzokat a sajat adataiddal.\n')
@@ -321,7 +305,7 @@ WantedBy=default.target`
 
   // Kész
   header('Kesz!')
-  ok('WebinarMagus sikeresen telepitve!')
+  ok('Webinár Mágus sikeresen telepítve!')
   console.log('')
   console.log('Kovetkezo lepesek:')
   console.log(`  1. Ha nem adtad meg a chat ID-t: kuldj /chatid-t a botnak`)
