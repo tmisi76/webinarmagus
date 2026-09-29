@@ -96,8 +96,8 @@ STATE_PATH = os.path.join(STORE_DIR, "usage-alert-state.json")
 ENV_PATH = os.path.join(REPO_ROOT, ".env")
 
 # Display timezone for reset stamps. Defaults to the project's Europe/Budapest;
-# override with MARVEEN_TZ for an install whose owner lives elsewhere.
-LOCAL_TZ = ZoneInfo(os.environ.get("MARVEEN_TZ", "Europe/Budapest"))
+# override with WEBINAR_MAGUS_TZ for an install whose owner lives elsewhere.
+LOCAL_TZ = ZoneInfo(os.environ.get("WEBINAR_MAGUS_TZ", "Europe/Budapest"))
 
 TOKEN_FIELDS = (
     "input_tokens",
