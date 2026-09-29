@@ -81,7 +81,7 @@ describe('local agent skills on global Skills page', () => {
 
   it('page subtitle describes all three skill sources in both locales', () => {
     expect(HU).toContain("'skills.page_subtitle'")
-    expect(HU).toMatch(/'skills\.page_subtitle':.*ágens-saját/)
+    expect(HU).toMatch(/'skills\.page_subtitle':.*(?:ágens|ügynök)-saját/)
     expect(EN).toContain("'skills.page_subtitle'")
     expect(EN).toMatch(/'skills\.page_subtitle':.*agent-local/)
     // old stale description must be gone
